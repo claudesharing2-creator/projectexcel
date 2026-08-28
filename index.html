@@ -14297,14 +14297,21 @@ async function _dpLoadedCounts(){
 }
 // --- isi dialog -----------------------------------------------------------
 function _dpLoaderRow(g,inPack,loaded){
-  var has=inPack>0;
+  // Baris bisa diutak-atik kalau ADA DI PACK **atau** SEDANG TERMUAT.
+  // Versi pertama hanya melihat "ada di pack", jadi bagian yang sudah dimuat
+  // pengguna lewat jalur lain (mis. daftar petugas lewat kartu tersendiri)
+  // muncul dinonaktifkan DAN tidak tercentang -- lalu ikut terhapus, karena
+  // tidak-tercentang berarti keluarkan. Itu menghapus data yang tidak pernah
+  // diminta hilang oleh siapa pun.
+  var has=inPack>0, ada=loaded>0, aktif=has||ada;
   var note=has?('<b>'+_dpFmtN(inPack)+'</b> di pack'):'<span style="color:var(--g3)">tidak ada di pack</span>';
-  var now=loaded>0?(' &middot; sekarang termuat <b>'+_dpFmtN(loaded)+'</b>'):' &middot; <span style="color:var(--g3)">belum termuat</span>';
+  var now=ada?(' &middot; sekarang termuat <b>'+_dpFmtN(loaded)+'</b>'):' &middot; <span style="color:var(--g3)">belum termuat</span>';
+  var extra=(!has&&ada)?'<br><span style="font-size:10px;color:#b26a00">Pack ini tidak memuatnya — biarkan tercentang untuk mempertahankan yang sudah ada.</span>':'';
   return '<label style="display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border:1px solid var(--g2);'
-    +'border-radius:8px;margin-bottom:6px;cursor:pointer'+(has?'':';opacity:.62')+'">'
-    +'<input type="checkbox" id="dpg-'+g.id+'" data-dpg="1"'+(has?' checked':'')+(has?'':' disabled')+' style="margin-top:2px">'
+    +'border-radius:8px;margin-bottom:6px;cursor:pointer'+(aktif?'':';opacity:.62')+'">'
+    +'<input type="checkbox" id="dpg-'+g.id+'" data-dpg="1"'+(aktif?' checked':'')+(aktif?'':' disabled')+' style="margin-top:2px">'
     +'<span style="flex:1"><span style="font-weight:700;font-size:11.5px">'+g.ic+' '+g.label+'</span>'
-    +'<br><span style="font-size:10px;color:var(--g4)">'+note+now+'</span></span></label>';
+    +'<br><span style="font-size:10px;color:var(--g4)">'+note+now+'</span>'+extra+'</span></label>';
 }
 function _dpLoaderBodyHtml(){
   var pack=window._dpLoaderPack;
@@ -14325,6 +14332,7 @@ function _dpLoaderBodyHtml(){
       +'</div>';
   }
   var rows='';
+  window._dpLoaderInPack={};
   DP_GROUPS.forEach(function(g){
     var n=0;
     (g.cur||[]).forEach(function(f){if(pack[f]!=null)n+=_dpCountVal(pack[f]);});
@@ -14332,11 +14340,13 @@ function _dpLoaderBodyHtml(){
     if(g.gis&&pack.gisLayersGz)n+=1;
     if(g.pers){if(pack.ppcList)n+=pack.ppcList.length;if(pack.persSeed)n+=pack.persSeed.length;}
     if(g.bm&&pack.bmRegistry&&pack.bmRegistry.entries)n+=pack.bmRegistry.entries.length;
+    window._dpLoaderInPack[g.id]=n;
     rows+=_dpLoaderRow(g,n,lc[g.id]||0);
   });
   var oth=_dpOtherKeys(pack);
   if(oth.length||lc.__other){
     var on=0;oth.forEach(function(k){on+=_dpCountVal(pack.localStorage[k]);});
+    window._dpLoaderInPack.__other=on;
     rows+=_dpLoaderRow({id:'__other',ic:'\u2699',label:'Lainnya (pengaturan & catatan aplikasi)'},on,lc.__other||0);
   }
   return '<div style="font-size:11.5px;color:var(--g4);margin-bottom:4px">Data Pack '
@@ -14437,7 +14447,8 @@ async function _dpLoaderApply(){
   var clearing=[];
   DP_GROUPS.forEach(function(g){if(!sel[g.id]&&(lc[g.id]||0)>0)clearing.push(g.label);});
   if(!sel.__other&&(lc.__other||0)>0)clearing.push('Lainnya');
-  var run=function(){_dpLoaderRun(pack,sel);};
+  var inPack=window._dpLoaderInPack||{};
+  var run=function(){_dpLoaderRun(pack,sel,inPack);};
   if(clearing.length){
     var msg='Bagian berikut akan DIKELUARKAN dari perangkat ini:\n\n\u2022 '+clearing.join('\n\u2022 ')
       +'\n\nData yang belum pernah diekspor ke Data Pack akan hilang. Lanjutkan?';
@@ -14448,8 +14459,14 @@ async function _dpLoaderApply(){
   }
   run();
 }
-async function _dpLoaderRun(pack,sel){
+async function _dpLoaderRun(pack,sel,inPack){
   var ov=document.getElementById('dp-loader-ov');if(ov)ov.remove();
+  // inPack[id] = berapa yang dibawa pack untuk kelompok itu. Dicentang TAPI
+  // tidak ada di pack berarti "biarkan apa adanya", bukan "muat" dan bukan
+  // "hapus". Tanpa pembedaan ini, memuat pack lama yang tidak memuat suatu
+  // bagian akan menghapus bagian itu dari perangkat.
+  inPack=inPack||{};
+  var punya=function(id){return (inPack[id]||0)>0;};
   if(typeof _dpCheckVersion==='function')_dpCheckVersion(pack.version,'Data Pack ini');
   var failed=[];
   var gById={};DP_GROUPS.forEach(function(g){gById[g.id]=g;});
@@ -14462,8 +14479,13 @@ async function _dpLoaderRun(pack,sel){
     debitDaily:'harian',phDaily:'harian',produksi:'prod'};
   Object.keys(fieldOwner).forEach(function(f){
     var owner=fieldOwner[f];
-    if(sel[owner])cur[f]=(pack[f]!=null?pack[f]:(f==='debitDaily'||f==='phDaily'?{}:null));
-    else cur[f]=(f==='debitDaily'||f==='phDaily')?{}:null;
+    if(sel[owner]){
+      // dicentang: ambil dari pack kalau ada; kalau pack tidak membawanya,
+      // JANGAN dikosongkan -- biarkan yang sudah ada.
+      if(pack[f]!=null)cur[f]=pack[f];
+    }else{
+      cur[f]=(f==='debitDaily'||f==='phDaily')?{}:null;
+    }
   });
   cur.importedAt=new Date().toISOString();
   cur.createdAt=pack.createdAt;
@@ -14471,9 +14493,12 @@ async function _dpLoaderRun(pack,sel){
   if(sel.harian){try{_dpMergeStores(pack.debitDaily||{},pack.phDaily||{},true);}catch(e){}}
   if(sel.gis){
     if(pack.gisLayersGz&&typeof _gisStoreBlob==='function'){try{await _gisStoreBlob(pack.gisLayersGz);}catch(e){failed.push('peta GIS');}}
-  }else{try{await _dpIdbDel('env26_gis_layers');}catch(e){}}
-  if(sel.pers){try{if(typeof _persApplyFromPack==='function')_persApplyFromPack(pack);}catch(e){}}
-  if(sel.bm){try{if(typeof _bmRegApplyFromPack==='function')_bmRegApplyFromPack(pack);}catch(e){}}
+  }else{
+    // sampai di sini berarti centangnya memang dilepas -> keluarkan
+    try{await _dpIdbDel('env26_gis_layers');}catch(e){}
+  }
+  if(sel.pers&&punya('pers')){try{if(typeof _persApplyFromPack==='function')_persApplyFromPack(pack);}catch(e){}}
+  if(sel.bm&&punya('bm')){try{if(typeof _bmRegApplyFromPack==='function')_bmRegApplyFromPack(pack);}catch(e){}}
   var idbBacked={env26_rfa:1,env26_prod_harian:1,env26_hasil_manual:1};
   var claimed=_dpClaimedKeys();
   var writeKey=async function(k){
@@ -35418,6 +35443,14 @@ function _hoverBg(light){
     font-family:inherit;font-size:12px;font-weight:700;color:var(--g4);
     cursor:pointer;min-height:44px}
   .rfa-mob-more:active{background:var(--g1)}
+}
+/* Kurung penutup di atas SEMPAT HILANG. Akibatnya @media (max-width:768px)
+   tidak pernah ditutup, dan SELURUH CSS sesudahnya di dalam blok
+   <style id="mobile-ux-v2"> ikut tertelan ke dalam media query itu -- jadi
+   berhenti berlaku di layar lebar. Gejalanya: tombol Agenda/Bulan yang
+   seharusnya tersembunyi di desktop malah muncul melayang menimpa header
+   kalender. Tidak terdeteksi karena uji hanya memeriksa overflow dan error,
+   bukan keseimbangan kurung CSS. validate_build.mjs sekarang memeriksanya. */
 
 @media (max-width: 768px) {
   /* ── ROOT CAUSE FIX: the custom in-app zoom control (#zoom-ctl, hidden
