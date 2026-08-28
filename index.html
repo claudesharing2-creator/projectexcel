@@ -14187,6 +14187,363 @@ window._persStatusHtml=_persStatusHtml;
 window._persImportFile=_persImportFile;
 // ==== akhir Y417 ========================================================
 
+// ==== Y418: satu pintu muat Data Pack, dengan pilihan per bagian ========
+// Sebelumnya ada dua tombol terpisah (pilih berkas / muat dari web) dan
+// memuat berarti SELURUH isi pack menimpa sesi ini -- tidak ada cara memuat
+// sebagian, dan tidak ada cara mengeluarkan satu bagian saja.
+function _dpIdbDel(key){
+  return _dpIdb().then(function(db){
+    return new Promise(function(res){
+      var tx=db.transaction('pack','readwrite').objectStore('pack').delete(key);
+      tx.onsuccess=function(){res(true);};
+      tx.onerror=function(){res(false);};
+    });
+  }).catch(function(){return false;});
+}
+window._dpIdbDel=_dpIdbDel;
+
+// Setiap kelompok memetakan bagian Data Pack (pk) dan kunci penyimpanan
+// (ls / idb) yang mewakilinya. `cur` = nama field di dalam rekaman IndexedDB
+// 'current', yang menampung beberapa bagian sekaligus.
+var DP_GROUPS=[
+ {id:'hasil', ic:'🧪', label:'Hasil Sampling',
+  cur:['hasilSeed','hsHistoris','recapArsip'], ls:['env26_hasil_manual','env26_hasil_override','env26_hs_quarantine'], idb:['env26_hasil_manual']},
+ {id:'rfa', ic:'📋', label:'RFA Tracker',
+  cur:[], ls:['env26_rfa','env26_rfa_cbt','env26_rfa_collision'], idb:['env26_rfa']},
+ {id:'harian', ic:'💧', label:'Recording Harian (debit & pH)',
+  cur:['debitDaily','phDaily'], ls:['env26_debit_daily','env26_ph_daily','env26_drain','env26_drain_config','env26_drain_seeded'], idb:[]},
+ {id:'prod', ic:'🛢', label:'Data Produksi',
+  cur:['produksi'], ls:['env26_prod_harian','env26_lap_prod_seed','env26_lap_produksi'], idb:['env26_prod_harian']},
+ {id:'gis', ic:'🗺', label:'Peta GIS (sumur, pipa, jalur)',
+  cur:[], ls:[], idb:['env26_gis_layers'], gis:true},
+ {id:'pers', ic:'👥', label:'Daftar Petugas',
+  cur:[], ls:['env26_ppc_list','env26_pers_seed','env26_ppc_ovr'], idb:[], pers:true},
+ {id:'bm', ic:'⚖', label:'Baku Mutu & Registry',
+  cur:[], ls:['env26_bm_registry','env26_bm_master','env26_bm_param_ov','env26_bm_points_ov','env26_bm_titik_ov'], idb:[], bm:true},
+ {id:'keg', ic:'📅', label:'Kegiatan & Kalender',
+  cur:[], ls:['env26_acts','env26_cal','env26_batches','env26_rea'], idb:[]},
+ {id:'titik', ic:'📍', label:'Titik Sampling',
+  cur:[], ls:['env26_sampling_points'], idb:[]},
+ {id:'lap', ic:'📄', label:'Laporan & EMF',
+  cur:[], ls:['env26_laporan_track','env26_lap_signer','env26_emf_manual','env26_emf_chartref','env26_gmc','env26_mca'], idb:[]}
+];
+// Preferensi milik PERANGKAT ini, bukan milik Data Pack. Tidak pernah ditimpa
+// maupun dihapus -- memuat pack orang lain tidak boleh mengubah tema Anda.
+var DP_NEVER={env26_theme:1,env26_theme_bnw_recall_20260824:1,env26_zoom:1,
+  env26_dash_layout:1,env26_dash_custom:1,env26_ep_active:1,env26_ep_showlabels:1,
+  env26_epmap_sidebar:1,env26_et_guide:1,env26_schema_version:1};
+
+function _dpClaimedKeys(){
+  var m={};
+  DP_GROUPS.forEach(function(g){(g.ls||[]).forEach(function(k){m[k]=1;});});
+  return m;
+}
+// Kunci di dalam pack yang tidak masuk kelompok mana pun tetap harus bisa
+// dimuat -- kalau tidak, memuat "semua" diam-diam melewatkan sebagian.
+function _dpOtherKeys(pack){
+  var claimed=_dpClaimedKeys(),out=[];
+  if(pack&&pack.localStorage){
+    Object.keys(pack.localStorage).forEach(function(k){
+      if(!claimed[k]&&!DP_NEVER[k])out.push(k);
+    });
+  }
+  return out;
+}
+function _dpCountVal(raw){
+  try{
+    var v=(typeof raw==='string')?JSON.parse(raw):raw;
+    if(Array.isArray(v))return v.length;
+    if(v&&typeof v==='object')return Object.keys(v).length;
+    return (v==null||v==='')?0:1;
+  }catch(e){return raw?1:0;}
+}
+function _dpFmtN(n){
+  if(!n)return '0';
+  try{return n.toLocaleString('id-ID');}catch(e){return String(n);}
+}
+
+// --- membaca keadaan sekarang (localStorage + IndexedDB) -----------------
+async function _dpLoadedCounts(){
+  var out={};
+  for(var i=0;i<DP_GROUPS.length;i++){
+    var g=DP_GROUPS[i],n=0;
+    for(var a=0;a<(g.ls||[]).length;a++){
+      var k=g.ls[a];
+      if((g.idb||[]).indexOf(k)>=0)continue;
+      var cur=null;try{cur=localStorage.getItem(k);}catch(e){}
+      if(cur!=null)n+=_dpCountVal(cur);
+    }
+    for(var b=0;b<(g.idb||[]).length;b++){
+      try{var v=await _dpIdbGet(g.idb[b]);if(v!=null)n+=_dpCountVal(v);}catch(e){}
+    }
+    if(g.cur&&g.cur.length){
+      try{
+        var c=await _dpIdbGet('current');
+        if(c)g.cur.forEach(function(f){if(c[f]!=null)n+=_dpCountVal(c[f]);});
+      }catch(e){}
+    }
+    out[g.id]=n;
+  }
+  var oth=0;
+  var claimed=_dpClaimedKeys();
+  try{
+    for(var j=0;j<localStorage.length;j++){
+      var kk=localStorage.key(j);
+      if(kk&&kk.indexOf('env26')===0&&!claimed[kk]&&!DP_NEVER[kk])oth+=_dpCountVal(localStorage.getItem(kk));
+    }
+  }catch(e){}
+  out.__other=oth;
+  return out;
+}
+// --- isi dialog -----------------------------------------------------------
+function _dpLoaderRow(g,inPack,loaded){
+  var has=inPack>0;
+  var note=has?('<b>'+_dpFmtN(inPack)+'</b> di pack'):'<span style="color:var(--g3)">tidak ada di pack</span>';
+  var now=loaded>0?(' &middot; sekarang termuat <b>'+_dpFmtN(loaded)+'</b>'):' &middot; <span style="color:var(--g3)">belum termuat</span>';
+  return '<label style="display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border:1px solid var(--g2);'
+    +'border-radius:8px;margin-bottom:6px;cursor:pointer'+(has?'':';opacity:.62')+'">'
+    +'<input type="checkbox" id="dpg-'+g.id+'" data-dpg="1"'+(has?' checked':'')+(has?'':' disabled')+' style="margin-top:2px">'
+    +'<span style="flex:1"><span style="font-weight:700;font-size:11.5px">'+g.ic+' '+g.label+'</span>'
+    +'<br><span style="font-size:10px;color:var(--g4)">'+note+now+'</span></span></label>';
+}
+function _dpLoaderBodyHtml(){
+  var pack=window._dpLoaderPack;
+  var lc=window._dpLoaderCounts||{};
+  if(!pack){
+    var cfg={};try{cfg=_cfConfig();}catch(e){}
+    var siap=!!(cfg.url&&cfg.readToken);
+    return '<div style="font-size:11.5px;color:var(--g4);margin-bottom:12px">Ambil Data Pack dulu, lalu pilih bagian mana saja yang dimuat.</div>'
+      +(siap?'':'<div style="font-size:10.5px;color:#b26a00;background:#fff8f0;border:1px solid #f0c8a8;'
+        +'border-radius:8px;padding:8px 10px;margin-bottom:10px">\u26a0 Cloudflare belum dikonfigurasi \u2014 isi alamat Worker '
+        +'dan token baca di Pengaturan Cloudflare (di kartu Data Pack). Sementara itu, bisa pakai berkas manual.</div>')
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button onclick="_dpLoaderFetchCf()"'+(siap?'':' disabled')+' style="background:'+(siap?'#6a1b9a':'#bbb')+';color:#fff;border:none;'
+      +'border-radius:7px;padding:9px 16px;cursor:'+(siap?'pointer':'not-allowed')+';font-family:inherit;font-size:12px;font-weight:700">\u2601 Ambil dari Cloudflare</button>'
+      +'<input type="file" id="dp-loader-file" accept=".json,application/json" style="display:none" onchange="if(this.files[0])_dpLoaderPickFile(this.files[0]);this.value=\'\'">'
+      +'<button onclick="document.getElementById(\'dp-loader-file\').click()" style="background:#1565c0;color:#fff;border:none;'
+      +'border-radius:7px;padding:9px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">\u{1F4C1} Pilih Berkas Manual</button>'
+      +'</div>';
+  }
+  var rows='';
+  DP_GROUPS.forEach(function(g){
+    var n=0;
+    (g.cur||[]).forEach(function(f){if(pack[f]!=null)n+=_dpCountVal(pack[f]);});
+    (g.ls||[]).forEach(function(k){if(pack.localStorage&&pack.localStorage[k]!=null)n+=_dpCountVal(pack.localStorage[k]);});
+    if(g.gis&&pack.gisLayersGz)n+=1;
+    if(g.pers){if(pack.ppcList)n+=pack.ppcList.length;if(pack.persSeed)n+=pack.persSeed.length;}
+    if(g.bm&&pack.bmRegistry&&pack.bmRegistry.entries)n+=pack.bmRegistry.entries.length;
+    rows+=_dpLoaderRow(g,n,lc[g.id]||0);
+  });
+  var oth=_dpOtherKeys(pack);
+  if(oth.length||lc.__other){
+    var on=0;oth.forEach(function(k){on+=_dpCountVal(pack.localStorage[k]);});
+    rows+=_dpLoaderRow({id:'__other',ic:'\u2699',label:'Lainnya (pengaturan & catatan aplikasi)'},on,lc.__other||0);
+  }
+  return '<div style="font-size:11.5px;color:var(--g4);margin-bottom:4px">Data Pack '
+    +(pack.createdAt?('dibuat <b>'+_ep(String(pack.createdAt).slice(0,10))+'</b> '):'')
+    +'\u2014 dari <b>'+_ep(window._dpLoaderSrc||'?')+'</b>.</div>'
+    +'<div style="font-size:10.5px;color:var(--g4);margin-bottom:10px">Centang = muat bagian itu. '
+    +'Hilangkan centang = <b>keluarkan</b> dari perangkat ini (akan dikonfirmasi lagi). '
+    +'Tema, zoom, dan tata letak dashboard tidak pernah ikut diubah.</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:8px">'
+    +'<button onclick="_dpLoaderAll(1)" style="background:none;border:1px solid var(--g2);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:10.5px">Centang semua</button>'
+    +'<button onclick="_dpLoaderAll(0)" style="background:none;border:1px solid var(--g2);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;font-size:10.5px">Kosongkan semua</button>'
+    +'</div>'
+    +rows;
+}
+function _dpLoaderAll(on){
+  document.querySelectorAll('[data-dpg="1"]').forEach(function(el){if(!el.disabled)el.checked=!!on;});
+}
+function _dpLoaderRefresh(){
+  var host=document.getElementById('dp-loader-body');
+  if(host)host.innerHTML=_dpLoaderBodyHtml();
+  var foot=document.getElementById('dp-loader-foot');
+  if(foot)foot.style.display=window._dpLoaderPack?'':'none';
+}
+async function _dpOpenLoader(){
+  window._dpLoaderPack=null;window._dpLoaderSrc='';
+  try{window._dpLoaderCounts=await _dpLoadedCounts();}catch(e){window._dpLoaderCounts={};}
+  var old=document.getElementById('dp-loader-ov');if(old)old.remove();
+  var ov=document.createElement('div');
+  ov.id='dp-loader-ov';ov.className='mo-overlay open';ov.style.zIndex='440';
+  ov.onclick=function(ev){if(ev.target===ov)ov.remove();};
+  ov.innerHTML='<div class="mo-box" style="max-width:560px;width:94%;max-height:88vh;display:flex;flex-direction:column">'
+    +'<div style="padding:14px 16px 10px;border-bottom:1px solid var(--g2);display:flex;align-items:center;gap:10px">'
+    +'<div style="font-weight:700;font-size:13px;flex:1">\u2b06 Muat Data Pack</div>'
+    +'<button onclick="document.getElementById(\'dp-loader-ov\').remove()" style="background:none;border:none;font-size:19px;cursor:pointer;color:var(--g4);line-height:1">\u00d7</button></div>'
+    +'<div id="dp-loader-body" style="padding:14px 16px;overflow:auto;flex:1"></div>'
+    +'<div id="dp-loader-foot" style="display:none;padding:12px 16px;border-top:1px solid var(--g2);text-align:right">'
+    +'<button onclick="_dpLoaderApply()" style="background:#2e7d32;color:#fff;border:none;border-radius:7px;padding:9px 20px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">Terapkan</button></div>'
+    +'</div>';
+  document.body.appendChild(ov);
+  _dpLoaderRefresh();
+  // Sumber utamanya Cloudflare, jadi kalau sudah dikonfigurasi langsung ambil.
+  var cfg={};try{cfg=_cfConfig();}catch(e){}
+  if(cfg.url&&cfg.readToken)_dpLoaderFetchCf();
+}
+async function _dpLoaderFetchCf(){
+  var cfg={};try{cfg=_cfConfig();}catch(e){}
+  if(!(cfg.url&&cfg.readToken)){
+    if(typeof toast==='function')toast('\u2139 Cloudflare belum dikonfigurasi.');
+    return;
+  }
+  var host=document.getElementById('dp-loader-body');
+  if(host)host.innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:var(--g4)">\u23f3 Mengambil Data Pack dari Cloudflare\u2026</div>';
+  try{
+    var res=await fetch(cfg.url.replace(/\/$/,'')+'?key='+encodeURIComponent(cfg.readToken)+'&t='+Date.now(),{cache:'no-store'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var raw=await res.json();
+    // _dpUnwrapCloudflarePack ASYNC -- tanpa await, `pack` jadi Promise dan
+    // pemeriksaan format di bawah selalu gagal. Ini sempat terjadi.
+    var pack=(typeof _dpUnwrapCloudflarePack==='function')?(await _dpUnwrapCloudflarePack(raw)):raw;
+    if(!pack||pack.format!=='env26-datapack')throw new Error('isi bukan Data Pack');
+    window._dpLoaderPack=pack;window._dpLoaderSrc='Cloudflare';
+  }catch(e){
+    // Gagal ambil harus TERLIHAT, bukan diam -- sama seperti Y414.
+    window._dpLoaderPack=null;
+    if(typeof toast==='function')toast('\u26a0 Gagal mengambil dari Cloudflare ('+(e&&e.message||e)+'). Bisa pakai berkas manual.');
+  }
+  _dpLoaderRefresh();
+}
+function _dpLoaderPickFile(file){
+  if(!file)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    var pack;
+    try{pack=JSON.parse(String(rd.result||''));}
+    catch(e){if(typeof toast==='function')toast('\u274c Berkas itu bukan JSON yang sah.');return;}
+    if(!pack||pack.format!=='env26-datapack'){
+      if(typeof toast==='function')toast('\u274c Berkas itu bukan Data Pack (format tidak dikenal).');
+      return;
+    }
+    window._dpLoaderPack=pack;window._dpLoaderSrc='berkas '+(file.name||'lokal');
+    _dpLoaderRefresh();
+  };
+  rd.onerror=function(){if(typeof toast==='function')toast('\u274c Gagal membaca berkas.');};
+  rd.readAsText(file);
+}
+async function _dpLoaderApply(){
+  var pack=window._dpLoaderPack;
+  if(!pack){if(typeof toast==='function')toast('\u26a0 Belum ada Data Pack yang diambil.');return;}
+  var sel={};
+  DP_GROUPS.forEach(function(g){
+    var el=document.getElementById('dpg-'+g.id);
+    sel[g.id]=!!(el&&el.checked);
+  });
+  var elO=document.getElementById('dpg-__other');
+  sel.__other=!!(elO&&elO.checked);
+  // Bagian yang akan DIHAPUS: tidak dicentang, tapi sekarang memang ada isinya.
+  var lc=window._dpLoaderCounts||{};
+  var clearing=[];
+  DP_GROUPS.forEach(function(g){if(!sel[g.id]&&(lc[g.id]||0)>0)clearing.push(g.label);});
+  if(!sel.__other&&(lc.__other||0)>0)clearing.push('Lainnya');
+  var run=function(){_dpLoaderRun(pack,sel);};
+  if(clearing.length){
+    var msg='Bagian berikut akan DIKELUARKAN dari perangkat ini:\n\n\u2022 '+clearing.join('\n\u2022 ')
+      +'\n\nData yang belum pernah diekspor ke Data Pack akan hilang. Lanjutkan?';
+    if(typeof _uiConfirm==='function')_uiConfirm(msg,run);
+    else if(typeof azConfirm==='function')azConfirm(msg,run);
+    else if(confirm(msg))run();
+    return;
+  }
+  run();
+}
+async function _dpLoaderRun(pack,sel){
+  var ov=document.getElementById('dp-loader-ov');if(ov)ov.remove();
+  if(typeof _dpCheckVersion==='function')_dpCheckVersion(pack.version,'Data Pack ini');
+  var failed=[];
+  var gById={};DP_GROUPS.forEach(function(g){gById[g.id]=g;});
+  // Rekaman 'current' menampung beberapa bagian sekaligus, jadi disusun ulang
+  // field demi field: yang dicentang diambil dari pack, yang tidak dicentang
+  // dikosongkan, dan yang di luar cakupan dibiarkan apa adanya.
+  var cur={};
+  try{cur=(await _dpIdbGet('current'))||{};}catch(e){cur={};}
+  var fieldOwner={hasilSeed:'hasil',hsHistoris:'hasil',recapArsip:'hasil',
+    debitDaily:'harian',phDaily:'harian',produksi:'prod'};
+  Object.keys(fieldOwner).forEach(function(f){
+    var owner=fieldOwner[f];
+    if(sel[owner])cur[f]=(pack[f]!=null?pack[f]:(f==='debitDaily'||f==='phDaily'?{}:null));
+    else cur[f]=(f==='debitDaily'||f==='phDaily')?{}:null;
+  });
+  cur.importedAt=new Date().toISOString();
+  cur.createdAt=pack.createdAt;
+  try{await _dpIdbSet('current',cur);}catch(e){failed.push('rekaman utama');}
+  if(sel.harian){try{_dpMergeStores(pack.debitDaily||{},pack.phDaily||{},true);}catch(e){}}
+  if(sel.gis){
+    if(pack.gisLayersGz&&typeof _gisStoreBlob==='function'){try{await _gisStoreBlob(pack.gisLayersGz);}catch(e){failed.push('peta GIS');}}
+  }else{try{await _dpIdbDel('env26_gis_layers');}catch(e){}}
+  if(sel.pers){try{if(typeof _persApplyFromPack==='function')_persApplyFromPack(pack);}catch(e){}}
+  if(sel.bm){try{if(typeof _bmRegApplyFromPack==='function')_bmRegApplyFromPack(pack);}catch(e){}}
+  var idbBacked={env26_rfa:1,env26_prod_harian:1,env26_hasil_manual:1};
+  var claimed=_dpClaimedKeys();
+  var writeKey=async function(k){
+    var v=pack.localStorage?pack.localStorage[k]:undefined;
+    // Kalau pack tidak punya kunci ini, JANGAN dihapus. Dicentang berarti
+    // "muat yang ada", bukan "kosongkan". Menghapus di sini pernah membuat
+    // daftar petugas yang baru saja dipasang _persApplyFromPack langsung
+    // terhapus lagi beberapa baris kemudian -- bagian personel memang tidak
+    // dibawa lewat pack.localStorage, melainkan lewat ppcList/persSeed.
+    // Yang menghapus hanyalah centang yang DILEPAS (clearKey di bawah).
+    if(v==null)return;
+    if(idbBacked[k]){
+      try{
+        var parsed=(k==='env26_prod_harian')?{}:[];
+        try{parsed=JSON.parse(v);}catch(_){}
+        await _dpIdbSet(k,parsed);
+      }catch(e){failed.push(k);}
+      return;
+    }
+    try{localStorage.setItem(k,v);}catch(e){failed.push(k);}
+  };
+  var clearKey=async function(k){
+    if(idbBacked[k]){try{await _dpIdbDel(k);}catch(e){}}
+    try{localStorage.removeItem(k);}catch(e){}
+  };
+  for(var i=0;i<DP_GROUPS.length;i++){
+    var g=DP_GROUPS[i];
+    for(var a=0;a<(g.ls||[]).length;a++){
+      if(sel[g.id])await writeKey(g.ls[a]); else await clearKey(g.ls[a]);
+    }
+    if(!sel[g.id]){for(var b=0;b<(g.idb||[]).length;b++)await clearKey(g.idb[b]);}
+  }
+  // "Lainnya": kunci di pack yang tak masuk kelompok mana pun, plus kunci yang
+  // sudah ada di perangkat dan tak masuk kelompok mana pun.
+  var others={};
+  _dpOtherKeys(pack).forEach(function(k){others[k]=1;});
+  try{
+    for(var j=0;j<localStorage.length;j++){
+      var kk=localStorage.key(j);
+      if(kk&&kk.indexOf('env26')===0&&!claimed[kk]&&!DP_NEVER[kk])others[kk]=1;
+    }
+  }catch(e){}
+  var oks=Object.keys(others);
+  for(var c=0;c<oks.length;c++){
+    if(sel.__other)await writeKey(oks[c]); else await clearKey(oks[c]);
+  }
+  if(failed.length){
+    var m='\u26a0 Sebagian data GAGAL tersimpan (localStorage browser kemungkinan penuh): '+failed.join(', ')
+      +'. Bagian itu TIDAK ter-update meski proses selesai.';
+    if(typeof toast==='function')toast(m);
+    if(typeof _uiConfirm==='function')_uiConfirm(m,function(){});
+    return;
+  }
+  var n=0;DP_GROUPS.forEach(function(g){if(sel[g.id])n++;});
+  if(typeof toast==='function')toast('\u2705 '+n+' bagian diterapkan. Halaman dimuat ulang\u2026');
+  setTimeout(function(){location.reload();},900);
+}
+window._dpOpenLoader=_dpOpenLoader;
+window._dpLoaderFetchCf=_dpLoaderFetchCf;
+window._dpLoaderPickFile=_dpLoaderPickFile;
+window._dpLoaderApply=_dpLoaderApply;
+window._dpLoaderRun=_dpLoaderRun;
+window._dpLoaderAll=_dpLoaderAll;
+window._dpLoaderRefresh=_dpLoaderRefresh;
+window._dpLoadedCounts=_dpLoadedCounts;
+window._dpOtherKeys=_dpOtherKeys;
+window.DP_GROUPS=DP_GROUPS;
+window.DP_NEVER=DP_NEVER;
+// ==== akhir Y418 ========================================================
+
 function _rfaHealHydrotestScanGap(){
   // Y409: perbaikan sekali-pakai ini sudah tersimpan di Data Pack (nilai
   // scanA-nya sudah terisi), jadi nomor RFA aslinya tidak perlu lagi
@@ -29844,14 +30201,10 @@ function _etRenderDataPack(host){
    +'<div class="et-card" style="flex:1;min-width:240px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">⬇ Export / Backup</div>'
    +'<div style="font-size:10.5px;color:#777;margin-bottom:10px">Simpan seluruh data & isian saat ini menjadi satu file .json.</div>'
    +'<button onclick="_dpExport()" style="background:#2e7d32;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">⬇ Export Data Pack</button></div>'
-   +'<div class="et-card" style="flex:1;min-width:240px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">⬆ Import / Load</div>'
-   +'<div style="font-size:10.5px;color:#777;margin-bottom:10px">Muat Data Pack — tersimpan permanen di browser (IndexedDB) dan otomatis dimuat ulang setiap buka file.</div>'
-   +'<input type="file" id="dp-file" accept=".json" style="display:none" onchange="if(this.files[0])_dpImportFile(this.files[0]);this.value=\'\'">'
-   +'<button onclick="document.getElementById(\'dp-file\').click()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">⬆ Pilih File Data Pack</button></div>'
-   +'<div class="et-card" style="flex:1;min-width:240px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">🌐 Muat dari Web</div>'
-   +'<div style="font-size:10.5px;color:#777;margin-bottom:10px">Ambil Data Pack terbaru yang dipublikasikan pengelola — berfungsi saat halaman ini dibuka lewat link (bukan file lokal).</div>'
-   +((function(){try{var _c=_cfConfig();return (_c.url&&_c.readToken)?'':'<div data-y414="cf-belum-siap" style="font-size:10.5px;color:#b26a00;background:#fff8f0;border:1px solid #f0c8a8;border-radius:8px;padding:7px 9px;margin-bottom:10px">⚠ Belum dikonfigurasi — isi alamat Worker dan token baca di Pengaturan Cloudflare di bawah. Tanpa itu tombol ini tidak punya sumber data.</div>';}catch(e){return '';}})())
-   +'<button onclick="_dpFetchWeb()" style="background:#6a1b9a;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">🌐 Cek &amp; Muat Data Pack Terbaru</button></div>'
+   +'<div class="et-card" style="flex:1;min-width:240px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">⬆ Muat Data Pack</div>'
+   +'<div style="font-size:10.5px;color:#777;margin-bottom:10px">Satu pintu: ambil dari Cloudflare atau pilih berkas sendiri, lalu centang bagian mana saja yang dimuat. Yang tidak dicentang bisa sekalian dikeluarkan dari perangkat ini.</div>'
+   +((function(){try{var _c=_cfConfig();return (_c.url&&_c.readToken)?'':'<div data-y414="cf-belum-siap" style="font-size:10.5px;color:#b26a00;background:#fff8f0;border:1px solid #f0c8a8;border-radius:8px;padding:7px 9px;margin-bottom:10px">⚠ Cloudflare belum dikonfigurasi — isi alamat Worker dan token baca di Pengaturan Cloudflare di bawah. Berkas manual tetap bisa dipakai.</div>';}catch(e){return '';}})())
+   +'<button onclick="_dpOpenLoader()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">⬆ Muat / Kelola Data Pack</button></div>'
    +'</div>'
    +'<div class="et-card" style="margin-top:12px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">👥 Daftar Petugas (PPC)</div>'
    +(typeof _persStatusHtml==='function'?_persStatusHtml():'')
