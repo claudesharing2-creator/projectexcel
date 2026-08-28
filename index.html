@@ -3615,7 +3615,13 @@ html[data-theme="neraca"] #hasil-content{
   html[data-theme="studio"] .studio-hasil-tabs,
   html[data-theme="studio"] .studio-calendar-tabs{padding-right:12px!important}
 }
-</style></head>
+</style>
+<!-- Y416: ikon ditanam sebagai data URI. Repo publik hanya memuat tiga
+     berkas, jadi favicon.ico terpisah bukan pilihan. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23145A32'/><path d='M20 44c0-14 10-23 25-25 1 16-8 26-21 26h-4z' fill='%2376FB91'/><path d='M20 46c4-10 11-16 20-20' stroke='%23145A32' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23145A32'/><path d='M20 44c0-14 10-23 25-25 1 16-8 26-21 26h-4z' fill='%2376FB91'/><path d='M20 46c4-10 11-16 20-20' stroke='%23145A32' stroke-width='2.5' fill='none' stroke-linecap='round'/></svg>">
+<meta name="theme-color" content="#145A32">
+</head>
 <body>
 
 <script>
@@ -14114,6 +14120,72 @@ function _c01EmptyHtml(beres,gaya){
 window._c01RfaEmpty=_c01RfaEmpty;
 window._c01EmptyHtml=_c01EmptyHtml;
 // ==== akhir Y415 ========================================================
+
+// ==== Y417: memuat daftar petugas dari berkas ===========================
+// true kalau daftar yang aktif masih bawaan publik (Petugas 01..NN).
+function _persIsPlaceholder(){
+  try{
+    var l=window.PPC_LIST||[];
+    if(!l.length)return true;
+    return l.every(function(p){return /^Petugas\s*\d+$/.test(String(p&&p.name||''));});
+  }catch(e){return true;}
+}
+// Status yang bisa dibaca pengguna. Tanpa ini, "kenapa namanya masih
+// Petugas 01" tidak bisa dijawab sendiri.
+function _persStatusHtml(){
+  var n=0;try{n=(window.PPC_LIST||[]).length;}catch(e){}
+  var seed=0;try{seed=(typeof PERS_SEED!=='undefined'&&PERS_SEED)?PERS_SEED.length:0;}catch(e){}
+  if(_persIsPlaceholder()){
+    return '<div data-y417="status" style="font-size:10.5px;padding:8px 10px;margin-bottom:9px;'
+      +'border:1px solid #F0C8A8;background:#FFF8F0;color:#B26A00;border-radius:8px">'
+      +'\u26a0 <b>Daftar petugas masih nama contoh</b> (Petugas 01\u2026'+n+').<br>'
+      +'Data Pack yang dimuat tidak memuat daftar petugas \u2014 kemungkinan '
+      +'pack itu diekspor sebelum fitur ini ada. Muat berkas daftar petugas di '
+      +'bawah, lalu ekspor ulang Data Pack supaya ikut tersimpan.</div>';
+  }
+  return '<div data-y417="status" style="font-size:10.5px;padding:8px 10px;margin-bottom:9px;'
+    +'border:1px solid #BFE3C6;background:#F3FBF5;color:#2e7d32;border-radius:8px">'
+    +'\u2705 <b>Daftar petugas termuat</b> \u2014 '+n+' petugas'
+    +(seed?(', '+seed+' entri jadwal dinas'):'')+'. '
+    +'Nama ini tersimpan di browser ini saja dan ikut terbawa saat Data Pack diekspor.</div>';
+}
+// Memuat berkas JSON berisi {ppcList:[...], persSeed:[...]}.
+function _persImportFile(file){
+  if(!file)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    var obj;
+    try{obj=JSON.parse(String(rd.result||''));}
+    catch(e){if(typeof toast==='function')toast('\u274c Berkas itu bukan JSON yang sah.');return;}
+    var list=obj&&(obj.ppcList||obj.PPC_LIST);
+    if(!list||!list.length){
+      if(typeof toast==='function')toast('\u274c Berkas itu tidak memuat daftar petugas (kunci "ppcList").');
+      return;
+    }
+    var bad=0;
+    for(var i=0;i<list.length;i++){
+      var e=list[i];
+      if(!e||typeof e.id!=='string'||typeof e.name!=='string')bad++;
+    }
+    if(bad){
+      if(typeof toast==='function')toast('\u274c '+bad+' entri tidak punya id/name \u2014 aplikasi memakai keduanya sebagai kunci.');
+      return;
+    }
+    var seed=obj.persSeed||obj.PERS_SEED;
+    var n=_persApplyFromPack({ppcList:list,persSeed:(seed&&seed.length)?seed:undefined});
+    if(!n){if(typeof toast==='function')toast('\u26a0 Tidak ada yang diterapkan.');return;}
+    if(typeof toast==='function')toast('\u2705 '+list.length+' nama petugas dimuat'
+      +((seed&&seed.length)?(' + '+seed.length+' entri jadwal'):'')
+      +'. Halaman dimuat ulang supaya semua tampilan ikut berubah\u2026');
+    setTimeout(function(){location.reload();},1100);
+  };
+  rd.onerror=function(){if(typeof toast==='function')toast('\u274c Gagal membaca berkas.');};
+  rd.readAsText(file);
+}
+window._persIsPlaceholder=_persIsPlaceholder;
+window._persStatusHtml=_persStatusHtml;
+window._persImportFile=_persImportFile;
+// ==== akhir Y417 ========================================================
 
 function _rfaHealHydrotestScanGap(){
   // Y409: perbaikan sekali-pakai ini sudah tersimpan di Data Pack (nilai
@@ -29781,6 +29853,11 @@ function _etRenderDataPack(host){
    +((function(){try{var _c=_cfConfig();return (_c.url&&_c.readToken)?'':'<div data-y414="cf-belum-siap" style="font-size:10.5px;color:#b26a00;background:#fff8f0;border:1px solid #f0c8a8;border-radius:8px;padding:7px 9px;margin-bottom:10px">⚠ Belum dikonfigurasi — isi alamat Worker dan token baca di Pengaturan Cloudflare di bawah. Tanpa itu tombol ini tidak punya sumber data.</div>';}catch(e){return '';}})())
    +'<button onclick="_dpFetchWeb()" style="background:#6a1b9a;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">🌐 Cek &amp; Muat Data Pack Terbaru</button></div>'
    +'</div>'
+   +'<div class="et-card" style="margin-top:12px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">👥 Daftar Petugas (PPC)</div>'
+   +(typeof _persStatusHtml==='function'?_persStatusHtml():'')
+   +'<div style="font-size:10.5px;color:#777;margin-bottom:10px">Berkas yang dishare di internet sengaja memakai nama contoh. Nama asli disimpan di berkas terpisah dan hanya dimuat di perangkat Anda \u2014 tidak pernah ikut terkirim ke mana pun.</div>'
+   +'<input type="file" id="pers-file" accept=".json,application/json" style="display:none" onchange="if(this.files[0])_persImportFile(this.files[0]);this.value=\'\'">'
+   +'<button onclick="document.getElementById(\'pers-file\').click()" style="background:#00695c;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">\u2b06 Muat Daftar Petugas (JSON)</button></div>'
    +_cfSettingsHtml()
    +'<div style="font-size:10.5px;color:#888">Status data sekarang: <b>'+nDeb+'</b> titik debit harian + <b>'+nPh+'</b> titik pH harian (tahun: '+Object.keys(years).sort().join(', ')+').'
    +(window._dpLoadedInfo?(' Pack terakhir dimuat: '+String(window._dpLoadedInfo).slice(0,10)+'.'):' Belum ada pack yang dimuat — data berasal dari seed bawaan + isian manual.')+(window._HS_HISTORIS?('<br>Arsip hasil sampling historis termuat: '+Object.keys(window._HS_HISTORIS).map(function(y){return y+' ('+window._HS_HISTORIS[y].length+' baris)';}).join(', ')+'.'):'')+(window._RECAP_ARSIP?('<br>Arsip sheet recap lain: '+Object.keys(window._RECAP_ARSIP).map(function(y){return y+' ('+Object.keys(window._RECAP_ARSIP[y]).length+' sheet)';}).join(', ')+'. '):'')+'</div>'+(window._RECAP_ARSIP?('<div style="margin-top:10px"><div style="font-weight:700;font-size:11px;margin-bottom:5px">🗂 Buka Arsip Recap</div>'+Object.keys(window._RECAP_ARSIP).map(function(y){return Object.keys(window._RECAP_ARSIP[y]).map(function(sn){return '<button onclick="_dpViewArsip(&quot;'+y+'&quot;,&quot;'+_ep(sn).replace(/"/g,'')+'&quot;)" style="border:1px solid #ddd;background:#fff;border-radius:6px;padding:2px 9px;font-size:9.5px;cursor:pointer;margin:2px;font-family:inherit">'+y+' · '+_ep(sn)+'</button>';}).join('');}).join('')+'</div>'):'')
