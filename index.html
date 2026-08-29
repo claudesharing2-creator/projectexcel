@@ -14890,6 +14890,24 @@ function _mdSetMode(map,mode){
   });
   var el=map&&map.getContainer?map.getContainer():null;
   if(el)el.style.cursor=(mode&&mode!=='pan')?'crosshair':'';
+  // Y424: kotak & lingkaran digambar dengan menggeser dari titik A ke B.
+  // Kalau peta ikut bergeser pada gerakan yang sama, pengguna menggeser
+  // peta, bukan menggambar. Dikunci begitu alatnya DIPILIH -- bukan hanya
+  // saat sedang menggambar -- supaya tidak bergantung urutan siapa yang
+  // lebih dulu menangkap pointerdown.
+  if(map&&map.dragging){
+    if(mode==='rect'||mode==='circle')map.dragging.disable();
+    else map.dragging.enable();
+  }
+  // Y424 (ditemukan lewat uji sentuh sungguhan, bukan diduga): Leaflet
+  // sendiri melepas kelas .leaflet-touch-drag saat map.dragging dinonaktifkan
+  // -- dan kelas itulah yang membawa `touch-action:none` di CSS Leaflet
+  // bawaan. Melepasnya berarti gulir sentuh BAWAAN BROWSER kembali aktif di
+  // atas kanvas peta, jadi menggeser jari untuk menggambar kotak/lingkaran
+  // ikut menggulir seluruh halaman di bawahnya. Dipulihkan manual di sini,
+  // dan hanya untuk mode yang butuh -- bukan dipaksa selalu, supaya cubit
+  // untuk zoom di mode Geser tidak ikut rusak.
+  if(el)el.style.touchAction=(mode==='rect'||mode==='circle')?'none':'';
   _mdRefreshPanel();
 }
 function _mdCancelPending(map){
@@ -14919,6 +14937,12 @@ function _mdPreview(map,latlng){
     var txt='';
     if(p.t==='line'&&pts.length>1)txt='Panjang '+_mdFmtLen(_mdLen(pts));
     else if(p.t==='poly'&&pts.length>2)txt='Luas '+_mdFmtArea(_mdArea(pts));
+    else if(p.t==='rect'&&pts.length>1){
+      // Y424: cabang ini TIDAK ADA sebelumnya -- pratinjau kotak sama
+      // sekali tidak pernah menunjukkan luasnya, di desktop maupun HP.
+      var ring=[pts[0],[pts[0][0],pts[1][1]],pts[1],[pts[1][0],pts[0][1]]];
+      txt='Luas '+_mdFmtArea(_mdArea(ring));
+    }
     else if(p.t==='circle'&&pts.length>1)txt='Radius '+_mdFmtLen(L.latLng(pts[0]).distanceTo(L.latLng(pts[1])));
     live.textContent=txt;
   }
@@ -14934,6 +14958,10 @@ function _mdFinish(map){
 function _mdClick(map,latlng){
   var mode=window._mdMode;
   if(!mode||mode==='pan'||mode==='erase')return false;
+  // Y424: kotak & lingkaran sekarang digambar dengan tekan-tahan-geser
+  // (_mdWireGesture), bukan dua ketukan terpisah tanpa pratinjau ukuran.
+  // Ketukan biasa tidak melakukan apa pun untuk kedua alat ini lagi.
+  if(mode==='rect'||mode==='circle')return false;
   var ll=[latlng.lat,latlng.lng];
   if(mode==='point'){_mdAdd(map,{t:'point',pts:[ll]});return true;}
   if(mode==='buffer'){
@@ -14944,22 +14972,59 @@ function _mdClick(map,latlng){
   var p=window._mdPending;
   if(!p||p.t!==mode){window._mdPending=p={t:mode,pts:[]};}
   p.pts.push(ll);
-  if(mode==='rect'&&p.pts.length===2){_mdAdd(map,{t:'rect',pts:p.pts.slice()});_mdCancelPending(map);return true;}
-  if(mode==='circle'&&p.pts.length===2){
-    var rr=L.latLng(p.pts[0]).distanceTo(L.latLng(p.pts[1]));
-    _mdAdd(map,{t:'circle',pts:[p.pts[0]],r:rr}); _mdCancelPending(map); return true;
-  }
   var f=document.getElementById('md-finish');
   if(f&&(mode==='line'||mode==='poly'))f.style.display='';
   _mdPreview(map,null);
   return true;
 }
 
+function _mdWireGesture(map){
+  var el=map.getContainer();
+  if(!el||el._mdGestureWired)return;
+  el._mdGestureWired=true;
+  var active=null;
+  var THRESH=6;
+  function toLatLng(ev){return map.mouseEventToLatLng(ev);}
+  el.addEventListener('pointerdown',function(ev){
+    var mode=window._mdMode;
+    if(mode!=='rect'&&mode!=='circle')return;
+    if(ev.isPrimary===false)return;
+    if(ev.target&&ev.target.closest&&ev.target.closest('.leaflet-control'))return;
+    ev.preventDefault();
+    var ll=toLatLng(ev);
+    active={mode:mode,x:ev.clientX,y:ev.clientY,ll:ll};
+    window._mdPending={t:mode,pts:[[ll.lat,ll.lng]]};
+    try{el.setPointerCapture(ev.pointerId);}catch(e){}
+  },{passive:false});
+  el.addEventListener('pointermove',function(ev){
+    if(!active)return;
+    ev.preventDefault();
+    _mdPreview(map,toLatLng(ev));
+  },{passive:false});
+  function finish(ev){
+    if(!active)return;
+    var a=active;active=null;
+    var dx=ev.clientX-a.x,dy=ev.clientY-a.y;
+    var moved=Math.sqrt(dx*dx+dy*dy)>=THRESH;
+    if(!moved){_mdCancelPending(map);return;}
+    var ll=toLatLng(ev);
+    if(a.mode==='rect'){
+      _mdAdd(map,{t:'rect',pts:[[a.ll.lat,a.ll.lng],[ll.lat,ll.lng]]});
+    }else if(a.mode==='circle'){
+      var rr=L.latLng(a.ll.lat,a.ll.lng).distanceTo(L.latLng(ll.lat,ll.lng));
+      _mdAdd(map,{t:'circle',pts:[[a.ll.lat,a.ll.lng]],r:rr});
+    }
+    _mdCancelPending(map);
+  }
+  el.addEventListener('pointerup',finish);
+  el.addEventListener('pointercancel',finish);
+}
+window._mdWireGesture=_mdWireGesture;
 // --- panel: alat + Graphic Settings ---------------------------------------
 function _mdPanelHtml(){
   var s=_mdStyle();
   var tools=MAP_DRAW_TOOLS.map(function(t){
-    return '<button type="button" data-md-tool="'+t.id+'" title="'+t.label+'" '
+    return '<button type="button" data-md-tool="'+t.id+'" aria-label="'+t.label+'" data-md-tip="'+t.label+'" '
       +'class="md-tool'+((window._mdMode||'pan')===t.id?' md-on':'')+'">'+t.ic+'</button>';
   }).join('');
   return '<div class="md-panel" data-y422="panel">'
@@ -15007,8 +15072,20 @@ function _mdClearActive(){if(window._mdMapRef)_mdClear(window._mdMapRef);}
 function _mdAttach(map){
   if(!map)return;
   window._mdMode=window._mdMode||'pan';
+  // Y424: peta ini bisa dibangun ulang (mis. saat kolom formulir berubah).
+  // Instance peta yang baru selalu mulai dengan geser AKTIF, jadi kalau
+  // alat kotak/lingkaran sedang dipilih dari sebelumnya, kuncinya perlu
+  // dipasang ulang di sini -- bukan cuma saat tombol alat ditekan.
+  if(map.dragging){
+    if(window._mdMode==='rect'||window._mdMode==='circle')map.dragging.disable();
+    else map.dragging.enable();
+  }
+  // Y424: sinkronkan juga penekan gulir sentuh bawaan browser (lihat catatan
+  // di _mdSetMode) -- instance peta yang baru tidak mewarisi keadaan ini.
+  if(map.getContainer)map.getContainer().style.touchAction=(window._mdMode==='rect'||window._mdMode==='circle')?'none':'';
   _mdRedraw(map);
   _mdWirePanel(map);
+  if(typeof _mdWireGesture==='function')_mdWireGesture(map);
   map.on('mousemove',function(e){if(window._mdPending)_mdPreview(map,e.latlng);});
   map.on('dblclick',function(e){
     if(window._mdPending){if(L.DomEvent)L.DomEvent.stop(e.originalEvent);_mdFinish(map);}
@@ -35978,6 +36055,16 @@ function _hoverBg(light){
 
 
 <style id="mobile-ux-v2">
+/* Y424 -- tooltip sendiri untuk tombol alat, TIDAK lewat atribut title.
+   Kurung dijaga seimbang; validate_build.mjs memeriksanya. */
+.md-tool{position:relative}
+@media (hover:hover){
+  .md-tool[data-md-tip]:hover::after{
+    content:attr(data-md-tip);position:absolute;bottom:100%;left:50%;
+    transform:translateX(-50%);margin-bottom:6px;padding:4px 8px;border-radius:6px;
+    background:#1a1a1a;color:#fff;font-size:10px;white-space:nowrap;
+    pointer-events:none;z-index:60}
+}
 /* Y422 -- alat gambar/ukur/buffer. Kurung dijaga seimbang; validate_build.mjs
    memeriksanya sejak satu kurung hilang pernah mematikan ratusan aturan. */
 .md-panel{margin-top:10px;border:1px solid var(--g2,#E8E8E8);border-radius:10px;
