@@ -29362,7 +29362,7 @@ function _etRenderGuide(host){
       '<button class="coord-copy" style="border-color:#e9a" onclick="_etRemoveTP('+i+')">🗑</button></div>';
   }).join('');
   host.innerHTML=
-    '<div class="et-card" style="max-width:760px">'+
+    '<div class="et-card et-guide-card" style="max-width:760px">'+
     '<div class="et-sec-title">🖨 Panduan Sampling (Custom)</div>'+
     '<div style="font-size:10.5px;color:var(--g4);margin-bottom:12px">Buat panduan sampling mandiri — bebas isi titik, jenis, SRA, koordinat, dan parameter sendiri, terlepas dari Daftar Kegiatan. Peta, radius kepatuhan 500 m, dan drag titik upstream/downstream memakai <b>logic yang sama persis</b> dengan yang ada di detail Kegiatan.</div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+
@@ -29380,6 +29380,7 @@ function _etRenderGuide(host){
     '</div>'+
     farToggleHtml+
     '<datalist id="et-param-list">'+_etParamOptions().map(function(p){return '<option value="'+p.replace(/"/g,'&quot;')+'">';}).join('')+'</datalist>'+
+    '<div id="et-guide-map-wrap" style="margin:10px 0 12px"></div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+
       '<div class="fg" style="flex:1;min-width:200px"><label>Parameter Before/After</label><input class="coord-in" list="et-param-list" value="'+((g.paramBA||'').replace(/"/g,'&quot;'))+'" placeholder="mis. TSS (saran muncul dari daftar; ketik sendiri jika belum ada)" onchange="_etSetField(\'paramBA\',this.value)"></div>'+
       '<div class="fg" style="flex:1;min-width:200px"><label>Parameter During</label><input class="coord-in" list="et-param-list" value="'+((g.paramD||'').replace(/"/g,'&quot;'))+'" placeholder="mis. TSS + Plankton" onchange="_etSetField(\'paramD\',this.value)"></div>'+
@@ -29389,7 +29390,6 @@ function _etRenderGuide(host){
     '<div style="display:flex;align-items:center;margin:8px 0 4px"><b style="font-size:10px">Titik Penaatan Tambahan (manual)</b>'+
       '<button class="coord-copy" style="margin-left:auto;border-color:#c4b5e8;color:#7c3aed" onclick="_etAddTP()">+ Tambah TP</button></div>'+
     (tpRows||'<div style="font-size:9.5px;color:var(--g3);padding:2px 4px">Belum ada TP tambahan.</div>')+
-    '<div id="et-guide-map-wrap" style="margin-top:10px"></div>'+
     (main?((typeof _printGisChecklistHtml==='function'?_printGisChecklistHtml():'')+'<button class="coord-copy" style="margin-top:8px;width:100%;padding:7px;font-size:11px;font-weight:700;border-color:#1565c0;color:#1565c0" onclick="_etPrintGuide()">🖨 Cetak Panduan Sampling (peta asli, perlu internet)</button>'):'')+
     '</div>';
   _etRenderLiveMap();
@@ -36007,21 +36007,8 @@ function _hoverBg(light){
 .md-set input{font-family:inherit;font-size:10px;border:1px solid var(--g2,#E8E8E8);
   border-radius:5px;padding:2px 5px;background:var(--white,#fff);color:inherit}
 .md-note{font-size:9px;color:var(--g3,#999);margin-top:7px;line-height:1.45}
-@media (max-width:768px){
-  .md-tools{grid-template-columns:repeat(8,1fr)}
-}
-/* Y420 -- tata letak peta Panduan Sampling: panel alat di kiri, peta di kanan. */
-.guide-map-shell{display:flex;gap:10px;align-items:stretch}
-.guide-map-side{flex:0 0 210px;min-width:0;display:flex;flex-direction:column}
-.guide-map-main{flex:1;min-width:0;display:flex;flex-direction:column}
-.guide-map-canvas{width:100%;height:420px;border:1px solid var(--g2,#E8E8E8);
-  border-radius:10px 10px 0 0}
-.guide-map-hint{font-size:9px;color:var(--g3,#999);margin-top:8px;line-height:1.45}
-@media (max-width:768px){
-  .guide-map-shell{flex-direction:column}
-  .guide-map-side{flex:1 1 auto}
-  .guide-map-canvas{height:300px}
-}
+/* Kisi untuk layar sempit diatur Y423 (4 kolom, sasaran sentuh >=44 px).
+   Aturan 8 kolom yang dulu ada di sini menghasilkan tombol 36 px. */
 /* Y419 -- gaya modul peta bersama. Kurungnya sengaja dijaga seimbang dan
    sekarang diperiksa validate_build.mjs: satu kurung yang hilang pernah
    mematikan ratusan aturan tanpa satu pun error. */
@@ -36410,6 +36397,55 @@ function _hoverBg(light){
   html[data-theme="romer"] .mm-item{color:#e5e2e3}
 }
 
+/* Y423 -- ukuran peta & panel disesuaikan untuk desktop dan HP.
+   Diukur dulu, bukan dikira: sebelum ini peta hanya 502x420 px di layar
+   1440 (dan tidak melebar sama sekali di 1920, karena kartunya terkunci
+   760 px), sementara di HP tombol alatnya hanya 36 px -- di bawah ambang
+   sasaran sentuh 44 px. */
+
+/* Kartu Panduan Sampling boleh ikut melebar. Formulirnya sudah flex-wrap,
+   jadi melebar tidak merusak tata letaknya. */
+.et-guide-card{max-width:min(1280px,100%)!important}
+
+.guide-map-shell{display:flex;gap:10px;align-items:stretch}
+.guide-map-side{flex:0 0 232px;min-width:0;display:flex;flex-direction:column}
+.guide-map-main{flex:1;min-width:0;display:flex;flex-direction:column}
+/* Tinggi ikut tinggi layar, dengan batas bawah dan atas supaya tidak pernah
+   jadi terlalu pendek di laptop kecil maupun terlalu tinggi di monitor besar. */
+.guide-map-canvas{width:100%;height:clamp(430px,62vh,760px);
+  border:1px solid var(--g2,#E8E8E8);border-radius:10px 10px 0 0}
+.guide-map-hint{font-size:9px;color:var(--g3,#999);margin-top:8px;line-height:1.45}
+
+@media (max-width:1100px){
+  .guide-map-side{flex:0 0 200px}
+}
+@media (max-width:768px){
+  .guide-map-shell{flex-direction:column}
+  /* Peta lebih dulu, panel alat di bawahnya: di HP, menaruh panel di atas
+     berarti peta terdorong satu layar penuh ke bawah. */
+  .guide-map-main{order:1}
+  .guide-map-side{order:2;flex:1 1 auto;margin-top:10px}
+  .guide-map-canvas{height:clamp(320px,52vh,470px)}
+  .guide-map-hint{font-size:10px;margin-top:6px}
+  /* Empat kolom, bukan delapan: di lebar 390 px, delapan kolom menghasilkan
+     tombol 36 px -- lebih kecil dari ambang sasaran sentuh 44 px. */
+  .md-tools{grid-template-columns:repeat(4,1fr);gap:6px}
+  /* Tingginya SENGAJA tidak dipaksa. Tema Studio sudah menetapkan
+     `#envtools-content .et-card button{min-height:42px!important}` untuk
+     seluruh tombol ENV Tools di layar sempit. Memaksa 46 px hanya untuk
+     panel ini akan membuatnya berbeda sendiri dari setiap tombol lain di
+     tab yang sama -- dan aturan !important itu tetap menang, jadi CSS-nya
+     akan jadi aturan mati yang menyesatkan pembaca berikutnya.
+     Kenyamanan sentuh dikejar lewat LEBAR: 4 kolom memberi ~75 px per
+     tombol, dari 36 px sebelumnya. */
+  .md-tool{font-size:17px}
+  .md-btn{padding:9px 8px;font-size:11.5px}
+  .md-set label{font-size:11px;margin-top:8px}
+  .md-set input{font-size:11px;padding:4px 6px}
+  .md-set input[type=number]{width:78px}
+  .md-set input[type=color]{width:46px;height:28px}
+  .md-live{font-size:11px}
+}
 </style>
 <script id="mobile-ux-v2-js">
 (function(){
