@@ -14735,6 +14735,315 @@ window._mapGisEmptyHtml=_mapGisEmptyHtml;
 window._mapSearchHtml=_mapSearchHtml;
 window._mapWireSearch=_mapWireSearch;
 // ==== akhir Y419 ========================================================
+// ==== Y422: alat gambar / ukur / buffer, ditulis sendiri =================
+// Ditulis di atas Leaflet apa adanya, tanpa leaflet-draw dan tanpa turf.js:
+// keduanya ~250 KB pada berkas yang sudah 18 MB, dan keduanya perlu CDN --
+// sementara aplikasi ini harus tetap jalan offline.
+//
+// Yang digambar disimpan sebagai DATA (jenis + titik + gaya), bukan sebagai
+// objek Leaflet. Alasannya bukan kerapian: _etSetField me-render ulang
+// seluruh panduan setiap kali satu kolom formulir berubah, dan itu
+// membongkar petanya. Kalau gambarnya hidup di objek peta, sekali mengetik
+// nama titik semua hasil ukur hilang.
+var MAP_DRAW_KEY='env26_map_draw';
+var MAP_DRAW_STYLE_KEY='env26_map_draw_style';
+var MAP_DRAW_DEFAULT={lineColor:'#c62828',lineWidth:3,fillColor:'#ef5350',
+  fillOpacity:0.25,pointSize:7,bufferRadius:500};
+
+function _mdStyle(){
+  try{
+    var s=JSON.parse(localStorage.getItem(MAP_DRAW_STYLE_KEY)||'{}');
+    var out={};
+    Object.keys(MAP_DRAW_DEFAULT).forEach(function(k){
+      out[k]=(s[k]==null||s[k]==='')?MAP_DRAW_DEFAULT[k]:s[k];
+    });
+    return out;
+  }catch(e){return Object.assign({},MAP_DRAW_DEFAULT);}
+}
+function _mdSaveStyle(s){
+  try{localStorage.setItem(MAP_DRAW_STYLE_KEY,JSON.stringify(s||{}));}catch(e){}
+}
+function _mdLoad(){
+  try{var a=JSON.parse(localStorage.getItem(MAP_DRAW_KEY)||'[]');return Array.isArray(a)?a:[];}
+  catch(e){return [];}
+}
+function _mdSave(list){
+  try{localStorage.setItem(MAP_DRAW_KEY,JSON.stringify(list||[]));}
+  catch(e){
+    // Kuota localStorage sudah pernah menelan data diam-diam di proyek ini.
+    // Kalau gagal, katakan -- jangan pura-pura tersimpan.
+    if(typeof toast==='function')toast('⚠ Gambar tidak bisa disimpan (penyimpanan browser penuh).');
+  }
+}
+
+// --- ukuran: panjang & luas ------------------------------------------------
+function _mdLen(pts){
+  var t=0;
+  for(var i=1;i<pts.length;i++)t+=L.latLng(pts[i-1]).distanceTo(L.latLng(pts[i]));
+  return t;
+}
+// Luas geodesik lewat kelebihan bola (spherical excess). Bukan luas bidang
+// datar: pada jarak kilometer, proyeksi datar meleset cukup jauh.
+function _mdArea(pts){
+  if(!pts||pts.length<3)return 0;
+  var R=6378137, rad=Math.PI/180, sum=0;
+  for(var i=0;i<pts.length;i++){
+    var a=pts[i], b=pts[(i+1)%pts.length];
+    sum+=(b[1]-a[1])*rad*(2+Math.sin(a[0]*rad)+Math.sin(b[0]*rad));
+  }
+  return Math.abs(sum*R*R/2);
+}
+function _mdFmtLen(m){
+  if(!isFinite(m))return '-';
+  return (m<1000)?(m.toFixed(1)+' m'):((m/1000).toFixed(3)+' km');
+}
+function _mdFmtArea(m2){
+  if(!isFinite(m2))return '-';
+  if(m2<10000)return m2.toFixed(1)+' m²';
+  if(m2<1000000)return (m2/10000).toFixed(3)+' ha';
+  return (m2/1000000).toFixed(3)+' km²';
+}
+function _mdLabel(sh){
+  if(sh.t==='point')return 'Titik';
+  if(sh.t==='line')return 'Panjang '+_mdFmtLen(_mdLen(sh.pts));
+  if(sh.t==='poly')return 'Luas '+_mdFmtArea(_mdArea(sh.pts))+' · keliling '+_mdFmtLen(_mdLen(sh.pts.concat([sh.pts[0]])));
+  if(sh.t==='rect'){
+    var p=sh.pts,ring=[[p[0][0],p[0][1]],[p[0][0],p[1][1]],[p[1][0],p[1][1]],[p[1][0],p[0][1]]];
+    return 'Luas '+_mdFmtArea(_mdArea(ring));
+  }
+  if(sh.t==='circle'||sh.t==='buffer')
+    return (sh.t==='buffer'?'Buffer ':'Radius ')+_mdFmtLen(sh.r)+' · luas '+_mdFmtArea(Math.PI*sh.r*sh.r);
+  return '';
+}
+
+// --- menggambar ulang dari data -------------------------------------------
+function _mdShapeStyle(sh){
+  var s=sh.style||_mdStyle();
+  return {color:s.lineColor,weight:+s.lineWidth,fillColor:s.fillColor,
+    fillOpacity:+s.fillOpacity,opacity:1};
+}
+function _mdRedraw(map){
+  if(!map)return;
+  if(!map._mdGroup){map._mdGroup=L.layerGroup().addTo(map);}
+  map._mdGroup.clearLayers();
+  _mdLoad().forEach(function(sh,i){
+    var st=_mdShapeStyle(sh), lyr=null;
+    try{
+      if(sh.t==='point'){
+        lyr=L.circleMarker(sh.pts[0],{radius:+(sh.style||_mdStyle()).pointSize,
+          color:st.color,weight:st.weight,fillColor:st.fillColor,fillOpacity:1});
+      } else if(sh.t==='line'){
+        lyr=L.polyline(sh.pts,{color:st.color,weight:st.weight});
+      } else if(sh.t==='poly'){
+        lyr=L.polygon(sh.pts,st);
+      } else if(sh.t==='rect'){
+        lyr=L.rectangle([sh.pts[0],sh.pts[1]],st);
+      } else if(sh.t==='circle'||sh.t==='buffer'){
+        lyr=L.circle(sh.pts[0],Object.assign({radius:sh.r},st));
+      }
+    }catch(e){}
+    if(!lyr)return;
+    lyr._mdIndex=i;
+    var txt=_mdLabel(sh);
+    if(txt)lyr.bindTooltip(txt,{sticky:true});
+    lyr.on('click',function(ev){
+      if(window._mdMode==='erase'){
+        if(ev&&ev.originalEvent&&L.DomEvent)L.DomEvent.stop(ev.originalEvent);
+        var list=_mdLoad(); list.splice(i,1); _mdSave(list); _mdRedraw(map); _mdRefreshPanel();
+      }
+    });
+    map._mdGroup.addLayer(lyr);
+  });
+  _mdRefreshPanel();
+}
+function _mdAdd(map,sh){
+  var list=_mdLoad(); sh.style=_mdStyle(); list.push(sh); _mdSave(list); _mdRedraw(map);
+}
+function _mdClear(map){
+  _mdSave([]); _mdRedraw(map);
+  if(typeof toast==='function')toast('Semua gambar dihapus.');
+}
+function _mdUndo(map){
+  var list=_mdLoad(); if(!list.length)return;
+  list.pop(); _mdSave(list); _mdRedraw(map);
+}
+function _mdActive(){return !!(window._mdMode&&window._mdMode!=='pan');}
+
+// --- alat & interaksinya ---------------------------------------------------
+// Semua alat memakai KLIK, bukan tekan-geser: klik bekerja sama di tetikus
+// maupun layar sentuh, dan tidak bertabrakan dengan geser peta.
+var MAP_DRAW_TOOLS=[
+  {id:'pan',    ic:'✥', label:'Geser peta'},
+  {id:'point',  ic:'•', label:'Titik'},
+  {id:'line',   ic:'╱', label:'Garis (ukur panjang)'},
+  {id:'poly',   ic:'⬠', label:'Poligon (ukur luas)'},
+  {id:'rect',   ic:'▭', label:'Persegi'},
+  {id:'circle', ic:'◯', label:'Lingkaran'},
+  {id:'buffer', ic:'◎', label:'Buffer (radius tetap)'},
+  {id:'erase',  ic:'⌫', label:'Hapus satu (klik gambarnya)'}
+];
+function _mdSetMode(map,mode){
+  window._mdMode=mode;
+  _mdCancelPending(map);
+  document.querySelectorAll('[data-md-tool]').forEach(function(b){
+    b.classList.toggle('md-on',b.getAttribute('data-md-tool')===mode);
+  });
+  var el=map&&map.getContainer?map.getContainer():null;
+  if(el)el.style.cursor=(mode&&mode!=='pan')?'crosshair':'';
+  _mdRefreshPanel();
+}
+function _mdCancelPending(map){
+  window._mdPending=null;
+  if(map&&map._mdPreview){try{map.removeLayer(map._mdPreview);}catch(e){}map._mdPreview=null;}
+  var f=document.getElementById('md-finish'); if(f)f.style.display='none';
+}
+function _mdPreview(map,latlng){
+  var p=window._mdPending; if(!p||!map)return;
+  var st=_mdShapeStyle({});
+  var pts=p.pts.slice();
+  if(latlng)pts.push([latlng.lat,latlng.lng]);
+  if(map._mdPreview){try{map.removeLayer(map._mdPreview);}catch(e){}map._mdPreview=null;}
+  var lyr=null;
+  try{
+    if(p.t==='line')lyr=L.polyline(pts,{color:st.color,weight:st.weight,dashArray:'5,5'});
+    else if(p.t==='poly'&&pts.length>1)lyr=L.polygon(pts,Object.assign({},st,{dashArray:'5,5'}));
+    else if(p.t==='rect'&&pts.length>1)lyr=L.rectangle([pts[0],pts[1]],Object.assign({},st,{dashArray:'5,5'}));
+    else if(p.t==='circle'&&pts.length>1){
+      var r=L.latLng(pts[0]).distanceTo(L.latLng(pts[1]));
+      lyr=L.circle(pts[0],Object.assign({radius:r},st,{dashArray:'5,5'}));
+    }
+  }catch(e){}
+  if(lyr){map._mdPreview=lyr;lyr.addTo(map);}
+  var live=document.getElementById('md-live');
+  if(live){
+    var txt='';
+    if(p.t==='line'&&pts.length>1)txt='Panjang '+_mdFmtLen(_mdLen(pts));
+    else if(p.t==='poly'&&pts.length>2)txt='Luas '+_mdFmtArea(_mdArea(pts));
+    else if(p.t==='circle'&&pts.length>1)txt='Radius '+_mdFmtLen(L.latLng(pts[0]).distanceTo(L.latLng(pts[1])));
+    live.textContent=txt;
+  }
+}
+function _mdFinish(map){
+  var p=window._mdPending; if(!p||!map)return;
+  var need=(p.t==='line')?2:3;
+  if(p.t==='line'&&p.pts.length<2){_mdCancelPending(map);return;}
+  if(p.t==='poly'&&p.pts.length<3){_mdCancelPending(map);return;}
+  _mdAdd(map,{t:p.t,pts:p.pts.slice()});
+  _mdCancelPending(map);
+}
+function _mdClick(map,latlng){
+  var mode=window._mdMode;
+  if(!mode||mode==='pan'||mode==='erase')return false;
+  var ll=[latlng.lat,latlng.lng];
+  if(mode==='point'){_mdAdd(map,{t:'point',pts:[ll]});return true;}
+  if(mode==='buffer'){
+    var r=+_mdStyle().bufferRadius||500;
+    _mdAdd(map,{t:'buffer',pts:[ll],r:r});
+    return true;
+  }
+  var p=window._mdPending;
+  if(!p||p.t!==mode){window._mdPending=p={t:mode,pts:[]};}
+  p.pts.push(ll);
+  if(mode==='rect'&&p.pts.length===2){_mdAdd(map,{t:'rect',pts:p.pts.slice()});_mdCancelPending(map);return true;}
+  if(mode==='circle'&&p.pts.length===2){
+    var rr=L.latLng(p.pts[0]).distanceTo(L.latLng(p.pts[1]));
+    _mdAdd(map,{t:'circle',pts:[p.pts[0]],r:rr}); _mdCancelPending(map); return true;
+  }
+  var f=document.getElementById('md-finish');
+  if(f&&(mode==='line'||mode==='poly'))f.style.display='';
+  _mdPreview(map,null);
+  return true;
+}
+
+// --- panel: alat + Graphic Settings ---------------------------------------
+function _mdPanelHtml(){
+  var s=_mdStyle();
+  var tools=MAP_DRAW_TOOLS.map(function(t){
+    return '<button type="button" data-md-tool="'+t.id+'" title="'+t.label+'" '
+      +'class="md-tool'+((window._mdMode||'pan')===t.id?' md-on':'')+'">'+t.ic+'</button>';
+  }).join('');
+  return '<div class="md-panel" data-y422="panel">'
+    +'<div class="md-tools">'+tools+'</div>'
+    +'<button type="button" id="md-finish" class="md-btn" style="display:none" '
+    +'onclick="_mdFinishActive()">✔ Selesaikan bentuk</button>'
+    +'<div id="md-live" class="md-live"></div>'
+    +'<details class="md-set"><summary>Pengaturan Gambar</summary>'
+      +'<label>Radius buffer (m)<input type="number" min="1" step="1" data-md-s="bufferRadius" value="'+s.bufferRadius+'"></label>'
+      +'<label>Warna garis<input type="color" data-md-s="lineColor" value="'+s.lineColor+'"></label>'
+      +'<label>Tebal garis<input type="number" min="1" max="12" step="1" data-md-s="lineWidth" value="'+s.lineWidth+'"></label>'
+      +'<label>Warna isi<input type="color" data-md-s="fillColor" value="'+s.fillColor+'"></label>'
+      +'<label>Transparansi isi<input type="range" min="0" max="1" step="0.05" data-md-s="fillOpacity" value="'+s.fillOpacity+'"></label>'
+      +'<label>Ukuran titik<input type="number" min="2" max="20" step="1" data-md-s="pointSize" value="'+s.pointSize+'"></label>'
+      +'<div class="md-note">Berlaku untuk gambar BERIKUTNYA. Gambar yang sudah ada menyimpan gayanya sendiri.</div>'
+    +'</details>'
+    +'<div class="md-row">'
+      +'<button type="button" class="md-btn" onclick="_mdUndoActive()">↶ Undo</button>'
+      +'<button type="button" class="md-btn" onclick="_mdClearActive()">🗑 Hapus semua</button>'
+    +'</div>'
+    +'<div id="md-count" class="md-count"></div>'
+  +'</div>';
+}
+function _mdRefreshPanel(){
+  var c=document.getElementById('md-count');
+  if(!c)return;
+  var n=_mdLoad().length;
+  c.textContent=n?(n+' gambar tersimpan di perangkat ini.'):'Belum ada gambar.';
+}
+function _mdWirePanel(map){
+  document.querySelectorAll('[data-md-tool]').forEach(function(b){
+    b.onclick=function(){_mdSetMode(map,b.getAttribute('data-md-tool'));};
+  });
+  document.querySelectorAll('[data-md-s]').forEach(function(inp){
+    inp.onchange=function(){
+      var s=_mdStyle(); s[inp.getAttribute('data-md-s')]=inp.value; _mdSaveStyle(s);
+    };
+  });
+  window._mdMapRef=map;
+  _mdRefreshPanel();
+}
+function _mdFinishActive(){if(window._mdMapRef)_mdFinish(window._mdMapRef);}
+function _mdUndoActive(){if(window._mdMapRef)_mdUndo(window._mdMapRef);}
+function _mdClearActive(){if(window._mdMapRef)_mdClear(window._mdMapRef);}
+function _mdAttach(map){
+  if(!map)return;
+  window._mdMode=window._mdMode||'pan';
+  _mdRedraw(map);
+  _mdWirePanel(map);
+  map.on('mousemove',function(e){if(window._mdPending)_mdPreview(map,e.latlng);});
+  map.on('dblclick',function(e){
+    if(window._mdPending){if(L.DomEvent)L.DomEvent.stop(e.originalEvent);_mdFinish(map);}
+  });
+  document.addEventListener('keydown',function(ev){
+    if(ev.key==='Escape'&&window._mdPending)_mdCancelPending(map);
+    else if(ev.key==='Enter'&&window._mdPending)_mdFinish(map);
+  });
+}
+window.MAP_DRAW_TOOLS=MAP_DRAW_TOOLS;
+window.MAP_DRAW_DEFAULT=MAP_DRAW_DEFAULT;
+window._mdStyle=_mdStyle;
+window._mdSaveStyle=_mdSaveStyle;
+window._mdLoad=_mdLoad;
+window._mdSave=_mdSave;
+window._mdLen=_mdLen;
+window._mdArea=_mdArea;
+window._mdFmtLen=_mdFmtLen;
+window._mdFmtArea=_mdFmtArea;
+window._mdLabel=_mdLabel;
+window._mdRedraw=_mdRedraw;
+window._mdAdd=_mdAdd;
+window._mdClear=_mdClear;
+window._mdUndo=_mdUndo;
+window._mdActive=_mdActive;
+window._mdSetMode=_mdSetMode;
+window._mdClick=_mdClick;
+window._mdFinish=_mdFinish;
+window._mdPanelHtml=_mdPanelHtml;
+window._mdWirePanel=_mdWirePanel;
+window._mdAttach=_mdAttach;
+window._mdFinishActive=_mdFinishActive;
+window._mdUndoActive=_mdUndoActive;
+window._mdClearActive=_mdClearActive;
+// ==== akhir Y422 ========================================================
 
 function _rfaHealHydrotestScanGap(){
   // Y409: perbaikan sekali-pakai ini sudah tersimpan di Data Pack (nilai
@@ -28908,6 +29217,7 @@ function _etRenderLiveMap(){
         +(typeof _mapSearchHtml==='function'?_mapSearchHtml('et-guide-search'):'')
         +'<div id="et-guide-gis-note" style="margin-top:8px"></div>'
         +'<div class="guide-map-hint">'+hint+'</div>'
+        +(typeof _mdPanelHtml==='function'?_mdPanelHtml():'')
       +'</div>'
       +'<div class="guide-map-main">'
         +'<div id="'+divId+'" class="guide-map-canvas"></div>'
@@ -28929,6 +29239,7 @@ function _etRenderLiveMap(){
     if(main)map.setView([main.lat,main.lng],15); else map.setView([-0.5,117.4],8);
     if(typeof _mapAttachCursorBar==='function')_mapAttachCursorBar(map,'et-guide-coordbar');
     if(typeof _mapWireSearch==='function')_mapWireSearch('et-guide-search',map);
+    if(typeof _mdAttach==='function')_mdAttach(map);
     if(typeof _mapAttachGis==='function'){
       _mapAttachGis(map,function(n){
         var note=document.getElementById('et-guide-gis-note');
@@ -28940,6 +29251,13 @@ function _etRenderLiveMap(){
     // langsung menimpa: sekali salah klik tidak boleh menghapus titik yang
     // sudah susah payah dicari.
     map.on('click',function(ev){
+      // Y422: saat alat gambar aktif, klik adalah perintah menggambar --
+      // bukan tawaran mengganti titik utama. Satu klik tidak boleh berarti
+      // dua hal sekaligus, apalagi kalau salah satunya menimpa data.
+      if(typeof _mdActive==='function'&&_mdActive()){
+        if(typeof _mdClick==='function')_mdClick(map,ev.latlng);
+        return;
+      }
       var la=ev.latlng.lat, ln=ev.latlng.lng;
       var txt=la.toFixed(6)+', '+ln.toFixed(6);
       var utm='';
@@ -35660,6 +35978,38 @@ function _hoverBg(light){
 
 
 <style id="mobile-ux-v2">
+/* Y422 -- alat gambar/ukur/buffer. Kurung dijaga seimbang; validate_build.mjs
+   memeriksanya sejak satu kurung hilang pernah mematikan ratusan aturan. */
+.md-panel{margin-top:10px;border:1px solid var(--g2,#E8E8E8);border-radius:10px;
+  padding:8px;background:var(--white,#fff)}
+.md-tools{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.md-tool{border:1px solid var(--g2,#E8E8E8);background:transparent;border-radius:7px;
+  padding:7px 0;font-size:14px;line-height:1;cursor:pointer;color:var(--g4,#666);
+  font-family:inherit;min-height:34px}
+.md-tool:hover{background:var(--g1,#F5F5F5)}
+.md-tool.md-on{background:#1565c0;color:#fff;border-color:#1565c0}
+.md-btn{width:100%;margin-top:6px;border:1px solid var(--g2,#E8E8E8);background:transparent;
+  border-radius:7px;padding:6px 8px;font-family:inherit;font-size:10.5px;font-weight:700;
+  cursor:pointer;color:var(--g4,#666)}
+.md-btn:hover{background:var(--g1,#F5F5F5)}
+.md-row{display:flex;gap:6px}
+.md-row .md-btn{margin-top:8px}
+.md-live{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10px;
+  color:#1565c0;min-height:13px;margin-top:6px}
+.md-count{font-size:9px;color:var(--g3,#999);margin-top:6px}
+.md-set{margin-top:8px;font-size:10.5px}
+.md-set summary{cursor:pointer;font-weight:700;color:var(--g4,#666);padding:3px 0}
+.md-set label{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  margin-top:5px;font-size:10px;color:var(--g4,#666)}
+.md-set input[type=number]{width:66px}
+.md-set input[type=color]{width:38px;height:22px;padding:0;border:1px solid var(--g2,#E8E8E8)}
+.md-set input[type=range]{width:88px}
+.md-set input{font-family:inherit;font-size:10px;border:1px solid var(--g2,#E8E8E8);
+  border-radius:5px;padding:2px 5px;background:var(--white,#fff);color:inherit}
+.md-note{font-size:9px;color:var(--g3,#999);margin-top:7px;line-height:1.45}
+@media (max-width:768px){
+  .md-tools{grid-template-columns:repeat(8,1fr)}
+}
 /* Y420 -- tata letak peta Panduan Sampling: panel alat di kiri, peta di kanan. */
 .guide-map-shell{display:flex;gap:10px;align-items:stretch}
 .guide-map-side{flex:0 0 210px;min-width:0;display:flex;flex-direction:column}
