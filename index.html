@@ -14568,6 +14568,173 @@ window._dpOtherKeys=_dpOtherKeys;
 window.DP_GROUPS=DP_GROUPS;
 window.DP_NEVER=DP_NEVER;
 // ==== akhir Y418 ========================================================
+// ==== Y419: modul peta bersama ==========================================
+// Dua peta di aplikasi ini dibangun terpisah: peta ENV Mon Program punya 3
+// basemap, layer GIS, dan pencarian; peta Panduan Sampling cuma kotak 260 px
+// dengan satu basemap. Perbaikan di satu peta tidak pernah sampai ke yang
+// lain. Modul ini jadi sumber tunggalnya.
+//
+// Label basemap sengaja SAMA PERSIS dengan yang sudah dipakai peta ENV Mon
+// Program, supaya Y421 bisa menukarnya tanpa mengubah tampilan bagi pengguna.
+var MAP_BASEMAP_DEFS=[
+  {id:'osm', label:'🗺 OpenStreetMap',
+   url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'© OpenStreetMap', maxZoom:19},
+  {id:'sat', label:'🛰 Satelit (Esri)',
+   url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr:'© Esri World Imagery', maxZoom:18},
+  {id:'topo',label:'⛰ Topografi',
+   url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attr:'© OpenTopoMap', maxZoom:17}
+];
+// Set BARU tiap dipanggil: satu instance L.tileLayer tidak boleh dipakai dua
+// peta sekaligus -- kalau dipakai bersama, peta kedua mencuri tile peta pertama.
+function _mapBasemapSet(){
+  var byId={},byLabel={};
+  MAP_BASEMAP_DEFS.forEach(function(d){
+    var t=L.tileLayer(d.url,{attribution:d.attr,maxZoom:d.maxZoom});
+    byId[d.id]=t; byLabel[d.label]=t;
+  });
+  return {byId:byId,byLabel:byLabel};
+}
+function _mapAddBasemaps(map,defId,pos){
+  var set=_mapBasemapSet();
+  var def=set.byId[defId]||set.byId.osm;
+  def.addTo(map);
+  var ctl=L.control.layers(set.byLabel,null,{position:pos||'topright'}).addTo(map);
+  return {set:set,control:ctl,active:def};
+}
+
+// --- koordinat yang ikut kursor -------------------------------------------
+// Sebelum ini TIDAK ADA satu pun map.on('mousemove') di seluruh aplikasi.
+// Formatnya mengikuti GIS PHM: derajat desimal, lalu UTM East/North + zona.
+function _mapCoordParts(lat,lng){
+  var out={ll:lat.toFixed(6)+', '+lng.toFixed(6), utm:'-'};
+  try{
+    if(typeof _latLngToUtm==='function'){
+      var u=_latLngToUtm(lat,lng);
+      var f=(typeof _utmThousands==='function')?_utmThousands:function(n){return n.toFixed(1);};
+      out.utm='East '+f(u.easting)+'   North '+f(u.northing)+'   (zona '+u.zone+u.hemi+')';
+    }
+  }catch(e){}
+  return out;
+}
+// Skala perkiraan dari lebar peta dalam meter dibagi lebar pikselnya.
+// 3779.5275 px/m = 96 dpi, asumsi yang sama dipakai peta desktop pada umumnya.
+function _mapScaleText(map){
+  try{
+    var size=map.getSize(); if(!size||!size.x)return '-';
+    var y=size.y/2;
+    var left=map.containerPointToLatLng([0,y]);
+    var right=map.containerPointToLatLng([size.x,y]);
+    var perPx=left.distanceTo(right)/size.x;
+    return '1:'+Math.round(perPx*3779.5275).toLocaleString('id-ID');
+  }catch(e){return '-';}
+}
+function _mapCoordBarHtml(id){
+  return '<div id="'+id+'" class="map-coordbar" data-y419="coordbar">'
+    +'<span class="mcb-ll" data-mc="ll">-</span>'
+    +'<span class="mcb-utm" data-mc="utm">-</span>'
+    +'<span class="mcb-scale" data-mc="scale">-</span></div>';
+}
+function _mapAttachCursorBar(map,barId){
+  var bar=document.getElementById(barId); if(!bar||!map)return;
+  var put=function(k,v){var el=bar.querySelector('[data-mc="'+k+'"]'); if(el)el.textContent=v;};
+  var show=function(lat,lng){var p=_mapCoordParts(lat,lng);put('ll',p.ll);put('utm',p.utm);};
+  var hoverable=true;
+  try{hoverable=window.matchMedia&&window.matchMedia('(hover:hover)').matches;}catch(e){}
+  map.on('mousemove',function(e){show(e.latlng.lat,e.latlng.lng);});
+  map.on('move zoomend resize',function(){
+    put('scale',_mapScaleText(map));
+    // Di layar sentuh mousemove tidak pernah jalan. Menampilkan titik tengah
+    // peta lebih jujur daripada strip kosong selamanya.
+    if(!hoverable){var c=map.getCenter();show(c.lat,c.lng);}
+  });
+  put('scale',_mapScaleText(map));
+  var c0=map.getCenter(); show(c0.lat,c0.lng);
+}
+
+// --- layer GIS dari Data Pack ---------------------------------------------
+// Layernya ikut Data Pack, jadi tanpa pack dimuat peta memang kosong. Itu
+// harus DIKATAKAN, bukan dibiarkan tampak seperti "memang tidak ada apa-apa".
+function _mapGisCount(){
+  try{
+    if(typeof GIS_LAYERS_RAW==='undefined'||!GIS_LAYERS_RAW)return 0;
+    return Object.keys(GIS_LAYERS_RAW).length;
+  }catch(e){return 0;}
+}
+function _mapAttachGis(map,onDone){
+  var fin=function(){
+    try{
+      (window._gisOn||new Set()).forEach(function(k){
+        if(typeof _gisApplyToggle==='function')_gisApplyToggle(k,true,map);
+      });
+    }catch(e){}
+    if(typeof onDone==='function')onDone(_mapGisCount());
+  };
+  if(typeof _gisLoadFromStore==='function'){
+    try{ _gisLoadFromStore().then(fin,fin); }catch(e){ fin(); }
+  } else fin();
+}
+function _mapGisEmptyHtml(){
+  return '<div data-y419="gis-kosong" style="font-size:10.5px;padding:8px 10px;'
+    +'border:1px solid #F0C8A8;background:#FFF8F0;color:#B26A00;border-radius:8px;'
+    +'margin-bottom:8px">⚠ <b>Layer GIS belum dimuat.</b> Sumur, pipa, dan '
+    +'platform ada di dalam Data Pack — peta ini kosong sampai Data Pack '
+    +'dimuat lewat ENV Tools → Data Pack.</div>';
+}
+
+// --- kotak cari well / pipeline / platform ---------------------------------
+function _mapSearchHtml(pfx){
+  return '<div class="map-search" data-y419="search">'
+    +'<input id="'+pfx+'-q" class="map-search-in" type="search" autocomplete="off" '
+    +'placeholder="cari nama well, pipeline, platform...">'
+    +'<div id="'+pfx+'-res" class="map-search-res"></div></div>';
+}
+function _mapWireSearch(pfx,map){
+  var inp=document.getElementById(pfx+'-q'), res=document.getElementById(pfx+'-res');
+  if(!inp||!res)return;
+  var esc=function(x){return String(x==null?'':x)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
+  inp.oninput=function(){
+    var q=inp.value||'';
+    if(q.trim().length<2){res.innerHTML='';res.style.display='none';return;}
+    var hits=(typeof _gisSearch==='function')?_gisSearch(q):[];
+    if(!hits.length){
+      res.innerHTML='<div class="map-search-none">Tidak ditemukan'
+        +(_mapGisCount()?'':' — layer GIS belum dimuat.')+'</div>';
+      res.style.display='';return;
+    }
+    res.innerHTML=hits.map(function(r){
+      return '<div class="map-search-row" data-k="'+esc(r.key)+'" data-i="'+r.featureIdx+'">'
+        +'<span class="msr-n">'+esc(r.name)+'</span>'
+        +'<span class="msr-l">'+esc(r.label)+'</span></div>';
+    }).join('');
+    res.style.display='';
+  };
+  res.onclick=function(ev){
+    var row=ev.target&&ev.target.closest?ev.target.closest('.map-search-row'):null;
+    if(!row)return;
+    if(typeof _gisGoToFeature==='function'){
+      try{_gisGoToFeature(row.getAttribute('data-k'),parseInt(row.getAttribute('data-i'),10),map);}catch(e){}
+    }
+    res.style.display='none';
+  };
+  document.addEventListener('click',function(ev){
+    if(!res)return;
+    if(ev.target!==inp && !(res.contains&&res.contains(ev.target)))res.style.display='none';
+  });
+}
+window.MAP_BASEMAP_DEFS=MAP_BASEMAP_DEFS;
+window._mapBasemapSet=_mapBasemapSet;
+window._mapAddBasemaps=_mapAddBasemaps;
+window._mapCoordParts=_mapCoordParts;
+window._mapScaleText=_mapScaleText;
+window._mapCoordBarHtml=_mapCoordBarHtml;
+window._mapAttachCursorBar=_mapAttachCursorBar;
+window._mapGisCount=_mapGisCount;
+window._mapAttachGis=_mapAttachGis;
+window._mapGisEmptyHtml=_mapGisEmptyHtml;
+window._mapSearchHtml=_mapSearchHtml;
+window._mapWireSearch=_mapWireSearch;
+// ==== akhir Y419 ========================================================
 
 function _rfaHealHydrotestScanGap(){
   // Y409: perbaikan sekali-pakai ini sudah tersimpan di Data Pack (nilai
@@ -17706,9 +17873,14 @@ function _epRenderMap(SP){
   const F=window._epMapFilter;
 
   // Layer definitions
-  const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19});
-  const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri World Imagery',maxZoom:18});
-  const topo=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'© OpenTopoMap',maxZoom:17});
+  // Y421: basemap kini berasal dari modul bersama (Y419), bukan didefinisikan
+  // ulang di sini. Nama variabelnya dipertahankan karena masih dipakai di
+  // bagian bawah fungsi ini. Fallback disediakan supaya peta tetap hidup
+  // seandainya modulnya belum termuat.
+  const _epBmSet=(typeof _mapBasemapSet==='function')?_mapBasemapSet():null;
+  const osm=_epBmSet?_epBmSet.byId.osm:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19});
+  const sat=_epBmSet?_epBmSet.byId.sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri World Imagery',maxZoom:18});
+  const topo=_epBmSet?_epBmSet.byId.topo:L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'© OpenTopoMap',maxZoom:17});
   const map=L.map(mapEl,{zoomControl:true,layers:[osm]}).setView([-0.5,117.4],8);
   window._epMapInst=map;
   window._epLabelRegistry=[];
@@ -28708,27 +28880,89 @@ function _etRenderLiveMap(){
   var a=ET_GUIDE;
   var datum=a.coordDatum||'wgs84';
   var main=_coordParse(a.coordMain,datum);
-  if(!main){wrap.innerHTML='';return;}
+  // Y420: peta TIDAK LAGI menunggu koordinat diisi. Dulu barisnya
+  // `if(!main){wrap.innerHTML='';return;}` -- jadi pengguna yang membuka alat
+  // ini melihat kotak kosong tanpa penjelasan, padahal petanya ada. Sekarang
+  // peta selalu tampil, dan justru dipakai UNTUK memilih titiknya.
   var hasRadius=!['Drilling','CSD','Airlift','Flushing'].includes(a.type);
   var brg=(a.coordBearing!=null&&isFinite(a.coordBearing))?a.coordBearing:0;
   var upBrg=(a.coordUpBearing!=null&&isFinite(a.coordUpBearing))?a.coordUpBearing:(brg+180)%360;
   var downBrg=(a.coordDownBearing!=null&&isFinite(a.coordDownBearing))?a.coordDownBearing:brg;
-  var up=hasRadius?_coordOffset(main.lat,main.lng,500,upBrg):null;
-  var down=hasRadius?_coordOffset(main.lat,main.lng,500,downBrg):null;
+  var up=(main&&hasRadius)?_coordOffset(main.lat,main.lng,500,upBrg):null;
+  var down=(main&&hasRadius)?_coordOffset(main.lat,main.lng,500,downBrg):null;
   var hasFar=(a.type==='Trenching'&&a.hasFarPoint);
   var farBrg=(a.farBearing!=null&&isFinite(a.farBearing))?a.farBearing:downBrg;
-  var far=hasFar?_coordOffset(main.lat,main.lng,3500,farBrg):null;
+  var far=(main&&hasFar)?_coordOffset(main.lat,main.lng,3500,farBrg):null;
   var tps=Array.isArray(a.coordTP)?a.coordTP:[];
   var divId='et-guide-leaflet-map';
-  var tipMarkers=[];
-  wrap.innerHTML='<div id="'+divId+'" style="width:100%;height:260px;border:1px solid var(--g2);border-radius:12px"></div>'+
-    (hasRadius?'<div style="font-size:8.5px;color:var(--g3);margin-top:3px">Geser titik ↑/↓ merah untuk menyesuaikan (tetap terkunci di radius 500 m'+(hasFar?', titik jauh terkunci di 3500 m':'')+').</div>':
-      '<div style="font-size:8.5px;color:var(--g3);margin-top:3px">Jenis kegiatan ini tidak punya radius kepatuhan — hanya titik utama sesuai ENV Mon Program.</div>');
+
+  var hint=main
+    ? (hasRadius
+        ? 'Geser titik ↑/↓ merah untuk menyesuaikan (tetap terkunci di radius 500 m'+(hasFar?', titik jauh terkunci di 3500 m':'')+').'
+        : 'Jenis kegiatan ini tidak punya radius kepatuhan — hanya titik utama sesuai ENV Mon Program.')
+    : 'Belum ada titik utama. Klik di peta untuk memilihnya, atau ketik nama well di kolom koordinat di atas.';
+
+  wrap.innerHTML=
+    '<div class="guide-map-shell" data-y420="shell">'
+      +'<div class="guide-map-side">'
+        +(typeof _mapSearchHtml==='function'?_mapSearchHtml('et-guide-search'):'')
+        +'<div id="et-guide-gis-note" style="margin-top:8px"></div>'
+        +'<div class="guide-map-hint">'+hint+'</div>'
+      +'</div>'
+      +'<div class="guide-map-main">'
+        +'<div id="'+divId+'" class="guide-map-canvas"></div>'
+        +(typeof _mapCoordBarHtml==='function'?_mapCoordBarHtml('et-guide-coordbar'):'')
+      +'</div>'
+    +'</div>';
+
   _coordEnsureLeaflet().then(function(){
     var el=document.getElementById(divId);
     if(!el||!document.body.contains(el))return;
-    var map=L.map(el,{zoomControl:true,attributionControl:false});
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18}).addTo(map);
+    var map=L.map(el,{zoomControl:true,attributionControl:true});
+    if(window._etGuideMap){try{window._etGuideMap.remove();}catch(e){}}
+    window._etGuideMap=map;
+    // Basemap dari modul bersama: satelit sebagai bawaan karena alat ini soal
+    // titik sampling di lapangan, bukan jalan raya.
+    if(typeof _mapAddBasemaps==='function')_mapAddBasemaps(map,'sat');
+    else L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18}).addTo(map);
+
+    if(main)map.setView([main.lat,main.lng],15); else map.setView([-0.5,117.4],8);
+    if(typeof _mapAttachCursorBar==='function')_mapAttachCursorBar(map,'et-guide-coordbar');
+    if(typeof _mapWireSearch==='function')_mapWireSearch('et-guide-search',map);
+    if(typeof _mapAttachGis==='function'){
+      _mapAttachGis(map,function(n){
+        var note=document.getElementById('et-guide-gis-note');
+        if(note)note.innerHTML=n?'':((typeof _mapGisEmptyHtml==='function')?_mapGisEmptyHtml():'');
+      });
+    }
+
+    // Klik peta -> tawarkan jadikan titik utama. Sengaja lewat popup, bukan
+    // langsung menimpa: sekali salah klik tidak boleh menghapus titik yang
+    // sudah susah payah dicari.
+    map.on('click',function(ev){
+      var la=ev.latlng.lat, ln=ev.latlng.lng;
+      var txt=la.toFixed(6)+', '+ln.toFixed(6);
+      var utm='';
+      try{
+        if(typeof _latLngToUtm==='function'){
+          var u=_latLngToUtm(la,ln);
+          var f=(typeof _utmThousands==='function')?_utmThousands:function(x){return x.toFixed(1);};
+          utm='<div style="font-family:monospace;font-size:9.5px;color:#666;margin-top:2px">'
+            +f(u.easting)+'E, '+f(u.northing)+'N</div>';
+        }
+      }catch(e){}
+      L.popup({closeButton:true})
+        .setLatLng(ev.latlng)
+        .setContent('<div style="font-family:monospace;font-size:10.5px">'+txt+'</div>'+utm
+          +'<button type="button" onclick="_etGuideSetMainFromMap('+la+','+ln+')" '
+          +'style="margin-top:6px;width:100%;background:#1565c0;color:#fff;border:none;'
+          +'border-radius:6px;padding:6px 10px;cursor:pointer;font-family:inherit;'
+          +'font-size:11px;font-weight:700">Jadikan titik utama</button>')
+        .openOn(map);
+    });
+
+    if(!main)return;
+
     var bounds=[[main.lat,main.lng]];
     var _mMain2=L.circleMarker([main.lat,main.lng],{radius:7,color:'#0f5132',weight:2,fillColor:'#27ae60',fillOpacity:1}).addTo(map);
     _addPointBubble(map,_mMain2,'Utama','pt-main');
@@ -28764,11 +28998,22 @@ function _etRenderLiveMap(){
       var _mTp2=L.circleMarker([pp.lat,pp.lng],{radius:6,color:'#5b21b6',weight:2,fillColor:'#9333ea',fillOpacity:1}).addTo(map);
       _addPointBubble(map,_mTp2,t.label||('TP'+(i+1)),'');
     });
-    map.fitBounds(bounds,{padding:[40,40]});
+    try{map.fitBounds(bounds,{padding:[40,40]});}catch(e){}
   }).catch(function(){
-    if(document.body.contains(wrap))wrap.innerHTML='<div style="font-size:9.5px;color:var(--g3);padding:10px;text-align:center">⚠ Peta interaktif perlu koneksi internet (tampilan satelit). '+_coordMapSvg([{lat:main.lat,lng:main.lng,label:'Utama',color:'#27ae60'},{lat:up.lat,lng:up.lng,label:'Up 500m',color:'#2563eb'},{lat:down.lat,lng:down.lng,label:'Down 500m',color:'#e65100'}])+'</div>';
+    if(!document.body.contains(wrap))return;
+    var pts=main?[{lat:main.lat,lng:main.lng,label:'Utama',color:'#27ae60'}]:[];
+    if(main&&up)pts.push({lat:up.lat,lng:up.lng,label:'Up 500m',color:'#2563eb'});
+    if(main&&down)pts.push({lat:down.lat,lng:down.lng,label:'Down 500m',color:'#e65100'});
+    wrap.innerHTML='<div style="font-size:9.5px;color:var(--g3);padding:10px;text-align:center">'
+      +'⚠ Peta interaktif perlu koneksi internet.'
+      +(pts.length?_coordMapSvg(pts):'')+'</div>';
   });
 }
+function _etGuideSetMainFromMap(lat,lng){
+  if(typeof _etSetField==='function')_etSetField('coordMain',lat.toFixed(6)+', '+lng.toFixed(6));
+  if(typeof toast==='function')toast('✅ Titik utama disetel dari peta.');
+}
+window._etGuideSetMainFromMap=_etGuideSetMainFromMap;
 function _etRenderGuide(host){
   var g=ET_GUIDE;
   var datum=g.coordDatum||'wgs84';
@@ -28822,14 +29067,14 @@ function _etRenderGuide(host){
       '<div class="fg" style="flex:1;min-width:200px"><label>Parameter During</label><input class="coord-in" list="et-param-list" value="'+((g.paramD||'').replace(/"/g,'&quot;'))+'" placeholder="mis. TSS + Plankton" onchange="_etSetField(\'paramD\',this.value)"></div>'+
     '</div>'+
     '<div class="fg" style="margin-bottom:10px"><label>Kewajiban / Catatan tambahan</label><textarea class="coord-in" rows="2" placeholder="mis. Wajib lapor ke pengawas HSE sebelum sampling..." onchange="_etSetField(\'oblig\',this.value)">'+(g.oblig||'')+'</textarea></div>'+
-    (main?ptRowsHtml:'<div style="font-size:9.5px;color:var(--g3);margin-bottom:8px">Isi koordinat utama untuk menampilkan titik upstream/downstream dan peta.</div>')+
+    (main?ptRowsHtml:'<div style="font-size:9.5px;color:var(--g3);margin-bottom:8px">Klik di peta untuk memilih titik utama, atau ketik nama well di kolom koordinat.</div>')+
     '<div style="display:flex;align-items:center;margin:8px 0 4px"><b style="font-size:10px">Titik Penaatan Tambahan (manual)</b>'+
       '<button class="coord-copy" style="margin-left:auto;border-color:#c4b5e8;color:#7c3aed" onclick="_etAddTP()">+ Tambah TP</button></div>'+
     (tpRows||'<div style="font-size:9.5px;color:var(--g3);padding:2px 4px">Belum ada TP tambahan.</div>')+
     '<div id="et-guide-map-wrap" style="margin-top:10px"></div>'+
     (main?((typeof _printGisChecklistHtml==='function'?_printGisChecklistHtml():'')+'<button class="coord-copy" style="margin-top:8px;width:100%;padding:7px;font-size:11px;font-weight:700;border-color:#1565c0;color:#1565c0" onclick="_etPrintGuide()">🖨 Cetak Panduan Sampling (peta asli, perlu internet)</button>'):'')+
     '</div>';
-  if(main)_etRenderLiveMap();
+  _etRenderLiveMap();
 }
 
 function _etRenderCoordTransform(host){
@@ -35415,6 +35660,44 @@ function _hoverBg(light){
 
 
 <style id="mobile-ux-v2">
+/* Y420 -- tata letak peta Panduan Sampling: panel alat di kiri, peta di kanan. */
+.guide-map-shell{display:flex;gap:10px;align-items:stretch}
+.guide-map-side{flex:0 0 210px;min-width:0;display:flex;flex-direction:column}
+.guide-map-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.guide-map-canvas{width:100%;height:420px;border:1px solid var(--g2,#E8E8E8);
+  border-radius:10px 10px 0 0}
+.guide-map-hint{font-size:9px;color:var(--g3,#999);margin-top:8px;line-height:1.45}
+@media (max-width:768px){
+  .guide-map-shell{flex-direction:column}
+  .guide-map-side{flex:1 1 auto}
+  .guide-map-canvas{height:300px}
+}
+/* Y419 -- gaya modul peta bersama. Kurungnya sengaja dijaga seimbang dan
+   sekarang diperiksa validate_build.mjs: satu kurung yang hilang pernah
+   mematikan ratusan aturan tanpa satu pun error. */
+.map-coordbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10px;
+  padding:5px 9px;background:var(--g1,#F5F5F5);border:1px solid var(--g2,#E8E8E8);
+  border-top:none;border-radius:0 0 10px 10px;color:var(--g4,#666)}
+.map-coordbar .mcb-utm{flex:1;min-width:170px}
+.map-coordbar .mcb-scale{font-weight:700}
+.map-search{position:relative}
+.map-search-in{width:100%;box-sizing:border-box;padding:7px 10px;font-family:inherit;
+  font-size:11.5px;border:1px solid var(--g2,#E8E8E8);border-radius:8px;
+  background:var(--white,#fff);color:inherit}
+.map-search-res{display:none;position:absolute;z-index:900;left:0;right:0;top:100%;
+  margin-top:4px;max-height:220px;overflow:auto;background:var(--white,#fff);
+  border:1px solid var(--g2,#E8E8E8);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.map-search-row{display:flex;gap:8px;align-items:center;padding:5px 8px;
+  font-size:10.5px;cursor:pointer}
+.map-search-row:hover{background:var(--g1,#F5F5F5)}
+.map-search-row .msr-n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-search-row .msr-l{color:var(--g3,#999);font-size:8.5px;flex-shrink:0}
+.map-search-none{padding:6px 8px;font-size:10.5px;color:var(--g3,#999)}
+@media (max-width:768px){
+  .map-coordbar{font-size:9px;gap:8px}
+  .map-coordbar .mcb-utm{min-width:0;flex:1 0 100%;order:3}
+}
 /* Y351 -- incremental reveal, shared by Task & Alert, Daftar Kegiatan and
    the Dashboard cards. The per-list CSS caps below still paint the first
    screenful before any JS runs; once the reader asks for more, .open (or
