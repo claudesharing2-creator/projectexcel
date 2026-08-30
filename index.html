@@ -7165,9 +7165,16 @@ function renderCalendar(){
 
 
     // Sort: Cancelled go to bottom
+    // Y431: kegiatan non-sampling (Offshore Dumping, Other, Perjalanan, dst)
+    // dikumpulkan SESUDAH kegiatan sampling supaya keduanya tidak
+    // berselang-seling dalam satu sel. Urutan "batal paling bawah" yang sudah
+    // ada tetap menjadi kunci pertama, jadi perilaku lama tidak berubah.
+    const CAL_NONSAMPLING=new Set(['Offshore Dumping','Dumping Area','Other','Perjalanan','Holiday','Maintenance']);
+    const _nonSamp=e=>CAL_NONSAMPLING.has(e.type)?1:0;
     const sorted=[...devts].sort((a,b)=>{
       const ca=a.status==='Cancelled'?1:0, cb2=b.status==='Cancelled'?1:0;
-      return ca-cb2;
+      if(ca!==cb2)return ca-cb2;
+      return _nonSamp(a)-_nonSamp(b);
     });
 
     // PPC cascade: if sampling event has no PPC, inherit from previous event; skip for non-sampling and synthetic
@@ -7183,7 +7190,18 @@ function renderCalendar(){
     });
 
     // Show ALL events (no truncation)
+    // Y431: garis tipis sekali saja, tepat di batas sampling -> non-sampling,
+    // dan HANYA kalau kedua kelompok sama-sama ada di sel itu. Tidak ada yang
+    // disembunyikan -- ini murni penanda batas, bukan penyaring.
+    let _sepPasang=false;
     evtsWithPPC.forEach(ev=>{
+      if(!_sepPasang && ev.status!=='Cancelled' && _nonSamp(ev)
+         && cell.querySelector('.chip')){
+        const sep=document.createElement('div');
+        sep.className='cal-sep';
+        cell.appendChild(sep);
+        _sepPasang=true;
+      }
       const chip=document.createElement('div');
       const cls=getChipClass(ev);
       chip.className=`chip ${cls}`;
@@ -37167,6 +37185,17 @@ html[data-theme="anjungan"] body [style*="color:#0F5C8C" i]{color:#7FB6D6!import
   .busy-ring,.ld-enter .ld-spin{animation-duration:2.4s}
   #busy-ov,#busy-ov .busy-card{transition:none}
 }
+
+/* ===== Y431: kalender mengikuti isi ==================================== */
+/* grid-auto-rows:1fr membagi rata tinggi wadah sehingga sel berisi 1 chip
+   setinggi sel berisi 5 chip. Diganti minmax(): tetap punya tinggi minimum
+   supaya sel kosong tidak gepeng, tapi tumbuh mengikuti isi. */
+.cal-body{grid-auto-rows:minmax(74px,auto)!important;flex:0 0 auto!important}
+.cal-grid{min-height:0!important}
+/* Pemisah antara kelompok sampling dan non-sampling. Memakai currentColor
+   supaya ikut terbaca di tema gelap; rgba hitam mati akan hilang di sana. */
+.cal-sep{height:1px;margin:4px 3px 3px;background:currentColor;opacity:.16;border-radius:1px}
+.ppc-icon-row{margin-top:4px;padding-top:4px}
 </style>
 <script id="mobile-ux-v2-js">
 (function(){
