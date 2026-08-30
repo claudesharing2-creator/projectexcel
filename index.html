@@ -4314,6 +4314,121 @@ function renderDashboard(){
   if(grid)_dashGridObs.observe(grid);
 }
 window.renderDashboard=renderDashboard;
+/* ==== Y429: lapisan "sedang bekerja" =================================== */
+/* Penguncian di sini BUKAN sekadar menutupi layar: elemen penutupnya sendiri
+   yang menerima klik (karena menutupi seluruh viewport), ditambah penahan
+   keydown pada fase capture supaya Tab/Enter tidak bisa menjangkau tombol di
+   belakangnya. Tanpa penahan papan tik, layar terlihat terkunci padahal
+   sebenarnya masih bisa dioperasikan lewat keyboard. */
+function _busyEl(){
+  var ov=document.getElementById('busy-ov');
+  if(ov)return ov;
+  ov=document.createElement('div');
+  ov.id='busy-ov';
+  ov.setAttribute('role','alertdialog');
+  ov.setAttribute('aria-busy','true');
+  ov.innerHTML='<div class="busy-card">'
+    +'<div class="busy-ring"></div>'
+    +'<div class="busy-title" id="busy-title">Sedang bekerja…</div>'
+    +'<div class="busy-sub" id="busy-sub"></div>'
+    +'<div class="busy-bar" id="busy-bar"><i></i></div>'
+    +'<div class="busy-note">Mohon tunggu — jangan tutup atau muat ulang halaman.</div>'
+    +'</div>';
+  document.body.appendChild(ov);
+  return ov;
+}
+function _busyKeyGuard(ev){
+  if(!window._busyOn)return;
+  // Escape sengaja TIDAK dikecualikan: proses tulis ke IndexedDB/localStorage
+  // tidak bisa dibatalkan di tengah jalan, jadi memberi jalan keluar palsu
+  // justru menyesatkan.
+  ev.stopPropagation();
+  ev.preventDefault();
+}
+function _busyShow(title,sub){
+  var ov=_busyEl();
+  var t=document.getElementById('busy-title'); if(t)t.textContent=title||'Sedang bekerja…';
+  var s=document.getElementById('busy-sub');   if(s)s.textContent=sub||'';
+  var b=document.getElementById('busy-bar');   if(b){b.classList.remove('on');b.firstChild.style.width='0';}
+  if(!window._busyOn){
+    window._busyOn=true;
+    document.addEventListener('keydown',_busyKeyGuard,true);
+  }
+  // paksa satu frame supaya transisi opacity benar-benar berjalan
+  requestAnimationFrame(function(){ov.classList.add('on');});
+  return ov;
+}
+function _busyStep(sub,done,total){
+  var s=document.getElementById('busy-sub'); if(s&&sub!=null)s.textContent=sub;
+  var b=document.getElementById('busy-bar');
+  if(b&&total){
+    b.classList.add('on');
+    b.firstChild.style.width=Math.max(0,Math.min(100,Math.round((done/total)*100)))+'%';
+  }
+}
+function _busyHide(){
+  window._busyOn=false;
+  document.removeEventListener('keydown',_busyKeyGuard,true);
+  var ov=document.getElementById('busy-ov');
+  if(!ov)return;
+  ov.classList.remove('on');
+  setTimeout(function(){if(ov&&ov.parentNode&&!window._busyOn)ov.parentNode.removeChild(ov);},220);
+}
+/* Dipakai untuk pekerjaan yang SELALU harus melepas kuncinya, termasuk saat
+   gagal. Tanpa `finally`, satu kesalahan di tengah akan meninggalkan aplikasi
+   terkunci selamanya -- kegagalan yang jauh lebih buruk daripada tidak ada
+   penguncian sama sekali. */
+async function _busyRun(title,sub,fn){
+  _busyShow(title,sub);
+  try{return await fn();}
+  finally{_busyHide();}
+}
+window._busyShow=_busyShow;window._busyStep=_busyStep;window._busyHide=_busyHide;window._busyRun=_busyRun;
+
+/* Boot: selama data belum selesai dipulihkan dari IndexedDB, tombol "Masuk
+   Dashboard" dikunci dan menunjukkan bahwa ada yang sedang berjalan. Ini yang
+   membuat "tunggu sampai siap" terlihat, bukan sekadar toast yang lewat. */
+(function(){
+  var armed=false;
+  function arm(){
+    if(armed)return;
+    var b=document.querySelector('.ld-enter');
+    if(!b)return;
+    // Penanda boot baru disetel jauh di bawah berkas ini (skrip pemulihan data
+    // ada di bagian akhir), sedangkan blok ini berjalan di awal. Jadi selama
+    // nilainya masih `undefined`, keputusannya BELUM bisa diambil -- teruskan
+    // menunggu. Menganggapnya "sudah siap" di titik itu membuat penguncian
+    // tidak pernah terpasang sama sekali; persis itu yang terjadi dan
+    // tertangkap oleh uji boot lambat.
+    if(typeof window._dataBootFinished!=='boolean')return;
+    armed=true;
+    if(window._dataBootFinished!==false)return;   // sudah siap: jangan berkedip
+    var orig=b.innerHTML;
+    b.classList.add('ld-busy');
+    b.disabled=true;
+    b.innerHTML='<span class="ld-spin"></span>Menyiapkan data…';
+    var restore=function(){
+      b.disabled=false;
+      b.classList.remove('ld-busy');
+      b.innerHTML=orig;
+    };
+    if(typeof window._onDataReady==='function')window._onDataReady(restore);
+    else setTimeout(restore,4000);
+    // Jaring pengaman: kalau pemulihan data tidak pernah selesai (mis. IndexedDB
+    // diblokir browser), tombolnya tetap harus bisa dipakai daripada aplikasi
+    // terkunci selamanya.
+    setTimeout(function(){if(b.disabled)restore();},15000);
+  }
+  // Halaman depan dibuat lewat skrip, jadi belum tentu ada saat ini. Dicoba
+  // beberapa kali sebentar, lalu berhenti -- bukan pengamat yang hidup terus.
+  // Dicoba lebih lama dari sebelumnya karena yang ditunggu bukan hanya
+  // munculnya tombol, tapi juga munculnya penanda boot itu sendiri.
+  var tries=0;
+  var iv=setInterval(function(){arm();if(armed||++tries>200)clearInterval(iv);},50);
+  if(document.readyState!=='loading')arm();
+  else document.addEventListener('DOMContentLoaded',arm);
+})();
+/* ==== akhir Y429 ======================================================= */
 /* ==== Y426: Dashboard Utama ============================================ */
 function _dashMode(){
   try{return localStorage.getItem('env26_dash_mode')==='board'?'board':'utama';}catch(e){return 'utama';}
@@ -14667,19 +14782,23 @@ async function _dpLoaderFetchCf(){
 }
 function _dpLoaderPickFile(file){
   if(!file)return;
+  if(typeof _busyShow==='function')_busyShow('Membaca berkas Data Pack','Membuka '+(file.name||'berkas')+'…');
+  var done=function(){if(typeof _busyHide==='function')_busyHide();};
   var rd=new FileReader();
   rd.onload=function(){
     var pack;
     try{pack=JSON.parse(String(rd.result||''));}
-    catch(e){if(typeof toast==='function')toast('\u274c Berkas itu bukan JSON yang sah.');return;}
+    catch(e){done();if(typeof toast==='function')toast('\u274c Berkas itu bukan JSON yang sah.');return;}
     if(!pack||pack.format!=='env26-datapack'){
+      done();
       if(typeof toast==='function')toast('\u274c Berkas itu bukan Data Pack (format tidak dikenal).');
       return;
     }
     window._dpLoaderPack=pack;window._dpLoaderSrc='berkas '+(file.name||'lokal');
     _dpLoaderRefresh();
+    done();
   };
-  rd.onerror=function(){if(typeof toast==='function')toast('\u274c Gagal membaca berkas.');};
+  rd.onerror=function(){done();if(typeof toast==='function')toast('\u274c Gagal membaca berkas.');};
   rd.readAsText(file);
 }
 async function _dpLoaderApply(){
@@ -14711,6 +14830,7 @@ async function _dpLoaderApply(){
 }
 async function _dpLoaderRun(pack,sel,inPack){
   var ov=document.getElementById('dp-loader-ov');if(ov)ov.remove();
+  if(typeof _busyShow==='function')_busyShow('Memuat Data Pack','Menyiapkan…');
   // inPack[id] = berapa yang dibawa pack untuk kelompok itu. Dicentang TAPI
   // tidak ada di pack berarti "biarkan apa adanya", bukan "muat" dan bukan
   // "hapus". Tanpa pembedaan ini, memuat pack lama yang tidak memuat suatu
@@ -14776,6 +14896,13 @@ async function _dpLoaderRun(pack,sel,inPack){
   };
   for(var i=0;i<DP_GROUPS.length;i++){
     var g=DP_GROUPS[i];
+    if(typeof _busyStep==='function'){
+      _busyStep((sel[g.id]?'Menyimpan ':'Mengeluarkan ')+(g.label||g.id)+'…',i,DP_GROUPS.length+1);
+      // Beri satu frame supaya teks & bilah kemajuan benar-benar tergambar;
+      // tanpa ini seluruh putaran selesai dalam satu tugas dan layar hanya
+      // menampilkan bagian terakhir.
+      await new Promise(function(r){requestAnimationFrame(function(){r();});});
+    }
     for(var a=0;a<(g.ls||[]).length;a++){
       if(sel[g.id])await writeKey(g.ls[a]); else await clearKey(g.ls[a]);
     }
@@ -14796,6 +14923,7 @@ async function _dpLoaderRun(pack,sel,inPack){
     if(sel.__other)await writeKey(oks[c]); else await clearKey(oks[c]);
   }
   if(failed.length){
+    if(typeof _busyHide==='function')_busyHide();
     var m='\u26a0 Sebagian data GAGAL tersimpan (localStorage browser kemungkinan penuh): '+failed.join(', ')
       +'. Bagian itu TIDAK ter-update meski proses selesai.';
     if(typeof toast==='function')toast(m);
@@ -14803,7 +14931,11 @@ async function _dpLoaderRun(pack,sel,inPack){
     return;
   }
   var n=0;DP_GROUPS.forEach(function(g){if(sel[g.id])n++;});
+  if(typeof _busyStep==='function')_busyStep('Selesai. Memuat ulang halaman…',DP_GROUPS.length+1,DP_GROUPS.length+1);
   if(typeof toast==='function')toast('\u2705 '+n+' bagian diterapkan. Halaman dimuat ulang\u2026');
+  // Sengaja TIDAK memanggil _busyHide di sini: halaman akan dimuat ulang, dan
+  // membuka kuncinya lebih dulu justru memberi celah bagi pemilik untuk mulai
+  // mengetik sesuatu yang pasti hilang beberapa ratus milidetik kemudian.
   setTimeout(function(){location.reload();},900);
 }
 window._dpOpenLoader=_dpOpenLoader;
@@ -30094,7 +30226,9 @@ async function _dpBuildPack(){
   };
 }
 async function _dpExport(){
-  const pack=await _dpBuildPack();
+  const pack=(typeof _busyRun==='function')
+    ? await _busyRun('Menyiapkan Data Pack','Mengumpulkan seluruh data…',function(){return _dpBuildPack();})
+    : await _dpBuildPack();
   const blob=new Blob([JSON.stringify(pack)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -30109,6 +30243,9 @@ function _dpApplyPackObj(pack,srcLabel){
   if(!pack||pack.format!=='env26-datapack'){if(typeof toast==='function')toast('❌ Bukan Data Pack (format tidak dikenal).');return;}
   if(typeof _dpCheckVersion==='function')_dpCheckVersion(pack.version,'Data Pack ini');
   const doIt=async function(){
+    // Y429: jalur lama ini masih terjangkau (mis. dari berkas), jadi ikut
+    // dikunci seperti jalur utama _dpLoaderRun.
+    if(typeof _busyShow==='function')_busyShow('Memuat Data Pack','Menyimpan data ke perangkat…');
     // recording harian + hasil sampling: simpan penuh ke IndexedDB (bisa >5MB) lalu merge
     await _dpIdbSet('current',{debitDaily:pack.debitDaily||{},phDaily:pack.phDaily||{},hsHistoris:pack.hsHistoris||null,recapArsip:pack.recapArsip||null,produksi:pack.produksi||null,hasilSeed:pack.hasilSeed||null,importedAt:new Date().toISOString(),createdAt:pack.createdAt});
     // Y400: layer peta GIS ikut di dalam Data Pack (gzip+base64). Simpan ke
@@ -30141,6 +30278,7 @@ function _dpApplyPackObj(pack,srcLabel){
       }
     }
     if(_dpQuotaFailedKeys.length){
+      if(typeof _busyHide==='function')_busyHide();
       if(typeof toast==='function')toast('⚠ GAGAL menyimpan sebagian data (kemungkinan localStorage browser penuh/kuota terlampaui): '+_dpQuotaFailedKeys.join(', ')+'. Data ini TIDAK ter-update meski Data Pack "berhasil" dimuat -- coba bersihkan data lama/gunakan browser lain, lalu import ulang.');
       if(typeof _uiConfirm==='function')_uiConfirm('⚠ Sebagian data GAGAL tersimpan saat memuat Data Pack (localStorage browser kemungkinan penuh):\n\n'+_dpQuotaFailedKeys.join(', ')+'\n\nData ini tidak ter-update meski proses "berhasil". Coba kosongkan data lama yang tidak perlu, atau gunakan browser lain, lalu import ulang Data Pack.',function(){});
     }else if(typeof toast==='function')toast('✅ Data Pack dimuat. Halaman di-refresh untuk menerapkan semua data...');
@@ -30220,12 +30358,18 @@ async function _dpUploadCloudflare(silent){
     return;
   }
   if(!silent&&typeof toast==='function')toast('⏳ Mengunggah Data Pack ke Cloudflare...');
+  // Auto-sync diam-diam (silent) sengaja TIDAK dikunci: itu berjalan sendiri di
+  // latar belakang, dan mengunci layar tanpa pemilik meminta apa pun justru
+  // mengganggu. Yang dikunci hanya unggahan yang memang dia klik.
+  if(!silent&&typeof _busyShow==='function')_busyShow('Mengunggah Data Pack','Menyusun dan mengirim ke Cloudflare…');
   try{
     const pack=await _dpBuildPack();
     const res=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':cfg.adminToken},body:JSON.stringify(pack)});
     if(!res.ok)throw new Error('HTTP '+res.status);
+    if(!silent&&typeof _busyHide==='function')_busyHide();
     if(typeof toast==='function')toast(silent?'🔄 Auto-sync: Data Pack terbaru tersimpan ke Cloudflare.':'✅ Data Pack terbaru berhasil diunggah ke Cloudflare.');
   }catch(e){
+    if(!silent&&typeof _busyHide==='function')_busyHide();
     if(typeof toast==='function')toast('❌ Gagal upload ke Cloudflare ('+(e&&e.message||e)+').');
   }
 }
@@ -36954,6 +37098,36 @@ html[data-theme="romer"] body [style*="color:#0F5C8C" i]{color:#9EC5E8!important
 html[data-theme="anjungan"] body [style*="color:#21618c" i],
 html[data-theme="anjungan"] body [style*="color:#1a5276" i],
 html[data-theme="anjungan"] body [style*="color:#0F5C8C" i]{color:#7FB6D6!important}
+
+/* ===== Y429: lapisan "sedang bekerja" =================================== */
+#busy-ov{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+  background:rgba(12,16,22,.42);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  opacity:0;transition:opacity .18s ease}
+#busy-ov.on{opacity:1}
+#busy-ov .busy-card{background:var(--white);color:var(--text);border:1px solid var(--g2);
+  border-radius:16px;padding:22px 26px;min-width:250px;max-width:min(92vw,380px);text-align:center;
+  box-shadow:0 18px 50px rgba(0,0,0,.28);transform:translateY(6px) scale(.98);
+  transition:transform .18s cubic-bezier(.2,.85,.25,1)}
+#busy-ov.on .busy-card{transform:none}
+.busy-ring{width:38px;height:38px;margin:0 auto 12px;border-radius:50%;
+  border:3px solid var(--g1);border-top-color:#2e9e5b;animation:busySpin .8s linear infinite}
+@keyframes busySpin{to{transform:rotate(360deg)}}
+.busy-title{font-size:13px;font-weight:800;letter-spacing:-.2px}
+.busy-sub{font-size:11px;color:var(--g3);margin-top:5px;line-height:1.5;min-height:1.5em}
+.busy-bar{height:5px;border-radius:4px;background:var(--g1);overflow:hidden;margin-top:12px;display:none}
+.busy-bar.on{display:block}
+.busy-bar i{display:block;height:100%;border-radius:4px;background:#2e9e5b;width:0;
+  transition:width .25s ease}
+.busy-note{font-size:9.5px;color:var(--g3);margin-top:10px;line-height:1.45}
+/* tombol Masuk pada halaman depan selama data belum siap */
+.ld-enter.ld-busy{opacity:.72;cursor:progress}
+.ld-enter .ld-spin{display:inline-block;width:11px;height:11px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.35);border-top-color:#fff;margin-right:7px;
+  vertical-align:-1px;animation:busySpin .8s linear infinite}
+@media (prefers-reduced-motion:reduce){
+  .busy-ring,.ld-enter .ld-spin{animation-duration:2.4s}
+  #busy-ov,#busy-ov .busy-card{transition:none}
+}
 </style>
 <script id="mobile-ux-v2-js">
 (function(){
