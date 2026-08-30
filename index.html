@@ -4429,6 +4429,42 @@ window._busyShow=_busyShow;window._busyStep=_busyStep;window._busyHide=_busyHide
   else document.addEventListener('DOMContentLoaded',arm);
 })();
 /* ==== akhir Y429 ======================================================= */
+/* ==== Y430: loading satu layar saat aplikasi dibuka ==================== */
+(function(){
+  function startBootBusy(){
+    if(!document.body){document.addEventListener('DOMContentLoaded',startBootBusy);return;}
+    if(window._bootBusyArmed)return;
+    // Penanda boot disetel oleh skrip pemulihan data di bagian akhir berkas
+    // ini, jauh SESUDAH blok ini berjalan. Selama nilainya belum bertipe
+    // boolean, keputusan belum bisa diambil -- tunggu, jangan disimpulkan
+    // "sudah siap". Pelajaran dari Y429: menyimpulkan terlalu dini membuat
+    // penguncian tidak pernah terpasang sama sekali.
+    if(typeof window._dataBootFinished!=='boolean')return;
+    window._bootBusyArmed=true;
+    if(window._dataBootFinished===true)return;      // sudah siap: jangan berkedip
+    if(typeof _busyShow!=='function')return;
+    _busyShow('Menyiapkan data','Memulihkan data dari perangkat ini…');
+    var lepas=function(){
+      if(window._bootBusyDone)return;
+      window._bootBusyDone=true;
+      if(typeof _busyHide==='function')_busyHide();
+      // Angka di halaman depan dihitung sekali saat halaman dibuat, yaitu
+      // sebelum data selesai dipulihkan -- itulah sebabnya pemilik melihat
+      // 0/0/0/0 lalu berubah. Dihitung ulang tepat sebelum layar dibuka.
+      try{if(typeof _ldStats==='function')_ldStats();}catch(e){}
+    };
+    if(typeof window._onDataReady==='function')window._onDataReady(lepas);
+    // Jaring pengaman: jangan pernah mengunci selamanya.
+    setTimeout(lepas,20000);
+  }
+  var n=0;
+  var iv=setInterval(function(){
+    startBootBusy();
+    if(window._bootBusyArmed||++n>200)clearInterval(iv);
+  },50);
+  startBootBusy();
+})();
+/* ==== akhir Y430 ======================================================= */
 /* ==== Y426: Dashboard Utama ============================================ */
 function _dashMode(){
   try{return localStorage.getItem('env26_dash_mode')==='board'?'board':'utama';}catch(e){return 'utama';}
@@ -30226,9 +30262,9 @@ async function _dpBuildPack(){
   };
 }
 async function _dpExport(){
-  const pack=(typeof _busyRun==='function')
-    ? await _busyRun('Menyiapkan Data Pack','Mengumpulkan seluruh data…',function(){return _dpBuildPack();})
-    : await _dpBuildPack();
+  if(typeof _busyShow==='function')_busyShow('Menyiapkan Data Pack','Mengumpulkan seluruh data…');
+  try{
+  const pack=await _dpBuildPack();
   const blob=new Blob([JSON.stringify(pack)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -30236,6 +30272,9 @@ async function _dpExport(){
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
   if(typeof toast==='function')toast('✅ Data Pack diexport — simpan file ini sebagai backup/save state.');
+  }finally{
+    if(typeof _busyHide==='function')_busyHide();
+  }
 }
 // shared "apply a parsed Data Pack object" core, reused whether the pack
 // came from a local file picker or a fetch() from the web-hosted copy
