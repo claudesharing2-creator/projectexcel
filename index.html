@@ -17421,8 +17421,15 @@ function _epRegisterLabel(layer,text,forcePermanent){
   }
   const ghost=_epMakeLineLabelMarker(layer,text);
   if(!ghost)return null;
-  ghost.bindTooltip(ghost._epLabelHtml,{permanent:!!forcePermanent,direction:'center',className:cls+' ep-map-label-line'});
-  if(!forcePermanent)window._epLabelRegistry.push(ghost);
+  // Y435: label garis malas. Yang didaftarkan cuma catatan; markernya
+  // dibuat di _epUpdateLabelVisibility saat labelnya memang harus tampil.
+  if(!forcePermanent){
+    window._epLabelRegistry.push({_epLazy:true,_epLatLng:ghost.getLatLng(),
+      _epHtml:ghost._epLabelHtml,_epCls:cls+' ep-map-label-line',
+      _epOwner:layer,_epMarker:null});
+    return null;
+  }
+  ghost.bindTooltip(ghost._epLabelHtml,{permanent:true,direction:'center',className:cls+' ep-map-label-line'});
   return ghost;
 }
 function _epUpdateLabelVisibility(){
@@ -17433,6 +17440,27 @@ function _epUpdateLabelVisibility(){
   let openCount=0;
   window._epLabelRegistry.forEach(marker=>{
     try{
+      if(marker&&marker._epLazy){
+        // Y435: catatan label garis — marker dibuat/dibuang sesuai kebutuhan.
+        // `_epOwner._map` memberitahu apakah layer pemiliknya sedang di peta,
+        // supaya label tidak tertinggal setelah layernya dimatikan.
+        const hidup=!!(marker._epOwner&&marker._epOwner._map);
+        const tampil=show&&hidup&&bounds.contains(marker._epLatLng)&&openCount<maxOpen;
+        if(tampil){
+          if(!marker._epMarker){
+            const m=L.marker(marker._epLatLng,{icon:L.divIcon({className:'',html:'',iconSize:[0,0]}),
+              interactive:false,keyboard:false});
+            m.bindTooltip(marker._epHtml,{permanent:true,direction:'center',className:marker._epCls});
+            m.addTo(map);
+            marker._epMarker=m;
+          }
+          openCount++;
+        } else if(marker._epMarker){
+          try{map.removeLayer(marker._epMarker);}catch(e2){}
+          marker._epMarker=null;
+        }
+        return;
+      }
       const isOpen=marker.isTooltipOpen&&marker.isTooltipOpen();
       if(!show){if(isOpen)marker.closeTooltip();return;}
       const ll=typeof marker.getLatLng==='function'?marker.getLatLng():(marker.getBounds?marker.getBounds().getCenter():null);
@@ -17483,10 +17511,11 @@ function _epActiveApplyToMap(map){
     const gj=GIS_LAYERS_RAW[a.key];if(!gj)return;
     const feature=gj.features[a.featureIdx];if(!feature)return;
     const single={type:'FeatureCollection',features:[feature]};
+    const _actRend=L.canvas();  // Y434: titik Active Layer ikut canvas juga
     const lyr=L.geoJSON(single,{
-      renderer:L.canvas(),
+      renderer:_actRend,
       style:()=>({color:'#e65100',weight:5,fillColor:'#ffab00',fillOpacity:0.45}),
-      pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:8,color:'#e65100',weight:3,fillColor:'#ffab00',fillOpacity:0.95}),
+      pointToLayer:(f,latlng)=>L.circleMarker(latlng,{renderer:_actRend,radius:8,color:'#e65100',weight:3,fillColor:'#ffab00',fillOpacity:0.95}),
     });
     lyr.eachLayer(l=>{
       l.bindPopup(`<div style="font-family:inherit;font-weight:700;font-size:11.5px;color:#e65100">🎯 ${_gisEsc(a.name)}</div>`);
@@ -17742,10 +17771,14 @@ function _gisBuildLayer(key){
   // this layer off/on takes its line labels with it instead of leaving
   // orphaned ghosts on the map.
   const _lineGhosts=[];
+  // Y434: titik GIS ikut canvas — satu renderer dipakai bersama oleh garis,
+  // poligon, DAN titik layer ini. Tanpa `renderer` di sini, circleMarker
+  // jatuh ke renderer bawaan peta (SVG) dan tiap titik jadi satu <path>.
+  const _gisRend=L.canvas();
   const lyr=L.geoJSON(gj,{
-    renderer:L.canvas(),
+    renderer:_gisRend,
     style:()=>({color:col,weight:2,fillColor:col,fillOpacity:0.18}),
-    pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:5,color:'#fff',weight:1.5,fillColor:col,fillOpacity:0.9}),
+    pointToLayer:(f,latlng)=>L.circleMarker(latlng,{renderer:_gisRend,radius:5,color:'#fff',weight:1.5,fillColor:col,fillOpacity:0.9}),
     onEachFeature:(f,layer)=>{
       const props=f.properties||{};
       const keys=Object.keys(props).filter(k=>props[k]!=null&&props[k]!=='');
@@ -17782,6 +17815,14 @@ function _gisApplyToggle(key,on,map){
   } else {
     window._gisOn.delete(key);
     if(window._gisInst[key]&&map&&map.hasLayer(window._gisInst[key]))map.removeLayer(window._gisInst[key]);
+  }
+  // Y435: label garis sekarang marker terpisah yang dibuat sesuai kebutuhan,
+  // jadi mematikan layer harus ikut membuang labelnya sekarang juga, bukan
+  // menunggu zoom/geser berikutnya. Ditunda satu tick supaya menyalakan 41
+  // layer sekaligus hanya menjalankan penyegaran ini satu kali.
+  if(typeof _epUpdateLabelVisibility==='function'){
+    clearTimeout(window._epLblTimer);
+    window._epLblTimer=setTimeout(_epUpdateLabelVisibility,0);
   }
 }
 window._gisPanelOpen = window._gisPanelOpen || false;
