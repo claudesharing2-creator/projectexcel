@@ -37196,6 +37196,25 @@ html[data-theme="anjungan"] body [style*="color:#0F5C8C" i]{color:#7FB6D6!import
    supaya ikut terbaca di tema gelap; rgba hitam mati akan hilang di sana. */
 .cal-sep{height:1px;margin:4px 3px 3px;background:currentColor;opacity:.16;border-radius:1px}
 .ppc-icon-row{margin-top:4px;padding-top:4px}
+
+/* ===== Y432: desktop dipakai penuh ===================================== */
+#envprog-content,#hasil-content,#laporan-content,#panduan-content,
+#envtools-content,#rfa-content{
+  max-width:none!important;padding-left:18px;padding-right:18px}
+.dmain-wrap{max-width:none!important}
+@media(max-width:768px){
+  #envprog-content,#hasil-content,#laporan-content,#panduan-content,
+  #envtools-content,#rfa-content{padding-left:0;padding-right:0}
+}
+
+/* ===== Y433: kolom dalam ikut penuh ==================================== */
+#envtools-content .et-card[style*="max-width:760px"],
+#envtools-content .et-card[style*="max-width:820px"],
+#envtools-content .et-card[style*="max-width:900px"],
+#envtools-content .et-card[style*="max-width:1000px"],
+#envtools-content div[style*="max-width:900px"][style*="margin:0 auto"],
+#panduan-content div[style*="max-width:900px"][style*="margin:0 auto"]{
+  max-width:none!important}
 </style>
 <script id="mobile-ux-v2-js">
 (function(){
