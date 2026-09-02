@@ -17089,7 +17089,7 @@ function renderEnvProgram(){
     </div>`}
     <div style="font-size:10px;font-weight:700;letter-spacing:.5px;color:#666;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #e0e0e0">${TITLES[_epSub]||''}</div>
   </div>
-  ${_epSub==='map'?`<div style="display:flex;gap:10px;flex:1;min-height:0">
+  ${_epSub==='map'?`<div class="ep-map-row" style="display:flex;gap:10px;flex:1;min-height:0">
       <div id="ep-map-col" style="flex:1;min-width:0;position:relative">
         <div id="ep-map" style="width:100%;height:100%;border-radius:8px;border:1px solid #ddd"></div>
         <button id="ep-sidebar-toggle" onclick="_epToggleSidebar()" title="Sembunyikan/tampilkan panel filter" style="position:absolute;top:8px;right:8px;z-index:1000;border:1px solid #ddd;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.18)">☰</button>
@@ -37256,6 +37256,16 @@ html[data-theme="anjungan"] body [style*="color:#0F5C8C" i]{color:#7FB6D6!import
 #envtools-content div[style*="max-width:900px"][style*="margin:0 auto"],
 #panduan-content div[style*="max-width:900px"][style*="margin:0 auto"]{
   max-width:none!important}
+
+/* ===== Y436: peta ENV Program bertumpuk di HP ========================== */
+@media(max-width:768px){
+  .ep-map-row{flex-direction:column!important;flex:0 0 auto!important;
+    min-height:0!important}
+  .ep-map-row>#ep-map-col{flex:0 0 auto!important;width:100%!important;
+    height:60vh!important;min-height:280px!important}
+  .ep-map-row>#ep-map-sidebar{width:100%!important;flex-shrink:1!important;
+    max-height:none!important;overflow-y:visible!important}
+}
 </style>
 <script id="mobile-ux-v2-js">
 (function(){
