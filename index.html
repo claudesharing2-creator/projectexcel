@@ -27022,6 +27022,35 @@ function _rsExportFromArr(arr,origName){
     }catch(e){if(info)info.innerHTML='<span style="color:#c62828;font-size:10.5px">Gagal membaca: '+_ep(e.message)+'</span>';}
 }
 window._rsExportDirect=_rsExportDirect;
+// Y457: satu pintu menulis sel untuk ekspor berbasis baris. Coba timpa sel
+// yang sudah ada; kalau selnya memang belum ada di lembar itu, BUAT (sama
+// seperti yang sudah lama dilakukan ekspor drainase) -- dan kalau tetap tidak
+// bisa, hitung sebagai gagal, jangan diam.
+function _rsPutCell(xml,addr,val,style,st){
+  var r=_rsSetCell(xml,addr,val);
+  if(r.ok){st.sel++;return r.xml;}
+  var x2=_rsWriteCell(xml,addr,val,style);
+  if(x2!==xml){st.sel++;st.selDibuat++;return x2;}
+  st.selGagal++;return xml;
+}
+// Laporan bersama untuk ekspor RFA & CoC / Backup 2026 / ENV Mon Program.
+function _rsExpReportHtml(judul,s){
+  var h='<div style="font-size:10.5px;color:#1565c0;font-weight:700">✓ '+s.baris+' '+judul
+    +' ('+s.sel+' sel) ditimpa. Rumus &amp; format asli utuh. Berkas terunduh.</div>';
+  var baris=[];
+  if(s.selDibuat)baris.push(['var(--g4)',s.selDibuat+' sel dibuat baru karena di berkas aslinya sel itu memang belum ada.']);
+  if(s.selGagal)baris.push(['#c62828',s.selGagal+' sel <b>gagal ditulis</b> — barisnya tidak ada di lembar itu.']);
+  if(s.selRumus)baris.push(['var(--g4)',s.selRumus+' sel rumus sengaja tidak ditimpa supaya rumusnya tetap utuh.']);
+  if(s.recordTanpaBaris)baris.push(['#b26a00',s.recordTanpaBaris+' data di aplikasi <b>tidak punya baris</b> di berkas ini, jadi nilainya tidak ikut keluar.']);
+  if(s.barisTanpaRecord)baris.push(['var(--g4)',s.barisTanpaRecord+' baris di berkas tidak punya padanan di aplikasi — dibiarkan apa adanya.']);
+  if(s.tabrakan)baris.push(['#c62828',s.tabrakan+' baris jadi tujuan <b>lebih dari satu</b> data (nama kembar). Hanya yang terakhir tersimpan — periksa penamaannya.']);
+  if(!baris.length)baris.push(['#2e7d32','Semua data yang punya baris tujuan berhasil ditulis; tidak ada yang dilewati.']);
+  baris.forEach(function(b){
+    h+='<div style="font-size:10px;color:'+b[0]+';margin-top:3px">'+(b[0]==='#2e7d32'?'✓ ':'• ')+b[1]+'</div>';
+  });
+  return h;
+}
+window._rsExpReportHtml=_rsExpReportHtml;
 function _rsRunExport(){
   if(!_rsExportBuf)return;
   var info=document.getElementById('rs-exp-info');
@@ -27063,60 +27092,86 @@ function _rsRunExport(){
       var progIdx2=_rsExportBuf.progIdx, spP2=_rsExportBuf.sp;
       var byKeyP={}; progIdx2.forEach(function(r){r.keys.forEach(function(k){if(!(k in byKeyP))byKeyP[k]=r;});});
       var getPP=_rsSheetPath(files);
-      var xmlCacheP={}; // sheet path -> xml (multiple sheets may be touched: Monthly + Semesterly)
-      var patchedP=0,cellsP=0;
+      var xmlCacheP={}; // sheet path -> xml (Monthly + Semesterly bisa tersentuh sekaligus)
+      // Y457: dua titik yang namanya menormal ke kunci yang sama akan menunjuk
+      // SATU baris raw. Yang terakhir menang dan yang lain hilang tanpa jejak,
+      // jadi barisnya dihitung dan tabrakannya dilaporkan.
+      var stP={sel:0,selDibuat:0,selGagal:0,selRumus:0,barisTanpaRecord:0,recordTanpaBaris:0,tabrakan:0};
+      var patchedP=0;
+      var barisKenaP={},kenaBarisP={};
       ['monthly','semesterly'].forEach(function(cat){
         ((spP2&&spP2[cat])||[]).forEach(function(p){
           if(p.lat_d==null||p.lng_d==null)return;
           var namesP=[p.sampleName,p.position,p.penulisan].filter(Boolean);
           var hitRow=null;
           for(var ip=0;ip<namesP.length&&!hitRow;ip++)hitRow=byKeyP[_rsNormKey(namesP[ip])];
-          if(!hitRow||hitRow.cat!==cat)return;
-          var pathP=getPP(hitRow.sheet); if(!pathP||!files[pathP])return;
+          if(!hitRow||hitRow.cat!==cat){stP.recordTanpaBaris++;return;}
+          var pathP=getPP(hitRow.sheet); if(!pathP||!files[pathP]){stP.recordTanpaBaris++;return;}
           if(xmlCacheP[pathP]==null)xmlCacheP[pathP]=fflate.strFromU8(files[pathP]);
           var xmlP=xmlCacheP[pathP];
           var didP=false;
           var addrLat=hitRow.latCol+hitRow.excelRow, addrLng=hitRow.lngCol+hitRow.excelRow;
-          if(!_rsCellIsFormula(xmlP,addrLat)){var rLat=_rsSetCell(xmlP,addrLat,{text:_rsDecToProgDms(p.lat_d,true)}); if(rLat.ok){xmlP=rLat.xml;cellsP++;didP=true;}}
-          if(!_rsCellIsFormula(xmlP,addrLng)){var rLng=_rsSetCell(xmlP,addrLng,{text:_rsDecToProgDms(p.lng_d,false)}); if(rLng.ok){xmlP=rLng.xml;cellsP++;didP=true;}}
+          var tag=hitRow.sheet+'!'+hitRow.excelRow;
+          barisKenaP[tag]=(barisKenaP[tag]||0)+1; kenaBarisP[tag]=1;
+          var sebelum=stP.sel;
+          if(_rsCellIsFormula(xmlP,addrLat))stP.selRumus++;
+          else xmlP=_rsPutCell(xmlP,addrLat,{text:_rsDecToProgDms(p.lat_d,true)},_rsColSampleStyle(xmlP,hitRow.latCol,hitRow.excelRow),stP);
+          if(_rsCellIsFormula(xmlP,addrLng))stP.selRumus++;
+          else xmlP=_rsPutCell(xmlP,addrLng,{text:_rsDecToProgDms(p.lng_d,false)},_rsColSampleStyle(xmlP,hitRow.lngCol,hitRow.excelRow),stP);
+          if(stP.sel>sebelum)didP=true;
           xmlCacheP[pathP]=xmlP;
           if(didP)patchedP++;
         });
       });
+      Object.keys(barisKenaP).forEach(function(t){if(barisKenaP[t]>1)stP.tabrakan++;});
+      progIdx2.forEach(function(rr){if(!kenaBarisP[rr.sheet+'!'+rr.excelRow])stP.barisTanpaRecord++;});
+      stP.baris=patchedP;
+      var cellsP=stP.sel;
       Object.keys(xmlCacheP).forEach(function(pathP){files[pathP]=fflate.strToU8(xmlCacheP[pathP]);});
       var bytesP=_rsWriteZip(files);
       var nmP=(_rsExportBuf.origName||'ENV_Monitoring_Program.xlsx').replace(/\.(xlsx|xls)$/i,'')+'_updated.xlsx';
       _rsDownloadZipBytes(bytesP,nmP);
-      if(info)info.innerHTML='<span style="color:#1565c0;font-size:10.5px;font-weight:700">✓ '+patchedP+' titik ('+cellsP+' sel koordinat) ditimpa di sheet Monthly/Semesterly. File terunduh.</span>';
+      if(info)info.innerHTML=(typeof _rsExpReportHtml==='function')?_rsExpReportHtml('titik koordinat',stP)
+        :('<span style="color:#1565c0;font-size:10.5px;font-weight:700">✓ '+patchedP+' titik ('+cellsP+' sel koordinat) ditimpa di sheet Monthly/Semesterly. File terunduh.</span>');
       if(typeof toast==='function')toast('✅ Raw ENV Mon Program ter-update ('+patchedP+' titik).');
       return;
     }
     if(_rsExportBuf.mode==='rfa'){
       var byNoR={}; recs.forEach(function(r){byNoR[String(r.noRfa)]=r;});
       var getPR=_rsSheetPath(files);
-      var patchedR=0,cellsR=0;
+      // Y457: hitung juga yang DILEWATI, jangan cuma yang berhasil.
+      var stR={sel:0,selDibuat:0,selGagal:0,selRumus:0,barisTanpaRecord:0,recordTanpaBaris:0,tabrakan:0};
+      var patchedR=0;
+      var kenaR={};
       loc.forEach(function(L){
         var path=getPR(L.sheet); if(!path||!files[path])return;
         var xml=fflate.strFromU8(files[path]);
         L.rows.forEach(function(rw){
-          var rec=byNoR[rw.rfa]; if(!rec)return; var did=false;
+          var rec=byNoR[rw.rfa]; if(!rec){stR.barisTanpaRecord++;return;} var did=false;
+          kenaR[rw.rfa]=1;
           _rsRfaCocFields().forEach(function(k){
             var ci=L.cols[k]; if(ci==null)return; var val=rec[k];
             if(val==null||val===''||val==='X'||val==='-')return;
             var addr=_rsColLetter(ci)+rw.excelRow;
-            if(_rsCellIsFormula(xml,addr))return;
+            if(_rsCellIsFormula(xml,addr)){stR.selRumus++;return;}
             var serial=_rsDateSerial(val);
-            var res=(serial!=null)?_rsSetCell(xml,addr,{num:serial}):_rsSetCell(xml,addr,{text:String(val)});
-            if(res.ok){xml=res.xml;cellsR++;did=true;}
+            var style=_rsColSampleStyle(xml,_rsColLetter(ci),rw.excelRow);
+            var sebelum=stR.sel;
+            xml=_rsPutCell(xml,addr,(serial!=null)?{num:serial}:{text:String(val)},style,stR);
+            if(stR.sel>sebelum)did=true;
           });
           if(did)patchedR++;
         });
         files[path]=fflate.strToU8(xml);
       });
+      Object.keys(byNoR).forEach(function(no){if(!kenaR[no])stR.recordTanpaBaris++;});
+      stR.baris=patchedR;
+      var cellsR=stR.sel;
       var bytesR=_rsWriteZip(files);
       var nmR=(_rsExportBuf.origName||'Monitoring_RFA_CoC.xlsx').replace(/\.xlsx$/i,'')+'_updated.xlsx';
       _rsDownloadZipBytes(bytesR,nmR);
-      if(info)info.innerHTML='<span style="color:#1565c0;font-size:10.5px;font-weight:700">✓ '+patchedR+' baris RFA ('+cellsR+' sel tanggal) ditimpa. Kolom rumus/ambigu utuh. File terunduh.</span>';
+      if(info)info.innerHTML=(typeof _rsExpReportHtml==='function')?_rsExpReportHtml('baris RFA',stR)
+        :('<span style="color:#1565c0;font-size:10.5px;font-weight:700">✓ '+patchedR+' baris RFA ('+cellsR+' sel tanggal) ditimpa. Kolom rumus/ambigu utuh. File terunduh.</span>');
       if(typeof toast==='function')toast('✅ Raw RFA & CoC ter-update ('+patchedR+' baris).');
       return;
     }
@@ -27125,26 +27180,38 @@ function _rsRunExport(){
       if(!path2||!files[path2]){if(typeof toast==='function')toast('⚠ Sheet 2026 tidak ada di file.');return;}
       var xml2=fflate.strFromU8(files[path2]);
       var byNo={}; loc.forEach(function(L){if(!(L.rfa in byNo))byNo[L.rfa]=L.excelRow;});
-      var patched2=0,skip2=0,cells2=0;
+      // Y457: hitung juga yang dilewati; skip2 (RFA tanpa baris) sudah ada
+      // sejak dulu dan tetap dipertahankan.
+      var st2={sel:0,selDibuat:0,selGagal:0,selRumus:0,barisTanpaRecord:0,recordTanpaBaris:0,tabrakan:0};
+      var patched2=0,skip2=0;
+      var kena2={};
       recs.forEach(function(r){
         var row=byNo[String(r.noRfa)]; if(!row){skip2++;return;}
+        kena2[String(r.noRfa)]=1;
         var did=false;
         RS_RFA2026_COLS.forEach(function(m){
           var val=r[m.field];
-          if(val==null||val===''||val==='X'||val==='-')return; // skip empties & X placeholders
+          if(val==null||val===''||val==='X'||val==='-')return; // lewati kosong & penanda X
           var addr=m.col+row;
-          if(m.guard&&_rsCellIsFormula(xml2,addr))return; // never clobber a formula cell
+          if(m.guard&&_rsCellIsFormula(xml2,addr)){st2.selRumus++;return;} // jangan pernah menimpa sel rumus
           var serial=m.date?_rsDateSerial(val):null;
-          var res=(m.date&&serial!=null)?_rsSetCell(xml2,addr,{num:serial}):_rsSetCell(xml2,addr,{text:String(val)});
-          if(res.ok){xml2=res.xml;cells2++;did=true;}
+          var style=_rsColSampleStyle(xml2,m.col,row);
+          var sebelum=st2.sel;
+          xml2=_rsPutCell(xml2,addr,(m.date&&serial!=null)?{num:serial}:{text:String(val)},style,st2);
+          if(st2.sel>sebelum)did=true;
         });
         if(did)patched2++;
       });
+      st2.recordTanpaBaris=skip2;
+      Object.keys(byNo).forEach(function(no){if(!kena2[no])st2.barisTanpaRecord++;});
+      st2.baris=patched2;
+      var cells2=st2.sel;
       files[path2]=fflate.strToU8(xml2);
       var bytes2=_rsWriteZip(files);
       var nm2=(_rsExportBuf.origName||'Monitoring_Backup.xlsx').replace(/\.xlsx$/i,'')+'_updated.xlsx';
       _rsDownloadZipBytes(bytes2,nm2);
-      if(info)info.innerHTML='<span style="color:#1565c0;font-size:10.5px;font-weight:700">✓ '+patched2+' baris RFA ('+cells2+' sel tanggal) ditimpa'+(skip2?', '+skip2+' RFA tanpa baris pencocok':'')+'. Kolom rumus/estimasi utuh. File terunduh.</span>';
+      if(info)info.innerHTML=(typeof _rsExpReportHtml==='function')?_rsExpReportHtml('baris tracker 2026',st2)
+        :'<span style="color:#1565c0;font-size:10.5px;font-weight:700">✓ '+patched2+' baris RFA ('+cells2+' sel tanggal) ditimpa'+(skip2?', '+skip2+' RFA tanpa baris pencocok':'')+'. Kolom rumus/estimasi utuh. File terunduh.</span>';
       if(typeof toast==='function')toast('✅ Raw tracker 2026 ter-update ('+patched2+' baris).');
       return;
     }
