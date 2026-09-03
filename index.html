@@ -24659,10 +24659,28 @@ function _rsRecapRunExport(files,wbx){
   });
   return sum;
 }
+// Y444: mode sinkron. 'fillblank' = hanya isi yang masih kosong (bawaan,
+// tidak pernah menimpa isian user); 'replace' = timpa apa pun yang berbeda.
+let RS_MODE=(function(){try{return localStorage.getItem('env26_rs_mode')||'fillblank';}catch(e){return 'fillblank';}})();
+function _rsSetMode(m){
+  RS_MODE=(m==='replace')?'replace':'fillblank';
+  try{localStorage.setItem('env26_rs_mode',RS_MODE);}catch(e){}
+  const el=document.getElementById('rs-mode-note');
+  if(el)el.innerHTML=_rsModeNote();
+}
+window._rsSetMode=_rsSetMode;
+function _rsModeNote(){
+  return RS_MODE==='replace'
+    ? '<b style="color:#c62828">Replace All</b> — nilai di file akan <b>menimpa</b> nilai yang sudah ada di aplikasi.'
+    : '<b style="color:#2e7d32">Fill Blank Only</b> — hanya mengisi yang masih kosong; nilai yang sudah kamu isi <b>tidak disentuh</b>.';
+}
+window._rsModeNote=_rsModeNote;
 function _rsRecapRunImport(wbx){
   var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
   var base=_rsRecapAppIndex(true); // withEmpty: empty app rows can receive imported values
-  var changed=0,same=0,unmatched=0;
+  var changed=0,same=0,unmatched=0,dilindungi=0;
+  // Y444: 'fillblank' hanya mengisi yang masih kosong.
+  var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE!=='replace');
   wbx.SheetNames.forEach(function(sn){
     var b=base[_rsNorm(sn)]; if(!b)return;
     var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
@@ -24676,13 +24694,24 @@ function _rsRecapRunImport(wbx){
         var hit=_rsRecapPick(b[kT+'‖'+kP+'‖'+mn],yr); if(!hit){unmatched++;return;}
         if(hit.row.extra&&hit.row.extra.manualId){same++;return;} // manual rows are edited directly, not via override
         if(String(hit.row.nilai==null?'':hit.row.nilai)===String(raw)){same++;return;}
-        HASIL_OVERRIDE[_hsRowKey(hit.group,hit.row)]={nilai:String(raw),ts:Date.now()};
+        var _k=_hsRowKey(hit.group,hit.row);
+        // Y444: di mode Fill Blank Only, sel yang SUDAH punya nilai -- entah
+        // dari data aplikasi sendiri atau dari override sebelumnya -- tidak
+        // disentuh. Dihitung terpisah supaya user tahu berapa yang dilindungi,
+        // bukan hilang diam-diam di antara "same".
+        if(fillOnly){
+          var _ov=HASIL_OVERRIDE[_k];
+          var _adaIsi=(_ov&&String(_ov.nilai==null?'':_ov.nilai).trim()!=='')
+                    ||String(hit.row.nilai==null?'':hit.row.nilai).trim()!=='';
+          if(_adaIsi){dilindungi++;return;}
+        }
+        HASIL_OVERRIDE[_k]={nilai:String(raw),ts:Date.now()};
         changed++;
       });
     });
   });
   if(changed){_hsSaveOverride();if(typeof saveStorage==='function')saveStorage('Import raw Water Monitoring Recap ('+changed+' nilai)');}
-  return {changed:changed,same:same,unmatched:unmatched};
+  return {changed:changed,same:same,unmatched:unmatched,dilindungi:dilindungi};
 }
 // ================= Produksi Fix (sheet inside Water Monitoring Recap) =================
 // 5 site blocks (BSP/CPA/CPU/NPU/SPU), each a Tahun/month-header pair then
@@ -25290,6 +25319,14 @@ function renderRawSync(host){
     var acc='.xlsx,.xlsm,.xls';
     var impSec=f.expOnly?'':('<div class="et-sec"><div class="et-sec-title">⬇ Import Raw → Data Pack</div>'+
       '<div style="font-size:10.5px;color:var(--g4);margin-bottom:10px">Upload file <b>'+_ep(f.label)+'</b>. Data sheet <b>'+_ep(shName)+'</b> dibaca dan disinkron ke <b>'+_ep(dk)+'</b>.</div>'+
+      '<div style="border:1px solid var(--g2);border-radius:9px;padding:9px 11px;margin-bottom:10px">'+
+        '<div style="font-size:10px;font-weight:700;color:var(--g4);margin-bottom:5px">MODE SINKRON (untuk record yang sudah ada)</div>'+
+        '<label style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;margin-right:14px;cursor:pointer">'+
+          '<input type="radio" name="rs-mode" value="fillblank"'+(RS_MODE!=='replace'?' checked':'')+' onchange="_rsSetMode(this.value)"> Fill Blank Only</label>'+
+        '<label style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;cursor:pointer">'+
+          '<input type="radio" name="rs-mode" value="replace"'+(RS_MODE==='replace'?' checked':'')+' onchange="_rsSetMode(this.value)"> Replace All</label>'+
+        '<div id="rs-mode-note" style="font-size:9.5px;color:var(--g4);margin-top:5px;line-height:1.5">'+_rsModeNote()+'</div>'+
+      '</div>'+
       '<div class="et-drop" id="rs-imp-drop" style="padding:16px" onclick="document.getElementById(\'rs-imp-file\').click()"><div style="font-size:18px">📄</div><div style="font-size:11px;font-weight:700;margin-top:3px">Klik / drop file '+_ep(f.label)+'</div></div>'+
       '<input type="file" accept="'+acc+'" id="rs-imp-file" onchange="_rsPickImport(this)" style="display:none"><div id="rs-imp-info"></div></div>');
     var expSec=f.impOnly?'':('<div class="et-sec"><div class="et-sec-title">⬆ Export Data Pack → Raw (lossless)</div>'+
@@ -26112,7 +26149,8 @@ function _rsApplyImport(){
       var resR=_rsRecapRunImport(_rsImportBuf.wbx);
       if(typeof renderHasilSampling==='function')try{renderHasilSampling();}catch(e){}
       if(typeof toast==='function')toast('✅ Recap di-import: '+resR.changed+' nilai diperbarui.');
-      if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resR.changed+' nilai diperbarui (override), '+resR.same+' sama, '+resR.unmatched+' sel tanpa padanan (dibiarkan).</span>';
+      if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resR.changed+' nilai diperbarui (override), '+resR.same+' sama, '+resR.unmatched+' sel tanpa padanan (dibiarkan).</span>'
+        +(resR.dilindungi?'<div style="font-size:10px;color:#8a5a00;margin-top:3px">🛡 '+resR.dilindungi+' sel <b>tidak ditimpa</b> karena sudah ada isinya (mode Fill Blank Only). Pilih <b>Replace All</b> di atas kalau memang ingin menimpanya.</div>':'');
       return;
     }
     if(_rsImportBuf.mode==='drain'){
@@ -30472,10 +30510,28 @@ async function _dpUploadCloudflare(silent){
   if(!silent&&typeof _busyShow==='function')_busyShow('Mengunggah Data Pack','Menyusun dan mengirim ke Cloudflare…');
   try{
     const pack=await _dpBuildPack();
-    const res=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':cfg.adminToken},body:JSON.stringify(pack)});
+    // Y445: kompresi sebelum kirim. Data Pack penuh berukuran puluhan MB dan
+    // satu nilai Cloudflare KV dibatasi 25 MB, jadi mengirim mentah bukan cuma
+    // boros -- untuk pack besar memang tidak muat.
+    let _body=JSON.stringify(pack), _mentah=_body.length, _note='';
+    if(typeof window._dpWrapCloudflarePack==='function'){
+      try{
+        const _amplop=await window._dpWrapCloudflarePack(pack);
+        if(_amplop){
+          const _gz=JSON.stringify(_amplop);
+          // Hanya dipakai kalau memang lebih kecil. Untuk pack yang sangat
+          // kecil, base64 bisa membuatnya justru lebih besar.
+          if(_gz.length<_mentah){
+            _body=_gz;
+            _note=' ('+(_mentah/1048576).toFixed(1)+' MB → '+(_gz.length/1048576).toFixed(1)+' MB)';
+          }
+        }
+      }catch(_eGz){ /* gagal kompres -> kirim mentah, jangan batalkan unggahan */ }
+    }
+    const res=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':cfg.adminToken},body:_body});
     if(!res.ok)throw new Error('HTTP '+res.status);
     if(!silent&&typeof _busyHide==='function')_busyHide();
-    if(typeof toast==='function')toast(silent?'🔄 Auto-sync: Data Pack terbaru tersimpan ke Cloudflare.':'✅ Data Pack terbaru berhasil diunggah ke Cloudflare.');
+    if(typeof toast==='function')toast(silent?('🔄 Auto-sync: Data Pack terbaru tersimpan ke Cloudflare.'+_note):('✅ Data Pack terbaru berhasil diunggah ke Cloudflare.'+_note));
   }catch(e){
     if(!silent&&typeof _busyHide==='function')_busyHide();
     if(typeof toast==='function')toast('❌ Gagal upload ke Cloudflare ('+(e&&e.message||e)+').');
@@ -38422,6 +38478,22 @@ html[data-theme="studio"] .drain-est-note,html[data-theme="command"] .drain-est-
     return inner;
   }
   window._dpUnwrapCloudflarePack=unwrap;
+  // Y445: pasangan menulis dari unwrap() di atas. Amplopnya dibuat persis sama
+  // dengan yang unwrap() harapkan, supaya apa yang ditulis pasti bisa dibaca
+  // kembali oleh versi mana pun yang sudah punya modul ini.
+  async function wrap(pack){
+    if(typeof CompressionStream==='undefined')return null;
+    var stream=new Blob([JSON.stringify(pack)]).stream().pipeThrough(new CompressionStream('gzip'));
+    var buf=new Uint8Array(await new Response(stream).arrayBuffer());
+    // base64 disusun per potongan: String.fromCharCode dengan jutaan argumen
+    // sekaligus akan melewati batas argumen dan melempar RangeError.
+    var bin='',CH=0x8000;
+    for(var i=0;i<buf.length;i+=CH)bin+=String.fromCharCode.apply(null,buf.subarray(i,i+CH));
+    return {format:'env26-datapack-gz',version:1,enc:'gzip+base64',
+            createdAt:pack&&pack.createdAt,packFormat:pack&&pack.format,
+            gz:btoa(bin)};
+  }
+  window._dpWrapCloudflarePack=wrap;
   window._dpFetchWeb=async function(){
     var cfg=typeof _cfConfig==='function'?_cfConfig():{};
     var useCf=!!(cfg.url&&cfg.readToken);
