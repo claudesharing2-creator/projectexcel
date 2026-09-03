@@ -35274,18 +35274,31 @@ const DRAIN_SITES={
   SPU:['Disposal Tube SUP','Disposal Tube SCP','Disposal Tube SMP']
 };
 const DRAIN_C_DEFAULT=0.6, DRAIN_K_DEFAULT=0.278;
+// Y437 (pemulihan): titik koordinat untuk lookup NASA POWER. Diambil dari
+// tautan Data Access Viewer milik user sendiri, dan cocok secara geografis --
+// Anggana di delta Mahakam timur Samarinda, Samboja di selatan ke arah
+// Balikpapan. Dibiarkan BISA DIUBAH di tab Konfigurasi dan ditampilkan di
+// sebelah tombol ambil, bukan dikubur sebagai konstanta: salah titik berarti
+// satu catchment diam-diam memakai curah hujan catchment lain, dan itu masuk
+// ke angka debit yang dipakai untuk kepatuhan.
+const DRAIN_COORDS_DEFAULT={Anggana:{lat:-0.6086,lon:117.3346},Samboja:{lat:-0.9728,lon:117.1534}};
 const DRAIN_CATCHMENTS=['Samboja','Anggana'];
 const DRAIN_ALL_POINTS=[].concat(...DRAIN_CATCHMENTS.map(c=>Object.keys(DRAIN_AREAS_DEFAULT[c])));
 function _drainLoadConfig(){
   try{
     const raw=JSON.parse(localStorage.getItem('env26_drain_config')||'null');
-    if(raw&&raw.C!=null&&raw.K!=null&&raw.areas)return raw;
+    if(raw&&raw.C!=null&&raw.K!=null&&raw.areas){
+      if(!raw.coords)raw.coords=JSON.parse(JSON.stringify(DRAIN_COORDS_DEFAULT));   // Y437
+      return raw;
+    }
   }catch(e){}
-  return {C:DRAIN_C_DEFAULT,K:DRAIN_K_DEFAULT,areas:JSON.parse(JSON.stringify(DRAIN_AREAS_DEFAULT))};
+  return {C:DRAIN_C_DEFAULT,K:DRAIN_K_DEFAULT,areas:JSON.parse(JSON.stringify(DRAIN_AREAS_DEFAULT)),
+          coords:JSON.parse(JSON.stringify(DRAIN_COORDS_DEFAULT))};
 }
-function _drainSaveConfig(){try{localStorage.setItem('env26_drain_config',JSON.stringify({C:DRAIN_C,K:DRAIN_K,areas:DRAIN_AREAS}));}catch(e){}}
+function _drainSaveConfig(){try{localStorage.setItem('env26_drain_config',JSON.stringify({C:DRAIN_C,K:DRAIN_K,areas:DRAIN_AREAS,coords:DRAIN_COORDS}));}catch(e){}}
 let _drainCfg=_drainLoadConfig();
 let DRAIN_C=_drainCfg.C, DRAIN_K=_drainCfg.K, DRAIN_AREAS=_drainCfg.areas;
+let DRAIN_COORDS=_drainCfg.coords||JSON.parse(JSON.stringify(DRAIN_COORDS_DEFAULT));
 function _drainPointCatchment(pt){return DRAIN_AREAS.Samboja[pt]!=null?'Samboja':(DRAIN_AREAS.Anggana[pt]!=null?'Anggana':null);}
 function _drainLoad(){
   let d;
@@ -35331,6 +35344,72 @@ function _drainParseCSV(text){
     out[key]=(v<=-900||!isFinite(v))?null:v;
   }
   return out;
+}
+// Y437: NASA POWER daily point API -- data yang sama dengan yang diunduh Data
+// Access Viewer, dalam bentuk CSV yang memang sudah dibaca _drainParseCSV.
+// Teks hasil ambil lewat _drainImport() yang SAMA dengan jalur tempel, jadi
+// tidak ada parser kedua yang harus dijaga tetap sinkron.
+function _drainNasaUrl(cat,start,end){
+  const c=(DRAIN_COORDS&&DRAIN_COORDS[cat])||{};
+  const q='parameters=PRECTOTCORR&community=RE&longitude='+encodeURIComponent(c.lon)+
+          '&latitude='+encodeURIComponent(c.lat)+'&start='+start.replace(/-/g,'')+
+          '&end='+end.replace(/-/g,'')+'&format=CSV';
+  return 'https://power.larc.nasa.gov/api/temporal/daily/point?'+q;
+}
+window._drainNasaUrl=_drainNasaUrl;
+function _drainFetchStatus(msg,kind){
+  const el=document.getElementById('drain-fetch-status'); if(!el)return;
+  const col=kind==='err'?'#c62828':(kind==='ok'?'#2e7d32':'#666');
+  el.innerHTML='<span style="color:'+col+'">'+msg+'</span>';
+}
+async function _drainFetchNasa(cats,start,end,silent){
+  const list=[].concat(cats);
+  if(!start||!end){_drainFetchStatus('⚠ Isi dulu rentang tanggalnya.','err');return;}
+  if(start>end){_drainFetchStatus('⚠ Tanggal mulai melewati tanggal akhir.','err');return;}
+  const done=[];
+  for(const cat of list){
+    const c=(DRAIN_COORDS&&DRAIN_COORDS[cat])||{};
+    if(c.lat==null||c.lon==null){_drainFetchStatus('⚠ Koordinat '+cat+' belum diisi (lihat tab Konfigurasi).','err');return;}
+    _drainFetchStatus('⏳ Mengambil '+cat+' ('+start+' s/d '+end+') dari NASA POWER…');
+    let txt;
+    try{
+      const r=await fetch(_drainNasaUrl(cat,start,end),{cache:'no-store'});
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      txt=await r.text();
+    }catch(e){
+      _drainFetchStatus('❌ Gagal mengambil '+cat+': '+e.message+
+        '. Perlu koneksi internet — kalau sedang offline, pakai cara lama (unduh CSV lalu tempel di bawah).','err');
+      return;
+    }
+    const parsed=_drainParseCSV(txt);
+    const keys=Object.keys(parsed);
+    if(!keys.length){
+      _drainFetchStatus('❌ '+cat+': balasan NASA POWER tidak berisi baris data yang terbaca.','err');
+      return;
+    }
+    const withVal=keys.filter(function(k){return parsed[k]!=null;});
+    const missing=keys.length-withVal.length;
+    _drainImport(cat,txt);
+    done.push({cat:cat,total:keys.length,ok:withVal.length,missing:missing,
+               last:withVal.length?withVal.sort()[withVal.length-1]:null});
+  }
+  const parts=done.map(function(d){
+    return '<b>'+d.cat+'</b>: '+d.ok+' hari terisi'+
+      (d.missing?(' · <span style="color:#8a6d00">'+d.missing+' hari belum tersedia</span>'):'')+
+      (d.last?(' · data terakhir '+d.last):'');
+  });
+  const anyMissing=done.some(function(d){return d.missing;});
+  _drainFetchStatus('✅ Selesai. '+parts.join(' &nbsp;|&nbsp; ')+
+    (anyMissing?'<div style="font-size:9.5px;color:#8a6d00;margin-top:4px">Hari yang belum tersedia dibiarkan kosong (NASA POWER biasanya tertinggal 3–4 hari dari hari ini), bukan diisi nol. Ambil ulang beberapa hari lagi untuk melengkapinya.</div>':''),'ok');
+  if(typeof _drainPopulateMonthSelects==='function')_drainPopulateMonthSelects();
+}
+window._drainFetchNasa=_drainFetchNasa;
+// Rentang bawaan = bulan penuh sebelumnya, yang memang dibutuhkan rekap bulanan.
+function _drainDefaultRange(){
+  const n=new Date(), y=n.getFullYear(), m=n.getMonth();   // 0-based
+  const s=new Date(y,m-1,1), e=new Date(y,m,0);
+  const f=function(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+  return {start:f(s),end:f(e)};
 }
 function _drainImport(catchment,text){
   const parsed=_drainParseCSV(text);
@@ -35403,7 +35482,25 @@ function _drainSwitchSub(sub){
   else _drainRenderConfigTab(c);
 }
 function _drainRenderImportTab(host){
-  host.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+  const _r=_drainDefaultRange();
+  const _coordTxt=DRAIN_CATCHMENTS.map(function(c){
+    const k=(DRAIN_COORDS&&DRAIN_COORDS[c])||{};
+    return c+' ('+(k.lat!=null?k.lat:'?')+', '+(k.lon!=null?k.lon:'?')+')';
+  }).join(' · ');
+  host.innerHTML=`
+  <div class="et-sec" style="margin-bottom:14px">
+    <div class="et-sec-title">🌐 Ambil otomatis dari NASA POWER</div>
+    <div style="font-size:10.5px;color:var(--g4);margin-bottom:9px;line-height:1.55">Tarik langsung curah hujan harian dari <b>power.larc.nasa.gov</b> — tidak perlu buka Data Access Viewer dan unduh CSV manual. Pengaturannya sama persis: <b>Single Point</b> · <b>Daily</b> · <b>Renewable Energy</b> · <b>Precipitation (PRECTOTCORR)</b>.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">
+      <label style="font-size:10px;color:var(--g4);font-weight:600">Dari<br><input type="date" id="drain-fetch-start" value="${_r.start}" class="et-in" style="padding:4px 7px;font-size:11px"></label>
+      <label style="font-size:10px;color:var(--g4);font-weight:600">Sampai<br><input type="date" id="drain-fetch-end" value="${_r.end}" class="et-in" style="padding:4px 7px;font-size:11px"></label>
+      <button class="coord-copy" style="border-color:#2e7d32;color:#2e7d32;font-weight:700" onclick="_drainFetchNasa(DRAIN_CATCHMENTS,document.getElementById('drain-fetch-start').value,document.getElementById('drain-fetch-end').value)">⬇ Ambil semua catchment</button>
+      ${DRAIN_CATCHMENTS.map(c=>`<button class="coord-copy" onclick="_drainFetchNasa('${c}',document.getElementById('drain-fetch-start').value,document.getElementById('drain-fetch-end').value)">⬇ ${c} saja</button>`).join('')}
+    </div>
+    <div id="drain-fetch-status" style="font-size:10.5px;min-height:16px"></div>
+    <div style="font-size:9.5px;color:var(--g4);margin-top:6px;line-height:1.5">Titik koordinat: ${_ep(_coordTxt)} — bisa diubah di tab <b>⚙ Konfigurasi</b> kalau titiknya perlu digeser. Data yang sudah ada untuk tanggal yang sama akan <b>diperbarui</b>; tanggal lain tidak disentuh.</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     ${DRAIN_CATCHMENTS.map(c=>`
       <div class="et-card" style="max-width:100%">
         <b style="font-size:12px">${c}</b> <span style="font-size:9.5px;color:var(--g4)">(${Object.keys(DRAIN_AREAS[c]).length} titik penaatan)</span>
@@ -35479,6 +35576,20 @@ function _drainRenderConfigTab(host){
       <div><div style="font-size:9px;color:var(--g4)">C (koefisien limpasan)</div><input id="et-drain-cfg-c" type="number" step="0.001" class="et-in" style="width:100px" value="${DRAIN_C}"></div>
       <div><div style="font-size:9px;color:var(--g4)">Ketetapan/Koef</div><input id="et-drain-cfg-k" type="number" step="0.001" class="et-in" style="width:100px" value="${DRAIN_K}"></div>
     </div>
+    <div style="border-top:1px solid var(--g2);margin:4px 0 10px;padding-top:10px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:2px">📍 Titik koordinat NASA POWER</div>
+      <div style="font-size:9.5px;color:var(--g4);margin-bottom:8px;line-height:1.5">Dipakai tombol <b>Ambil otomatis</b> di tab Impor Data. Pastikan tiap catchment menunjuk lokasinya sendiri — kalau tertukar, curah hujan satu catchment akan terpakai untuk catchment lain dan ikut mempengaruhi angka debit.</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        ${DRAIN_CATCHMENTS.map(c=>`<div>
+          <div style="font-size:9px;color:var(--g4);font-weight:700">${c}</div>
+          <div style="display:flex;gap:5px;margin-top:2px">
+            <input type="number" step="0.0001" class="et-in et-drain-cfg-lat" data-catchment="${c}" style="width:98px" value="${(DRAIN_COORDS[c]||{}).lat!=null?DRAIN_COORDS[c].lat:''}" title="Latitude">
+            <input type="number" step="0.0001" class="et-in et-drain-cfg-lon" data-catchment="${c}" style="width:98px" value="${(DRAIN_COORDS[c]||{}).lon!=null?DRAIN_COORDS[c].lon:''}" title="Longitude">
+          </div>
+          <div style="font-size:8.5px;color:var(--g4);margin-top:2px">lat &nbsp;·&nbsp; lon</div>
+        </div>`).join('')}
+      </div>
+    </div>
     <table class="et-tbl" style="max-width:480px">
       <thead><tr><th>Titik Penaatan</th><th>Catchment Area</th></tr></thead>
       <tbody>${DRAIN_CATCHMENTS.map(c=>Object.keys(DRAIN_AREAS[c]).map(p=>
@@ -35501,6 +35612,14 @@ function _drainSaveConfigFromForm(){
     const v=parseFloat(inp.value);
     if(isFinite(v))DRAIN_AREAS[inp.dataset.catchment][inp.dataset.point]=v;
   });
+  document.querySelectorAll('.et-drain-cfg-lat').forEach(inp=>{   // Y437
+    const v=parseFloat(inp.value);
+    if(isFinite(v)){DRAIN_COORDS[inp.dataset.catchment]=DRAIN_COORDS[inp.dataset.catchment]||{};DRAIN_COORDS[inp.dataset.catchment].lat=v;}
+  });
+  document.querySelectorAll('.et-drain-cfg-lon').forEach(inp=>{
+    const v=parseFloat(inp.value);
+    if(isFinite(v)){DRAIN_COORDS[inp.dataset.catchment]=DRAIN_COORDS[inp.dataset.catchment]||{};DRAIN_COORDS[inp.dataset.catchment].lon=v;}
+  });
   _drainSaveConfig();
   const el=document.getElementById('et-drain-cfg-status');if(el)el.textContent='✓ Konfigurasi disimpan.';
   if(typeof toast==='function')toast('✓ Konfigurasi perhitungan debit disimpan.');
@@ -35508,6 +35627,7 @@ function _drainSaveConfigFromForm(){
 function _drainResetConfig(){
   DRAIN_C=DRAIN_C_DEFAULT;DRAIN_K=DRAIN_K_DEFAULT;
   DRAIN_AREAS=JSON.parse(JSON.stringify(DRAIN_AREAS_DEFAULT));
+  DRAIN_COORDS=JSON.parse(JSON.stringify(DRAIN_COORDS_DEFAULT));   // Y437
   _drainSaveConfig();
   _drainRenderConfigTab(document.getElementById('drain-sub-content'));
   if(typeof toast==='function')toast('↺ Konfigurasi dikembalikan ke nilai default Excel.');
@@ -36046,10 +36166,34 @@ function _reviewBmForParam(titik,parameter,kegiatan,rfaRec){
     return null;
   }catch(e){return null;}
 }
+// Y438: satu penilai kepatuhan untuk seluruh aplikasi.
+// Fungsi ini dulu punya aturannya sendiri yang memperlakukan SEMUA baku mutu
+// berangka sebagai batas ATAS. Untuk baku mutu MINIMUM seperti DO "> 5 mg/L"
+// itu terbalik: hasil 5,2 (memenuhi) dilaporkan melebihi, dan hasil 4,8 (benar-
+// benar melanggar) dilaporkan aman. _hsEvalCompliance yang dipakai tab Hasil
+// Sampling sudah menangani "> N", "< N", "s/d N", rentang "lo - hi", dan awalan
+// label; jadi Review Report memanggilnya, bukan menyalin aturannya -- dua
+// salinan pasti berpisah lagi suatu saat.
 function _reviewCheckExceed(hasil,bakuMutu){
+  if(bakuMutu==null||bakuMutu==='-'||bakuMutu==='')return null;
+  if(typeof _hsEvalCompliance==='function'){
+    let r=null;
+    try{r=_hsEvalCompliance(hasil,bakuMutu);}catch(e){r=null;}
+    if(r&&(r.status==='exceed'||r.status==='ok'))return r.status;
+    // no_standard / non_numeric -> tidak dinilai, sama seperti perilaku lama
+    if(r)return null;
+  }
+  // Cadangan kalau _hsEvalCompliance belum termuat: minimal jangan salah arah
+  // untuk baku mutu beroperator.
   const v=_reviewParseNum(hasil);
-  if(v==null||bakuMutu==null||bakuMutu==='-'||bakuMutu==='')return null;
-  const rangeM=String(bakuMutu).match(/^(-?\d+(\.\d+)?)\s*-\s*(-?\d+(\.\d+)?)$/);
+  if(v==null)return null;
+  const bs=String(bakuMutu).trim();
+  const opM=bs.match(/^([><])\s*(-?\d+(?:[.,]\d+)?)$/);
+  if(opM){
+    const thr=parseFloat(opM[2].replace(',','.'));
+    return (opM[1]==='>'?(v<=thr):(v>=thr))?'exceed':'ok';
+  }
+  const rangeM=bs.match(/^(-?\d+(\.\d+)?)\s*-\s*(-?\d+(\.\d+)?)$/);
   if(rangeM){const lo=parseFloat(rangeM[1]),hi=parseFloat(rangeM[3]);return (v<lo||v>hi)?'exceed':'ok';}
   const maxV=_reviewParseNum(bakuMutu);
   if(maxV==null)return null;
@@ -36434,9 +36578,8 @@ function _scanMarkSesuai(i){
 function _scanReset(){_scanResults=[];const h=document.getElementById('et-scan-results');if(h)h.innerHTML='';const i=document.getElementById('et-scan-file');if(i)i.value='';}
 function _etRenderReview(host){
   host.innerHTML=`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
-      <div>
-        <div class="et-card" style="max-width:100%">
+    <div class="rr-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="et-card rr-card" style="max-width:100%">
           <div style="display:flex;align-items:center;gap:8px">
             <div style="font-weight:700;font-size:13px;margin-bottom:2px;flex:1">📑 Review Draft Report</div>
             <button onclick="_reviewReset()" title="Hapus hasil review yang sedang tampil" style="border:1px solid var(--g2);background:none;color:var(--g4);border-radius:6px;padding:3px 10px;font-size:10.5px;cursor:pointer;font-family:inherit">↺ Reset</button>
@@ -36445,10 +36588,7 @@ function _etRenderReview(host){
           <div class="et-drop" id="et-review-drop" onclick="document.getElementById('et-review-file').click()">📄 Klik atau seret file draft .xls kemari</div>
           <input type="file" id="et-review-file" accept=".xls" multiple style="display:none" onchange="_reviewHandleFiles(this.files)">
         </div>
-        <div id="et-review-results" style="margin-top:12px;display:flex;flex-direction:column;gap:12px"></div>
-      </div>
-      <div>
-        <div class="et-card" style="max-width:100%">
+        <div class="et-card rr-card" style="max-width:100%">
           <div style="display:flex;align-items:center;gap:8px">
             <div style="font-weight:700;font-size:13px;margin-bottom:2px;flex:1">🖨 Review Scan Report</div>
             <button onclick="_scanReset()" title="Hapus hasil review scan" style="border:1px solid var(--g2);background:none;color:var(--g4);border-radius:6px;padding:3px 10px;font-size:10.5px;cursor:pointer;font-family:inherit">↺ Reset</button>
@@ -36457,8 +36597,8 @@ function _etRenderReview(host){
           <div class="et-drop" id="et-scan-drop" onclick="document.getElementById('et-scan-file').click()">🖨 Klik atau seret file scan .pdf kemari</div>
           <input type="file" id="et-scan-file" accept=".pdf" multiple style="display:none" onchange="_scanHandleFiles(this.files)">
         </div>
-        <div id="et-scan-results" style="margin-top:12px;display:flex;flex-direction:column;gap:12px"></div>
-      </div>
+        <div id="et-review-results" class="rr-hasil" style="display:flex;flex-direction:column;gap:12px"></div>
+        <div id="et-scan-results" class="rr-hasil" style="display:flex;flex-direction:column;gap:12px"></div>
     </div>`;
   const drop=document.getElementById('et-review-drop');
   drop.ondragover=e=>{e.preventDefault();drop.style.borderColor='#3EE06A';};
@@ -37265,6 +37405,22 @@ html[data-theme="anjungan"] body [style*="color:#0F5C8C" i]{color:#7FB6D6!import
     height:60vh!important;min-height:280px!important}
   .ep-map-row>#ep-map-sidebar{width:100%!important;flex-shrink:1!important;
     max-height:none!important;overflow-y:visible!important}
+}
+
+/* ===== Y439: kartu Review Report rapi & simetris ======================= */
+.rr-card{display:flex;flex-direction:column}
+/* anak ke-2 = paragraf keterangan; dibuat fleksibel supaya kotak seret file
+   selalu rata di dasar kartu walau panjang keterangannya berbeda */
+.rr-card>div:nth-child(2){flex:1}
+.rr-hasil{align-self:start;min-width:0}
+@media(max-width:768px){
+  .rr-grid{grid-template-columns:1fr!important}
+  /* satu kolom: kartu -> hasilnya -> kartu berikutnya -> hasilnya, bukan
+     dua kartu berjejer lebih dulu baru hasil-hasilnya */
+  .rr-grid>.rr-card:nth-of-type(1){order:1}
+  .rr-grid>#et-review-results{order:2}
+  .rr-grid>.rr-card:nth-of-type(2){order:3}
+  .rr-grid>#et-scan-results{order:4}
 }
 </style>
 <script id="mobile-ux-v2-js">
