@@ -21338,6 +21338,16 @@ function _hsRfaGuessIndex(){
   _hsRfaGuessIdxCache=idx;
   return idx;
 }
+// Y440: dipulihkan. Hilang bersama cabang yang tidak tergabung, padahal
+// _hsGuessRfa di bawah memanggilnya untuk kasus kecocokan >1. Karena
+// pemanggilnya dibungkus try/catch, hilangnya tidak memunculkan error --
+// tebakan nomor RFA cuma diam-diam gagal justru di kasus ambigu.
+// Mengambil "nomor dasar" sebuah No RFA: huruf di ujung dibuang (mis.
+// <6 digit>-<2 digit> diikuti satu huruf -> tanpa hurufnya), sehingga beberapa
+// kecocokan yang sebenarnya satu RFA (beda huruf akhir) dikenali sama.
+// Contoh sengaja TIDAK ditulis dengan angka: pemeriksa artefak publik menolak
+// apa pun yang berbentuk nomor RFA asli, termasuk di dalam komentar.
+function _hsRfaBaseOf(no){const m=/^(\d{6}-\d+)[A-Za-z]?$/.exec(String(no||''));return m?m[1]:String(no||'');}
 function _hsGuessRfa(r){
   if(!r||(r.noRfa&&r.noRfa.length))return null;
   const code=_HS_SHEET2SAMPEL[_hsNormKeyLite((r.extra&&r.extra.sumberSheet)||'')];
@@ -35299,6 +35309,70 @@ function _drainSaveConfig(){try{localStorage.setItem('env26_drain_config',JSON.s
 let _drainCfg=_drainLoadConfig();
 let DRAIN_C=_drainCfg.C, DRAIN_K=_drainCfg.K, DRAIN_AREAS=_drainCfg.areas;
 let DRAIN_COORDS=_drainCfg.coords||JSON.parse(JSON.stringify(DRAIN_COORDS_DEFAULT));
+// Y443: catatan hari mana yang nilainya ESTIMASI (bukan hasil ukur).
+// Bentuknya {catchment:{'YYYY-MM-DD':{avgOf:jumlahHariDipakai,at:'YYYY-MM-DD'}}}
+let DRAIN_EST=_drainEstLoad();
+// Toggle on/off. Dimatikan secara bawaan: mengisi angka yang tidak diukur
+// adalah keputusan pemilik data, bukan kelakuan bawaan aplikasi.
+let DRAIN_EST_ON=(function(){try{return localStorage.getItem('env26_drain_est_on')==='1';}catch(e){return false;}})();
+function _drainEstLoad(){
+  let e; try{e=JSON.parse(localStorage.getItem('env26_drain_est')||'{}');}catch(_){e={};}
+  DRAIN_CATCHMENTS.forEach(function(c){if(!e[c])e[c]={};});
+  return e;
+}
+function _drainEstSave(){try{localStorage.setItem('env26_drain_est',JSON.stringify(DRAIN_EST));}catch(e){}}
+function _drainIsEst(cat,d){return !!(DRAIN_EST[cat]&&DRAIN_EST[cat][d]);}
+// Rata-rata curah hujan bulan itu, HANYA dari hari yang benar-benar terukur --
+// hari yang sendirinya estimasi dilewati, supaya estimasi tidak bertumpuk di
+// atas estimasi dan angkanya tidak melenceng makin jauh tiap kali diambil.
+function _drainEstMonthAvg(cat,ym){
+  const src=DRAIN_DATA[cat]||{};
+  let sum=0,n=0;
+  Object.keys(src).forEach(function(d){
+    if(d.slice(0,7)!==ym)return;
+    if(src[d]==null||_drainIsEst(cat,d))return;
+    sum+=src[d];n++;
+  });
+  return n?{avg:sum/n,n:n}:null;
+}
+// Gabungkan hasil parse: hari bernilai ditulis apa adanya; hari kosong diisi
+// rata-rata bulan berjalan dan DITANDAI. Data asli yang datang belakangan
+// menimpa estimasi dan menghapus penandanya (dihitung sebagai "upgraded").
+function _drainApplyParsed(cat,parsed){
+  const st={total:0,real:0,filled:0,upgraded:0,stillEmpty:0};
+  const miss=[];
+  Object.keys(parsed).forEach(function(d){
+    st.total++;
+    if(parsed[d]!=null){
+      st.real++;
+      if(_drainIsEst(cat,d)){delete DRAIN_EST[cat][d];st.upgraded++;}
+      DRAIN_DATA[cat][d]=parsed[d];
+    }else miss.push(d);
+  });
+  miss.forEach(function(d){
+    const m=_drainEstMonthAvg(cat,d.slice(0,7));
+    if(m){
+      DRAIN_DATA[cat][d]=Math.round(m.avg*100)/100;
+      DRAIN_EST[cat]=DRAIN_EST[cat]||{};
+      DRAIN_EST[cat][d]={avgOf:m.n,at:new Date().toISOString().slice(0,10)};
+      st.filled++;
+    }else{
+      if(DRAIN_DATA[cat][d]===undefined)DRAIN_DATA[cat][d]=null;
+      st.stillEmpty++;
+    }
+  });
+  _drainSave(DRAIN_DATA); _drainEstSave();
+  return st;
+}
+function _drainEstSetOn(v){
+  DRAIN_EST_ON=!!v;
+  try{localStorage.setItem('env26_drain_est_on',DRAIN_EST_ON?'1':'0');}catch(e){}
+}
+window._drainEstSetOn=_drainEstSetOn;
+// Berapa hari yang nilainya masih estimasi untuk satu catchment.
+function _drainEstCount(cat){
+  try{return Object.keys(DRAIN_EST[cat]||{}).length;}catch(e){return 0;}
+}
 function _drainPointCatchment(pt){return DRAIN_AREAS.Samboja[pt]!=null?'Samboja':(DRAIN_AREAS.Anggana[pt]!=null?'Anggana':null);}
 function _drainLoad(){
   let d;
@@ -35389,8 +35463,17 @@ async function _drainFetchNasa(cats,start,end,silent){
     }
     const withVal=keys.filter(function(k){return parsed[k]!=null;});
     const missing=keys.length-withVal.length;
-    _drainImport(cat,txt);
-    done.push({cat:cat,total:keys.length,ok:withVal.length,missing:missing,
+    // Y443: kalau pengisian estimasi dinyalakan, hari yang belum tersedia
+    // diisi rata-rata bulan berjalan dan ditandai; kalau tidak, jalurnya
+    // persis seperti semula (hari kosong dibiarkan kosong).
+    let _est=null;
+    if(DRAIN_EST_ON){
+      _est=_drainApplyParsed(cat,parsed);
+      _drainRenderPreview(cat);
+    }else{
+      _drainImport(cat,txt);
+    }
+    done.push({cat:cat,est:_est,total:keys.length,ok:withVal.length,missing:missing,
                last:withVal.length?withVal.sort()[withVal.length-1]:null});
   }
   const parts=done.map(function(d){
@@ -35450,10 +35533,21 @@ function _drainRenderPreview(catchment,full){
   const pts=DRAIN_AREAS[catchment]?Object.keys(DRAIN_AREAS[catchment]):null;
   if(!dates.length){el.innerHTML='<div style="font-size:10.5px;color:var(--g4);padding:8px 0">Belum ada data.</div>';return;}
   el.innerHTML=`${full?'':`<div style="font-size:9.5px;color:var(--g4);margin-bottom:4px">${all.length} hari data tersimpan (${all[0]||''} s/d ${all[all.length-1]||''})</div>`}
+    ${(typeof _drainEstCount==='function'&&_drainEstCount(catchment))?`<div class="drain-est-note">⚠ ${_drainEstCount(catchment)} hari masih memakai <b>angka sementara</b> (rata-rata bulan berjalan), bukan hasil ukur NASA POWER. Ambil ulang rentang itu setelah datanya tersedia — angka aslinya akan menimpa sendiri.</div>`:''}
     <div style="overflow-x:auto"><table class="et-tbl"><thead><tr><th>Tanggal</th><th>Hujan(mm)</th>${pts?pts.map(p=>`<th>${p}</th>`).join(''):''}</tr></thead><tbody>
     ${dates.map(d=>{
       const mm=DRAIN_DATA[catchment][d];
-      return `<tr><td>${d}</td><td>${mm==null?'—':mm.toFixed(2)}</td>${pts?pts.map(p=>{const v=_drainDebit(catchment,p,d);return `<td>${v==null?'—':v.toFixed(3)}</td>`;}).join(''):''}</tr>`;
+      // Y443: angka hasil estimasi ditandai -- ditulis miring dengan '~',
+      // diberi warna peringatan, dan tooltipnya menyebut rata-rata berapa hari
+      // yang dipakai serta kapan diisi. Tanpa ini tidak ada yang bisa
+      // membedakan angka ukur dari angka isian sementara, padahal keduanya
+      // ikut masuk hitungan debit.
+      const _es=(typeof _drainIsEst==='function')&&_drainIsEst(catchment,d)
+        ?(DRAIN_EST[catchment]&&DRAIN_EST[catchment][d])||{}:null;
+      const _mmTd=mm==null?'—'
+        :(_es?`<span class="drain-est" title="Sementara — rata-rata ${_es.avgOf||'?'} hari terukur di bulan ini, diisi ${_es.at||'-'}. Perlu diperbarui begitu data NASA POWER tersedia.">~${mm.toFixed(2)}</span>`
+             :mm.toFixed(2));
+      return `<tr${_es?' class="drain-est-row"':''}><td>${d}</td><td>${_mmTd}</td>${pts?pts.map(p=>{const v=_drainDebit(catchment,p,d);return `<td>${v==null?'—':(_es?`<span class="drain-est">~${v.toFixed(3)}</span>`:v.toFixed(3))}</td>`;}).join(''):''}</tr>`;
     }).join('')}
   </tbody></table></div>${full?'':`<div style="font-size:9.5px;color:var(--g4);margin-top:4px">Menampilkan 14 hari terakhir${dates.length===14?' dari total data yang ada':''}.</div>`}`;
 }
@@ -35497,6 +35591,10 @@ function _drainRenderImportTab(host){
       <button class="coord-copy" style="border-color:#2e7d32;color:#2e7d32;font-weight:700" onclick="_drainFetchNasa(DRAIN_CATCHMENTS,document.getElementById('drain-fetch-start').value,document.getElementById('drain-fetch-end').value)">⬇ Ambil semua catchment</button>
       ${DRAIN_CATCHMENTS.map(c=>`<button class="coord-copy" onclick="_drainFetchNasa('${c}',document.getElementById('drain-fetch-start').value,document.getElementById('drain-fetch-end').value)">⬇ ${c} saja</button>`).join('')}
     </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--g4);margin-bottom:8px;cursor:pointer">
+      <input type="checkbox" id="drain-est-on" ${DRAIN_EST_ON?'checked':''} onchange="_drainEstSetOn(this.checked)">
+      <span>Isi hari yang belum tersedia dengan <b>rata-rata curah hujan bulan itu</b> — ditandai sebagai sementara di tab Lihat Data, dan otomatis ditimpa begitu data aslinya turun.</span>
+    </label>
     <div id="drain-fetch-status" style="font-size:10.5px;min-height:16px"></div>
     <div style="font-size:9.5px;color:var(--g4);margin-top:6px;line-height:1.5">Titik koordinat: ${_ep(_coordTxt)} — bisa diubah di tab <b>⚙ Konfigurasi</b> kalau titiknya perlu digeser. Data yang sudah ada untuk tanggal yang sama akan <b>diperbarui</b>; tanggal lain tidak disentuh.</div>
   </div>
@@ -37422,6 +37520,28 @@ html[data-theme="anjungan"] body [style*="color:#0F5C8C" i]{color:#7FB6D6!import
   .rr-grid>.rr-card:nth-of-type(2){order:3}
   .rr-grid>#et-scan-results{order:4}
 }
+
+/* ===== Y441: kartu berdampingan sama lebar & rata ====================== */
+#drain-sub-content>div[style*="grid-template-columns:1fr 1fr"]>.et-card{
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  justify-self:stretch!important;align-self:stretch!important;
+  margin:0!important;resize:none!important}
+/* tabel pratinjau boleh melebar sendiri di dalam kartu, tanpa menarik lebar
+   kartunya ikut melar */
+#drain-sub-content [id^="et-drain-preview-"]{overflow-x:auto}
+@media(max-width:768px){
+  #drain-sub-content>div[style*="grid-template-columns:1fr 1fr"]{
+    grid-template-columns:1fr!important}
+}
+
+/* ===== Y443: penanda angka sementara (estimasi) ======================== */
+.drain-est{font-style:italic;color:#8a5a00;cursor:help}
+.drain-est-row td:first-child{position:relative}
+.drain-est-note{font-size:9.5px;color:#8a5a00;background:#fff8e1;border:1px solid #ffe0a3;
+  border-radius:7px;padding:6px 9px;margin-bottom:6px;line-height:1.5}
+html[data-theme="studio"] .drain-est,html[data-theme="command"] .drain-est{color:#d9a441}
+html[data-theme="studio"] .drain-est-note,html[data-theme="command"] .drain-est-note{
+  background:rgba(217,164,65,.10);border-color:rgba(217,164,65,.35);color:#d9a441}
 </style>
 <script id="mobile-ux-v2-js">
 (function(){
@@ -41621,11 +41741,12 @@ function _coordMapInput(actId,q){
     return "_coordPickFromMap('"+actId+"','"+nameEsc+"');document.getElementById('coord-map-q').value='';document.getElementById('coord-map-suggestions').style.display='none';";
   });
 }
-function _etCoordMapInput(q){
-  _coordMapRenderSugg('et-coord-map-suggestions',q,function(nameEsc){
-    return "_etCoordPickFromMap('"+nameEsc+"');document.getElementById('et-coord-map-q').value='';document.getElementById('et-coord-map-suggestions').style.display='none';";
-  });
-}
+// Y440: _etCoordMapInput dihapus. Kotak <input id="et-coord-map-q"> yang dulu
+// memanggilnya sudah tidak ada; penggantinya kolom gabungan et-guide-coord-q
+// ("ketik nama well untuk memilih, atau lat, lng") dengan handler
+// _etCoordGuideInput. Fungsi lama ini tidak bisa dijangkau siapa pun DAN
+// menunjuk ke _etCoordPickFromMap yang ikut hilang -- dibiarkan hanya akan
+// membuat sesi berikutnya mengira ada bug yang perlu ditambal.
 function _coordMapPickPlain(inputId,datumId,name){
   var pts=_coordMapPoints(),key=String(name||'').toLowerCase().replace(/\s+/g,' ').trim();
   var hit=pts.filter(function(p){return p.nkey===key;})[0]||pts.filter(function(p){return p.nkey.indexOf(key)>=0;})[0];
@@ -42414,7 +42535,107 @@ function _coordDetailMainInput(actId,q){
     sec.appendChild(guide);sec.appendChild(offline);sec.appendChild(note);
   };
 })();
-</script><script id="coordinate-merge-whitespace-clean-2026-08-27">/* generated whitespace cleanup */</script><script id="coordinate-utm-thousands-parser-2026-08-27">/* guide coordinate parser accepts grouped UTM */</script><script id="coordinate-legacy-field-normalization-2026-08-27">
+</script><script id="coordinate-merge-whitespace-clean-2026-08-27">/* generated whitespace cleanup */</script><script id="coordinate-utm-thousands-parser-2026-08-27">/* guide coordinate parser accepts grouped UTM */</script>
+<script>
+// ===== Y442 (pemulihan): urutkan tabel apa pun dengan klik header =====
+(function(){
+  if(window.__tblSortInit)return; window.__tblSortInit=true;
+  const MN={jan:1,feb:2,mar:3,apr:4,may:5,mei:5,jun:6,jul:7,aug:8,agu:8,ags:8,sep:9,oct:10,okt:10,nov:11,dec:12,des:12};
+  // Sort key for one cell. Numbers and dates sort as such; anything else
+  // falls back to a locale-aware string compare. Blanks/dashes always sink
+  // to the bottom whichever direction is active, so the rows you want to
+  // read stay at the top.
+  function cellKey(td){
+    const raw=(td?(td.innerText||td.textContent||''):'').trim();
+    if(!raw||raw==='—'||raw==='–'||raw==='-')return {blank:true};
+    let m=raw.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if(m)return {n:(+m[1])*10000+(+m[2])*100+(+m[3])};
+    m=raw.match(/^(\d{1,2})[-\s]([A-Za-z]{3})[a-z]*[-\s](\d{2,4})$/);
+    if(m){const mo=MN[m[2].toLowerCase()];if(mo){let y=+m[3];if(y<100)y+=2000;return {n:y*10000+mo*100+(+m[1])};}}
+    // numeric, tolerating "< 0.005", "1.234,5", "12 mg/L", "5%"
+    // Tanda hubung di TENGAH berarti kode, bukan angka: nomor RFA berbentuk
+    // <6 digit>-<2 digit>; membacanya sebagai satu angka membuat semua kode
+    // dalam satu bulan bernilai sama, sehingga barisnya balik teracak alih-alih
+    // terurut. (Contoh angkanya sengaja tidak ditulis: pemeriksa artefak publik
+    // menolak apa pun yang berbentuk nomor RFA asli, termasuk di komentar.)
+    const cleaned=raw.replace(/[<>≈~]/g,'').replace(/\s/g,'');
+    const numTxt=cleaned.replace(/\.(?=\d{3})/g,'').replace(',','.').match(/-?\d+(\.\d+)?/);
+    if(numTxt&&!/\d-\d/.test(cleaned)&&/^[^A-Za-z]*-?[\d.,<>≈~\s]+[^A-Za-z]*$/.test(raw))return {n:parseFloat(numTxt[0])};
+    return {s:raw.toLowerCase()};
+  }
+  // A table is sortable only if it is a plain grid (see the patch note).
+  function sortableTable(th){
+    const table=th.closest('table'); if(!table)return null;
+    const thead=th.closest('thead'); if(!thead||thead.rows.length!==1)return null;
+    // Stand aside for tables that already sort themselves -- Daftar Kegiatan
+    // wires sortActs() onto its own headers (with its own ▲▼ markers). Running
+    // both would re-sort the rows straight after its handler had ordered them.
+    for(const c of thead.rows[0].cells){if(c.hasAttribute('onclick'))return null;}
+    const tbody=table.tBodies&&table.tBodies[0]; if(!tbody)return null;
+    const nCol=thead.rows[0].cells.length;
+    const rows=[...tbody.rows];
+    if(rows.length<2)return null;
+    for(const r of rows){
+      if(r.cells.length!==nCol)return null;             // grouping / spanning row
+      for(const c of r.cells){if(c.colSpan>1)return null;}
+    }
+    return {table:table,tbody:tbody,rows:rows};
+  }
+  function markArrow(thead,idx,dir){
+    [...thead.rows[0].cells].forEach(function(c,i){
+      const old=c.querySelector('.tbl-sort-ar'); if(old)old.remove();
+      if(i===idx){
+        const s=document.createElement('span');
+        s.className='tbl-sort-ar'; s.textContent=dir>0?' ▲':' ▼';
+        s.style.cssText='font-size:9px;opacity:.75';
+        c.appendChild(s);
+      }
+    });
+  }
+  document.addEventListener('click',function(ev){
+    const th=ev.target.closest?ev.target.closest('th'):null; if(!th)return;
+    const ctx=sortableTable(th); if(!ctx)return;
+    const thead=th.closest('thead');
+    const idx=[...thead.rows[0].cells].indexOf(th); if(idx<0)return;
+    const dir=(ctx.table.__sortCol===idx&&ctx.table.__sortDir===1)?-1:1;
+    ctx.table.__sortCol=idx; ctx.table.__sortDir=dir;
+    const keyed=ctx.rows.map(function(r,i){return {r:r,i:i,k:cellKey(r.cells[idx])};});
+    keyed.sort(function(a,b){
+      if(a.k.blank&&b.k.blank)return a.i-b.i;
+      if(a.k.blank)return 1;                 // blanks always last
+      if(b.k.blank)return -1;
+      let c;
+      if(a.k.n!=null&&b.k.n!=null)c=a.k.n-b.k.n;
+      else if(a.k.s!=null&&b.k.s!=null)c=a.k.s.localeCompare(b.k.s,'id');
+      else c=(a.k.n!=null)?-1:1;             // numbers before text
+      return c?c*dir:a.i-b.i;                // stable within ties
+    });
+    const frag=document.createDocumentFragment();
+    keyed.forEach(function(x){frag.appendChild(x.r);});
+    ctx.tbody.appendChild(frag);
+    markArrow(thead,idx,dir);
+  },true);
+  // Only show the pointer on headers that really can sort -- decided per
+  // table, at hover time, so a table that is sortable in one state and not
+  // in another (Per Titik gains grouping rows for non-routine categories)
+  // never advertises an action it will refuse.
+  document.addEventListener('mouseover',function(ev){
+    const th=ev.target.closest?ev.target.closest('th'):null; if(!th)return;
+    if(th.dataset.sortChecked)return;
+    th.dataset.sortChecked='1';
+    if(sortableTable(th)){
+      th.style.cursor='pointer';
+      th.style.userSelect='none';
+      // Deliberately says "baris yang tampil": several of these grids are
+      // paginated (Hasil Sampling > Tabel at 500/page, the RFA list), so a
+      // DOM-level sort orders the current page, not the whole result set.
+      // Better to say so than let a "highest value" read wrong.
+      if(!th.title)th.title='Klik untuk urutkan kolom ini (klik lagi untuk balik urutan). Mengurutkan baris yang sedang tampil.';
+    }
+  },true);
+})();
+</script>
+<script id="coordinate-legacy-field-normalization-2026-08-27">
 (function(){
   var _coordParseBase=window._coordParse;
   function _coordPlausible(p){return !!p&&isFinite(Number(p.lat))&&isFinite(Number(p.lng))&&Math.abs(Number(p.lat))<=90&&Math.abs(Number(p.lng))<=180;}
