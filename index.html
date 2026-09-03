@@ -25019,16 +25019,58 @@ function _rsModeNote(){
     : '<b style="color:#2e7d32">Fill Blank Only</b> — hanya mengisi yang masih kosong; nilai yang sudah kamu isi <b>tidak disentuh</b>.';
 }
 window._rsModeNote=_rsModeNote;
+// Y453: hasil impor recap dipecah per sheet. Satu angka gabungan menyembunyikan
+// sheet yang dilewati seluruhnya.
+function _rsRecapReportHtml(res){
+  var h='<div style="font-size:10.5px;color:#2e7d32;font-weight:700">✓ '+res.changed+' nilai diperbarui (override), '
+    +res.same+' sama'+(res.unmatched?', '+res.unmatched+' sel tanpa padanan (dibiarkan)':'')+'.</div>'
+    +(res.dilindungi?('<div style="font-size:10px;color:#8a5a00;margin-top:3px">🛡 '+res.dilindungi
+       +' sel <b>tidak ditimpa</b> karena sudah ada isinya (mode Fill Blank Only). '
+       +'Pilih <b>Replace All</b> di atas kalau memang ingin menimpanya.</div>'):'');
+  var rep=res.report||[];
+  if(!rep.length)return h;
+  var dilewati=rep.filter(function(r){return r.status!=='ok';}).length;
+  if(dilewati)h+='<div style="font-size:10px;color:#b26a00;margin-top:3px">⚠ '+dilewati
+    +' sheet dilewati seluruhnya — lihat tabel di bawah.</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:5px">'
+    +'<thead><tr style="color:var(--g4)"><th style="text-align:left;padding:2px 4px">Sheet</th>'
+    +'<th style="text-align:right;padding:2px 4px">Diperbarui</th>'
+    +'<th style="text-align:right;padding:2px 4px">Sama</th>'
+    +'<th style="text-align:right;padding:2px 4px">Dilindungi</th>'
+    +'<th style="text-align:left;padding:2px 4px">Catatan</th></tr></thead><tbody>';
+  rep.forEach(function(r){
+    var lewat=(r.status!=='ok');
+    var note=lewat?('dilewati — '+_ep(r.alasan||''))
+      :(r.kolomBulan+' kolom bulan · '+r.baris+' baris'+(r.unmatched?(' · '+r.unmatched+' tanpa padanan'):''));
+    h+='<tr style="border-top:1px solid var(--g2)'+(lewat?';color:#8a6d00':'')+'">'
+      +'<td style="padding:2px 4px">'+_ep(r.sheet)+'</td>'
+      +'<td style="text-align:right;padding:2px 4px">'+(lewat?'–':r.changed)+'</td>'
+      +'<td style="text-align:right;padding:2px 4px">'+(lewat?'–':r.same)+'</td>'
+      +'<td style="text-align:right;padding:2px 4px">'+(lewat?'–':r.dilindungi)+'</td>'
+      +'<td style="padding:2px 4px">'+note+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div style="font-size:9.5px;color:var(--g4);margin-top:4px">"Tanpa padanan" = nilai di raw yang titik/parameternya belum pernah ada di aplikasi — tambahkan manual lewat + Tambah Parameter.</div>';
+  return h;
+}
+window._rsRecapReportHtml=_rsRecapReportHtml;
 function _rsRecapRunImport(wbx){
   var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
   var base=_rsRecapAppIndex(true); // withEmpty: empty app rows can receive imported values
-  var changed=0,same=0,unmatched=0,dilindungi=0;
+  var changed=0,same=0,unmatched=0,dilindungi=0,report=[];
   // Y444: 'fillblank' hanya mengisi yang masih kosong.
   var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE!=='replace');
   wbx.SheetNames.forEach(function(sn){
-    var b=base[_rsNorm(sn)]; if(!b)return;
+    // Y453: sheet yang dilewati dicatat beserta ALASANNYA, tidak lagi hilang
+    // tanpa jejak di balik angka gabungan.
+    var b=base[_rsNorm(sn)];
+    if(!b){report.push({sheet:sn,status:'lewat',alasan:'sheet ini tidak dikenali sebagai bagian recap di aplikasi'});return;}
     var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
-    var grid=_rsRecapGrid(rows); if(!grid)return;
+    var grid=_rsRecapGrid(rows);
+    if(!grid){report.push({sheet:sn,status:'lewat',alasan:'baris kolom bulan / titik / parameter tidak terbaca'});return;}
+    // dihitung dengan selisih penghitung, supaya kelima tempat penambahan di
+    // dalam tidak perlu disentuh satu per satu
+    var _c0=changed,_s0=same,_u0=unmatched,_p0=dilindungi;
     grid.rows.forEach(function(dr){
       var kT=_rsNormKey(dr.titik),kP=_rsNormKey(dr.param);
       Object.keys(grid.monthCols).forEach(function(cj){
@@ -25053,9 +25095,12 @@ function _rsRecapRunImport(wbx){
         changed++;
       });
     });
+    report.push({sheet:sn,status:'ok',baris:grid.rows.length,
+      kolomBulan:Object.keys(grid.monthCols).length,
+      changed:changed-_c0,same:same-_s0,unmatched:unmatched-_u0,dilindungi:dilindungi-_p0});
   });
   if(changed){_hsSaveOverride();if(typeof saveStorage==='function')saveStorage('Import raw Water Monitoring Recap ('+changed+' nilai)');}
-  return {changed:changed,same:same,unmatched:unmatched,dilindungi:dilindungi};
+  return {changed:changed,same:same,unmatched:unmatched,dilindungi:dilindungi,report:report};
 }
 // ================= Produksi Fix (sheet inside Water Monitoring Recap) =================
 // 5 site blocks (BSP/CPA/CPU/NPU/SPU), each a Tahun/month-header pair then
@@ -26665,8 +26710,8 @@ function _rsApplyImport(){
       if(typeof _linBatchEnd==='function')_linBatchEnd({diubah:resR.changed||0,sama:resR.same||0,tanpaPadanan:resR.unmatched||0,dilindungi:resR.dilindungi||0});
       if(typeof renderHasilSampling==='function')try{renderHasilSampling();}catch(e){}
       if(typeof toast==='function')toast('✅ Recap di-import: '+resR.changed+' nilai diperbarui.');
-      if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resR.changed+' nilai diperbarui (override), '+resR.same+' sama, '+resR.unmatched+' sel tanpa padanan (dibiarkan).</span>'
-        +(resR.dilindungi?'<div style="font-size:10px;color:#8a5a00;margin-top:3px">🛡 '+resR.dilindungi+' sel <b>tidak ditimpa</b> karena sudah ada isinya (mode Fill Blank Only). Pilih <b>Replace All</b> di atas kalau memang ingin menimpanya.</div>':'');
+      if(info)info.innerHTML=(typeof _rsRecapReportHtml==='function')?_rsRecapReportHtml(resR)
+        :('<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resR.changed+' nilai diperbarui (override), '+resR.same+' sama, '+resR.unmatched+' sel tanpa padanan (dibiarkan).</span>');
       return;
     }
     if(_rsImportBuf.mode==='drain'){
@@ -28760,6 +28805,47 @@ async function _lapCoaPdfIntake(fileList){
 window._lapCoaPdfIntake=_lapCoaPdfIntake;
 function _lapCoaScanRemove(i){window._lapCoaScans.splice(i,1);_lapRefreshGenModal();}
 window._lapCoaScanRemove=_lapCoaScanRemove;
+// Y452: rekonsiliasi angka sebagai gerbang, bukan cuma catatan di manifest.
+function _lapReconFmt(n){
+  try{return Number(n).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  catch(e){return String(n);}
+}
+function _lapReconAck(){try{return JSON.parse(localStorage.getItem('env26_lap_recon_ack')||'{}');}catch(e){return {};}}
+function _lapReconKey(){
+  if(!_lapDocCtx)return '';
+  return _lapDocCtx.def.key+'|'+_lapDocCtx.period.id;
+}
+// Tanda tangan memuat KEDUA angka tiap selisih: begitu angkanya berubah,
+// tinjauan lama tidak berlaku lagi dan itemnya merah kembali.
+function _lapReconSig(list){
+  return list.map(function(x){
+    return x.kind+':'+x.site+':'+x.titik+':'+x.mon+':'+x.a.v.toFixed(2)+':'+x.b.v.toFixed(2);
+  }).sort().join(';');
+}
+function _lapReconSetAck(k,sig){
+  var a=_lapReconAck();a[k]={sig:sig,at:new Date().toISOString()};
+  try{localStorage.setItem('env26_lap_recon_ack',JSON.stringify(a));}catch(e){}
+  if(typeof _lapRefreshGenModal==='function')_lapRefreshGenModal();
+}
+window._lapReconSetAck=_lapReconSetAck;
+function _lapReconPanelHtml(list){
+  var sig=_lapReconSig(list),key=_lapReconKey();
+  return '<div style="margin-top:6px;border:1px solid #f0c8a8;background:#fff8f0;border-radius:8px;padding:8px 10px">'
+    +'<div style="font-size:10px;font-weight:800;color:#b26a00;margin-bottom:4px">Angka yang belum cocok di dokumen ini</div>'
+    +list.slice(0,6).map(function(x){
+      return '<div style="font-size:10px;margin-bottom:5px">'
+        +'<b>'+_ep(x.site)+(x.titik?' · '+_ep(x.titik):'')+' · '+_ep(x.mon)+'</b><br>'
+        +'&nbsp;&nbsp;'+_ep(x.a.label)+': <b>'+_lapReconFmt(x.a.v)+'</b> '+x.unit+'<br>'
+        +'&nbsp;&nbsp;'+_ep(x.b.label)+': <b>'+_lapReconFmt(x.b.v)+'</b> '+x.unit+'<br>'
+        +'&nbsp;&nbsp;<span style="color:#b26a00">selisih '+_lapReconFmt(x.gap)+' '+x.unit+'</span></div>';
+    }).join('')
+    +(list.length>6?'<div style="font-size:10px">… dan '+(list.length-6)+' selisih lagi</div>':'')
+    +'<div style="font-size:10px;color:#7a5a2a;margin-top:6px">Perbaiki angkanya di sumbernya (Recording Debit &amp; pH atau Data Produksi) supaya cocok, '
+    +'atau kalau memang sudah benar dan selisihnya bisa dijelaskan, tekan tombol di bawah — keputusan itu ikut tercatat.</div>'
+    +'<button onclick="_lapReconSetAck(\''+key+'\',\''+sig.replace(/\\/g,'').replace(/'/g,'')+'\')" '
+    +'style="margin-top:7px;border:1px solid #b26a00;background:#fff;color:#b26a00;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">'
+    +'Saya sudah tinjau — selisih ini memang benar</button></div>';
+}
 function _lapChecklist(){
   if(!_lapDocCtx)return [];
   const def=_lapDocCtx.def,period=_lapDocCtx.period;
@@ -28798,6 +28884,24 @@ function _lapChecklist(){
       items.push({ok:!missing.length,label:'Recording debit harian'+(missing.length?' — kurang: '+missing.join(', '):''),act:"_lapGoto('envtools','debitph')",actLabel:'Ke Recording Debit & pH'});
     }
   }
+  // Y452 / EXPORT-RECONCILE-001: gerbang terakhir sebelum dokumen keluar dari
+  // aplikasi. Dihitungnya sudah lama ada; yang hilang adalah menampilkannya
+  // di sini, sebelum dokumennya jadi.
+  try{
+    const _rec=_lapReconcile();
+    if(_rec.length){
+      const _sig=_lapReconSig(_rec).replace(/\\/g,'').replace(/'/g,'');
+      const _ack=_lapReconAck()[_lapReconKey()];
+      const _done=!!(_ack&&_ack.sig===_sig);
+      items.push({ok:_done,
+        label:'Rekonsiliasi angka — '+_rec.length+' selisih antara ringkasan dan lampiran/sumber'
+              +(_done?' (sudah ditinjau)':''),
+        act:"void 0",actLabel:'Lihat di bawah',
+        detail:_done?'':_lapReconPanelHtml(_rec)});
+    }else{
+      items.push({ok:true,label:'Rekonsiliasi angka — ringkasan dan lampiran cocok'});
+    }
+  }catch(e){}
   const asg=_lapScanAssignments();
   const un=asg.filter(function(a){return !a.hits.length;});
   items.push({ok:asg.length>0&&un.length===0,
@@ -28900,8 +29004,9 @@ function _lapRefreshGenModal(){
     items.forEach(function(it){
       h+='<div style="display:flex;align-items:center;gap:8px;font-size:10.5px;padding:2px 0;color:'+(it.ok?'#2e7d32':'#c62828')+'">'
         +'<span style="flex-shrink:0">'+(it.ok?'✔':'✘')+'</span><span style="flex:1">'+_ep(it.label)+'</span>'
-        +(it.ok?'':'<button onclick="'+it.act.replace(/"/g,'&quot;')+'" style="flex-shrink:0;border:1px solid #c62828;background:#fff;color:#c62828;border-radius:5px;padding:2px 8px;font-size:9.5px;font-weight:700;cursor:pointer;font-family:inherit">'+_ep(it.actLabel)+' →</button>')
-        +'</div>';
+        +(it.ok||it.detail?'':'<button onclick="'+it.act.replace(/"/g,'&quot;')+'" style="flex-shrink:0;border:1px solid #c62828;background:#fff;color:#c62828;border-radius:5px;padding:2px 8px;font-size:9.5px;font-weight:700;cursor:pointer;font-family:inherit">'+_ep(it.actLabel)+' →</button>')
+        +'</div>'
+        +(it.detail||'');
     });
     if(window._lapCoaScans.length){
       h+='<div style="font-size:9.5px;color:#666;margin-top:5px">Scan CoA ter-upload (sesi ini): '
@@ -34520,7 +34625,10 @@ async function _gtFetchMapCanvas(lat,lng,style){
     return out;
   }catch(e){return null;}
 }
-function _gtBatchStatus(m){const el=document.getElementById('gt-bt-status');if(el)el.innerHTML=m;if(window._gtBatch)window._gtBatch.status=m;}
+function _gtBatchStatus(m){const el=document.getElementById('gt-bt-status');if(el)el.innerHTML=m;if(window._gtBatch)window._gtBatch.status=m;
+  // Y454: keterangan di sebelah tombol template ikut menyesuaikan begitu foto
+  // bertambah/berkurang, jadi tidak pernah menjanjikan isi otomatis yang tidak ada.
+  if(typeof _gtBatchRefreshTplHint==='function')_gtBatchRefreshTplHint();}
 async function _gtBatchHandlePhotos(files){
   window._gtBatch=window._gtBatch||{photos:{},rows:[]};
   for(const f of Array.from(files||[])){
@@ -34606,18 +34714,70 @@ function _gtDownloadTemplate(){
   const header=['nama_file','latitude','longitude','judul','alamat','tanggal_jam','watermark','tampilkan_peta'];
   const ex1=['IMG_TITIK-05.jpg',-1.239277,116.846077,'CPU, Kalimantan Timur, Indonesia','SW-05, CPU, Wilayah Kerja Mahakam, Kalimantan Timur, Indonesia','2026-07-15 09:30','GPS Map Camera','ya'];
   const ex2=['IMG_TITIK-06.jpg',-1.241000,116.848000,'CPU, Kalimantan Timur, Indonesia','SW-06, CPU, Wilayah Kerja Mahakam, Kalimantan Timur, Indonesia','2026-07-15 10:05','GPS Map Camera','ya'];
-  const ws=XL.utils.aoa_to_sheet([header,ex1,ex2]);
+  // Y454: kalau fotonya sudah di-drop, kolom nama_file diisi otomatis dari
+  // nama berkas aslinya -- itu bagian yang paling mudah salah ketik, dan
+  // salah ketik di sini berarti fotonya tidak pernah cocok.
+  const _fotoDrop=(window._gtBatch&&window._gtBatch.photos)
+    ? Object.keys(window._gtBatch.photos).map(function(k){return window._gtBatch.photos[k];}) : [];
+  const _isi=_fotoDrop.length
+    ? _fotoDrop.map(function(p){const r=new Array(header.length).fill('');r[0]=p.name;return r;})
+    : [ex1,ex2];
+  const ws=XL.utils.aoa_to_sheet([header].concat(_isi));
   ws['!cols']=[{wch:22},{wch:12},{wch:12},{wch:34},{wch:48},{wch:18},{wch:16},{wch:14}];
   for(let c=0;c<header.length;c++){const ad=XL.utils.encode_cell({r:0,c:c});if(ws[ad])ws[ad].s={font:{bold:true},fill:{fgColor:{rgb:'E8F5E9'}},alignment:{horizontal:'center'}};}
   const wb=XL.utils.book_new();XL.utils.book_append_sheet(wb,ws,'Geotag');
-  XL.writeFile(wb,'Template_Geotag_Batch.xlsx');
+  _gtDownloadTemplateWithDropdowns(XL,wb,header);
 }
+// Menyisipkan dropdown Excel yang sungguhan ke worksheet pertama (satu-satunya)
+// SESUDAH SheetJS menuliskannya, lalu mengunduhnya sendiri -- SheetJS sendiri
+// tidak bisa menulis data validation, jadi jalur XL.writeFile() dilewati.
+function _gtDownloadTemplateWithDropdowns(XL,wb,header){
+  const FALLBACK=function(){XL.writeFile(wb,'Template_Geotag_Batch.xlsx');};
+  try{
+    if(typeof fflate==='undefined'){FALLBACK();return;}
+    const colLetter=function(name){const i=header.indexOf(name);return i<0?null:XL.utils.encode_col(i);};
+    // hanya kolom yang BENAR ADA di header sekarang
+    const yesNoCols=['tampilkan_peta','tampilkan_judul','tampilkan_alamat','tampilkan_koordinat',
+                     'tampilkan_waktu','tampilkan_watermark','tampilkan_bendera'].map(colLetter).filter(Boolean);
+    if(!yesNoCols.length){FALLBACK();return;}
+    const buf=XL.write(wb,{bookType:'xlsx',type:'array'});
+    const zip=fflate.unzipSync(new Uint8Array(buf));
+    const sheetPath=Object.keys(zip).find(function(k){return /^xl\/worksheets\/sheet1\.xml$/.test(k);});
+    if(!sheetPath){FALLBACK();return;}
+    const dec=new TextDecoder('utf-8'),enc=new TextEncoder();
+    let xml=dec.decode(zip[sheetPath]);
+    const dvXml='<dataValidations count="1"><dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="'
+      +yesNoCols.map(function(c){return c+'2:'+c+'1000';}).join(' ')
+      +'"><formula1>"ya,tidak"</formula1></dataValidation></dataValidations>';
+    // Titik sisip menurut urutan elemen tetap CT_Worksheet: tepat sesudah
+    // </sheetData> (dan sesudah <mergeCells> kalau SheetJS kebetulan
+    // menuliskannya), sebelum apa pun yang menyusul.
+    const afterMerge=xml.indexOf('</mergeCells>');
+    const insertAt=afterMerge>=0?afterMerge+'</mergeCells>'.length:(xml.indexOf('</sheetData>')+'</sheetData>'.length);
+    if(insertAt<'</sheetData>'.length){FALLBACK();return;}
+    xml=xml.slice(0,insertAt)+dvXml+xml.slice(insertAt);
+    zip[sheetPath]=enc.encode(xml);
+    const zipped=fflate.zipSync(zip,{level:6});
+    const blob=new Blob([zipped],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Template_Geotag_Batch.xlsx';document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);
+  }catch(e){FALLBACK();}
+}
+window._gtDownloadTemplateWithDropdowns=_gtDownloadTemplateWithDropdowns;
+function _gtBatchTplHint(){
+  const n=Object.keys((window._gtBatch&&window._gtBatch.photos)||{}).length;
+  return n?('— otomatis terisi '+n+' nama file dari foto yang sudah di-drop')
+          :'— drop foto dulu (langkah 1) supaya kolom nama_file otomatis terisi';
+}
+function _gtBatchRefreshTplHint(){const el=document.getElementById('gt-bt-tplhint');if(el)el.textContent=_gtBatchTplHint();}
+window._gtBatchRefreshTplHint=_gtBatchRefreshTplHint;
 function _gtBatchSectionHtml(){
   const lbl='font-size:10px;color:var(--g3)';
   return '<div class="et-sec">'
    +'<div class="et-sec-title">📊 Pemrosesan Batch (dari Excel)</div>'
    +'<div class="et-sec-desc">Isi data geotag banyak foto sekaligus di Excel, lalu drop foto + Excel-nya. Pencocokan lewat <b>nama file</b>: isi kolom <code>nama_file</code> dengan nama / kode unik yang ada di nama foto. Hasil diunduh sebagai 1 ZIP.</div>'
-   +'<div style="margin-bottom:10px"><button onclick="_gtDownloadTemplate()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700">⬇ Unduh Template Excel</button></div>'
+   +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button onclick="_gtDownloadTemplate()" style="flex-shrink:0;background:#1565c0;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700">⬇ Unduh Template Excel</button>'
+   +'<span id="gt-bt-tplhint" style="font-size:10px;color:var(--g3)">'+((typeof _gtBatchTplHint==='function')?_gtBatchTplHint():'')+'</span></div>'
    +'<div style="display:flex;gap:12px;flex-wrap:wrap">'
    +'<div style="flex:1;min-width:240px"><div style="'+lbl+';margin-bottom:4px">1) Drop foto (banyak)</div>'
    +'<div class="et-drop" id="gt-bt-photos" style="padding:16px" onclick="document.getElementById(\'gt-bt-photofile\').click()"><div style="font-size:18px">📷</div><div style="font-size:11px;font-weight:700;margin-top:3px">Klik / drop foto</div><input type="file" id="gt-bt-photofile" accept="image/*" multiple style="display:none" onchange="_gtBatchHandlePhotos(this.files);this.value=\'\'"></div></div>'
@@ -38385,6 +38545,35 @@ html[data-theme="anjungan"] body [style*="color:#0F5C8C" i]{color:#7FB6D6!import
 html[data-theme="studio"] .drain-est,html[data-theme="command"] .drain-est{color:#d9a441}
 html[data-theme="studio"] .drain-est-note,html[data-theme="command"] .drain-est-note{
   background:rgba(217,164,65,.10);border-color:rgba(217,164,65,.35);color:#d9a441}
+/* Y455 -- dialog Generate Laporan sebagai langkah, khusus HP.
+   Ketiga bagiannya dulu dijejalkan ke satu lembar 92vh: panel cek 170px,
+   iframe pratinjau, dan sebaris tombol -- masing-masing terlalu pendek untuk
+   dipakai. Satu langkah, satu layar penuh. */
+@media (max-width: 768px) {
+  .lap-steps{
+    display:flex;gap:0;flex-shrink:0;margin:0 0 10px;
+    border:1px solid var(--g2);border-radius:12px;overflow:hidden;
+  }
+  .lap-step-btn{
+    flex:1 1 0;min-height:44px;border:none;background:var(--white,#fff);
+    font-family:inherit;font-size:12px;font-weight:700;color:var(--g3);
+    cursor:pointer;border-right:1px solid var(--g2);
+  }
+  .lap-step-btn:last-child{border-right:none}
+  .lap-step-btn.on{background:#0A0A0A;color:#fff}
+  .mo-box[data-lap-step] .lap-step-part{display:none!important}
+  .mo-box[data-lap-step="cek"] .lap-step-cek{display:block!important;flex:1 1 auto;max-height:none!important}
+  .mo-box[data-lap-step="pra"] .lap-step-pra{display:block!important;flex:1 1 auto}
+  .mo-box[data-lap-step="exp"] .lap-step-exp{
+    display:flex!important;flex-wrap:wrap;gap:8px;align-content:flex-start;flex:1 1 auto;
+  }
+  .mo-box[data-lap-step="exp"] .lap-step-exp button{flex:1 1 46%;min-height:46px}
+  .lap-step-next{
+    display:block;width:100%;flex-shrink:0;margin-top:10px;padding:12px;
+    min-height:48px;border:none;border-radius:12px;background:#0A0A0A;color:#fff;
+    font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;
+  }
+}
 </style>
 <script id="mobile-ux-v2-js">
 (function(){
@@ -38405,8 +38594,81 @@ html[data-theme="studio"] .drain-est-note,html[data-theme="command"] .drain-est-
     {tab:'panduan', icon:'📖', label:'Panduan'}
   ];
 
+  // ── Y455: dialog Generate Laporan sebagai langkah, khusus HP ──
+  var LAP_STEPS = [
+    {key:'cek',  label:'1 Cek'},
+    {key:'pra',  label:'2 Pratinjau'},
+    {key:'exp',  label:'3 Export'}
+  ];
+  function _lapGoStep(box, key){
+    box.dataset.lapStep = key;
+    box.querySelectorAll('.lap-step-btn').forEach(function(b){
+      var on = b.dataset.step === key;
+      b.classList.toggle('on', on);
+      if(on) b.setAttribute('aria-current','step'); else b.removeAttribute('aria-current');
+    });
+    var next = box.querySelector('.lap-step-next');
+    if(next){
+      var last = key === LAP_STEPS[LAP_STEPS.length-1].key;
+      next.style.display = last ? 'none' : 'block';
+      next.textContent = key === 'cek' ? 'Lanjut ke pratinjau →' : 'Lanjut ke export →';
+    }
+  }
+  function _lapStepper(){
+    if(!MQ.matches) return;
+    var ov = document.getElementById('lap-gen-ov');
+    if(!ov) return;
+    var box = ov.querySelector('.mo-box');
+    if(!box || box.querySelector('.lap-steps')) return;   // jangan terpasang dua kali
+    var check = box.querySelector('#lap-check-panel');
+    var frame = box.querySelector('#lap-doc-frame');
+    if(!check || !frame) return;
+    var foot = box.lastElementChild;
+    if(foot === frame || foot === check) foot = null;
+    check.classList.add('lap-step-part','lap-step-cek');
+    frame.classList.add('lap-step-part','lap-step-pra');
+    if(foot) foot.classList.add('lap-step-part','lap-step-exp');
+
+    var bar = document.createElement('div');
+    bar.className = 'lap-steps';
+    LAP_STEPS.forEach(function(st){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lap-step-btn';
+      b.dataset.step = st.key;
+      b.textContent = st.label;
+      b.addEventListener('click', function(){ _lapGoStep(box, st.key); });
+      bar.appendChild(b);
+    });
+    // panel cek dibatasi 170px untuk tata letak desktop; di HP dia satu langkah
+    // penuh, jadi batasnya dilepas
+    check.style.maxHeight = 'none';
+    frame.parentNode.insertBefore(bar, check);
+
+    var next = document.createElement('button');
+    next.type = 'button';
+    next.className = 'lap-step-next';
+    next.addEventListener('click', function(){
+      var cur = box.dataset.lapStep || 'cek';
+      var i = LAP_STEPS.findIndex(function(x){return x.key===cur;});
+      _lapGoStep(box, LAP_STEPS[Math.min(i+1, LAP_STEPS.length-1)].key);
+    });
+    box.appendChild(next);
+    _lapGoStep(box, 'cek');
+  }
+  function wireLapStepper(){
+    if(window._mobLapObserver) return;
+    // dialognya dibuat belakangan dan bisa dirender ulang, jadi dipantau
+    var obs = new MutationObserver(function(){ _lapStepper(); });
+    obs.observe(document.body, {childList:true});
+    window._mobLapObserver = obs;
+    _lapStepper();
+  }
+  window._lapStepper = _lapStepper;
+
   function init(){
     injectMobileNav();
+    wireLapStepper();
     injectMoreSheet();
     injectFAB();
     injectSheetHandle();
