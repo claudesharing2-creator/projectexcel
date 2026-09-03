@@ -25294,6 +25294,98 @@ function _rsProdRunExport(files,wbx){
 // ================= Debit Data Drainase (.xlsm) <-> env26_drain =================
 // Site sheets (Samboja/Anggana/Handil...): col A = date, col B = CURAH HUJAN —
 // the only literal data column; every other column is formula. VBA untouched.
+// Y456: cocokkan nama lembar ke catchment. Sama persis dulu; kalau tidak ada,
+// cocok-sebagian TAPI hanya kalau tepat satu catchment cocok -- dua yang cocok
+// berarti ambigu, dan menebak di jalur tulis data lebih buruk daripada diam.
+function _rsDrainMatchKey(sheet,keys){
+  var n=_rsNorm(sheet);
+  for(var i=0;i<keys.length;i++)if(_rsNorm(keys[i])===n)return keys[i];
+  var hit=keys.filter(function(k){var kn=_rsNorm(k);return kn&&n.indexOf(kn)>=0;});
+  return hit.length===1?hit[0]:null;
+}
+window._rsDrainMatchKey=_rsDrainMatchKey;
+// Kenapa sebuah berkas bisa terbaca 0 lembar. Disebutkan apa adanya, bukan
+// dibiarkan jadi angka nol yang tidak berarti apa-apa.
+function _rsDrainKenapaKosong(wbx){
+  return '<div style="font-size:10px;color:#b26a00;margin-top:4px;line-height:1.55">'
+    +'Tidak ada satu pun lembar yang bisa dibaca. Lembar di berkas ini: <b>'
+    +_ep((wbx&&wbx.SheetNames||[]).join(', ')||'(kosong)')+'</b>.<br>'
+    +'Sebuah lembar hanya terbaca kalau kolom pertamanya berjudul <b>Tanggal</b> '
+    +'di dalam 10 baris pertama, dan tanggalnya berupa tanggal Excel (bukan teks).'
+    +'</div>';
+}
+function _rsDrainReportHtml(sum){
+  var rep=sum.report||[];
+  var h='<div style="font-size:10.5px;color:#1565c0;font-weight:700">✓ '+sum.cells
+    +' sel curah hujan ditimpa di '+sum.sheets+' lembar site. Rumus debit &amp; macro VBA utuh. Berkas terunduh.</div>';
+  if(!sum.lembarTerbaca)h+=_rsDrainKenapaKosong(sum.wbx);
+  if(!rep.length)return h;
+  var takKeluar=rep.reduce(function(a,r){return a+(r.tanpaBaris||0);},0);
+  var lewat=rep.filter(function(r){return r.status!=='ok';});
+  if(takKeluar)h+='<div style="font-size:10px;color:#b26a00;margin-top:3px">⚠ <b>'+takKeluar
+    +'</b> tanggal yang ada di aplikasi <b>tidak ikut keluar</b> karena berkas raw ini tidak punya barisnya. '
+    +'Tambahkan barisnya dulu di Excel kalau memang harus ikut.</div>';
+  if(lewat.length)h+='<div style="font-size:10px;color:#c62828;margin-top:3px">⚠ <b>'+lewat.length
+    +'</b> lembar/catchment dilewati — lihat tabel.</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:5px">'
+    +'<thead><tr style="color:var(--g4)">'
+    +'<th style="text-align:left;padding:2px 4px">Lembar</th>'
+    +'<th style="text-align:right;padding:2px 4px">Ditulis</th>'
+    +'<th style="text-align:right;padding:2px 4px">Sudah sama</th>'
+    +'<th style="text-align:right;padding:2px 4px">Sel rumus</th>'
+    +'<th style="text-align:right;padding:2px 4px">Tak ada baris</th>'
+    +'<th style="text-align:left;padding:2px 4px">Catatan</th></tr></thead><tbody>';
+  rep.forEach(function(r){
+    var ok=(r.status==='ok');
+    var cat=ok?((r.catchment&&r.catchment!==r.sheet?('→ '+_ep(r.catchment)+' · '):'')
+        +r.baris+' baris di berkas'+(r.barisTanpaData?(' · '+r.barisTanpaData+' baris tanpa data di aplikasi'):''))
+      :_ep(r.alasan||'');
+    h+='<tr style="border-top:1px solid var(--g2)'+(ok?'':';color:#c62828')+'">'
+      +'<td style="padding:2px 4px">'+_ep(r.sheet)+'</td>'
+      +'<td style="text-align:right;padding:2px 4px">'+(ok?r.ditulis:'–')+'</td>'
+      +'<td style="text-align:right;padding:2px 4px">'+(ok?r.sama:'–')+'</td>'
+      +'<td style="text-align:right;padding:2px 4px">'+(ok?r.rumus:'–')+'</td>'
+      +'<td style="text-align:right;padding:2px 4px">'+(ok?r.tanpaBaris:'–')+'</td>'
+      +'<td style="padding:2px 4px">'+cat+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div style="font-size:9.5px;color:var(--g4);margin-top:4px">'
+    +'"Sel rumus" sengaja tidak ditimpa supaya rumus debit di berkasmu tetap utuh. '
+    +'"Tak ada baris" = tanggal yang ada di aplikasi tapi tidak punya baris di lembar ini.</div>';
+  return h;
+}
+window._rsDrainReportHtml=_rsDrainReportHtml;
+function _rsDrainImportReportHtml(res){
+  var rep=res.report||[];
+  var h='<div style="font-size:10.5px;color:#2e7d32;font-weight:700">✓ '+res.added
+    +' tanggal baru, '+res.updated+' diperbarui dari '+res.sheets+' lembar site.</div>';
+  if(!rep.length)return h+_rsDrainKenapaKosong(res.wbx);
+  if(res.baru&&res.baru.length){
+    h+='<div style="font-size:10px;color:#b26a00;margin-top:3px;line-height:1.55">⚠ '
+      +'Nama lembar <b>'+_ep(res.baru.join(', '))+'</b> tidak cocok dengan catchment mana pun, '
+      +'jadi datanya masuk sebagai <b>catchment baru</b>, bukan ke catchment yang sudah ada. '
+      +'Kalau itu sebenarnya site yang sama, ganti nama lembarnya di Excel agar memuat nama catchment-nya, '
+      +'lalu impor ulang — kalau tidak, ekspor nanti tidak akan menemukan datanya.</div>';
+  }
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:5px">'
+    +'<thead><tr style="color:var(--g4)">'
+    +'<th style="text-align:left;padding:2px 4px">Lembar</th>'
+    +'<th style="text-align:left;padding:2px 4px">Masuk ke</th>'
+    +'<th style="text-align:right;padding:2px 4px">Baru</th>'
+    +'<th style="text-align:right;padding:2px 4px">Diperbarui</th>'
+    +'<th style="text-align:right;padding:2px 4px">Bukan angka</th></tr></thead><tbody>';
+  rep.forEach(function(r){
+    h+='<tr style="border-top:1px solid var(--g2)'+(r.baru?';color:#b26a00':'')+'">'
+      +'<td style="padding:2px 4px">'+_ep(r.sheet)+'</td>'
+      +'<td style="padding:2px 4px">'+_ep(r.catchment)+(r.baru?' <b>(baru)</b>':'')+'</td>'
+      +'<td style="text-align:right;padding:2px 4px">'+r.ditambah+'</td>'
+      +'<td style="text-align:right;padding:2px 4px">'+r.diperbarui+'</td>'
+      +'<td style="text-align:right;padding:2px 4px">'+r.bukanAngka+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  return h;
+}
+window._rsDrainImportReportHtml=_rsDrainImportReportHtml;
 function _rsDrainParse(wbx){
   var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX); var out=[];
   wbx.SheetNames.forEach(function(sn){
@@ -25314,48 +25406,85 @@ function _rsDrainParse(wbx){
 function _rsDrainStore(){var d={};try{d=JSON.parse(localStorage.getItem('env26_drain')||'{}');}catch(e){}return d;}
 function _rsDrainRunExport(files,wbx){
   var d=_rsDrainStore();
-  var keyOf={}; Object.keys(d).forEach(function(k){keyOf[_rsNorm(k)]=k;});
+  var keys=Object.keys(d);
   var parsed=_rsDrainParse(wbx);
   var getP=_rsSheetPath(files);
-  var sum={sheets:0,cells:0};
+  // Y456: tiap yang dilewati dicatat. Sebelumnya lembar yang namanya tidak
+  // cocok, sel rumus, dan tanggal yang tidak punya baris semuanya hilang
+  // tanpa jejak, dan pesannya tetap bergaya berhasil.
+  var sum={sheets:0,cells:0,report:[],wbx:wbx,lembarTerbaca:parsed.length};
+  var terpakai={};
   parsed.forEach(function(ps){
-    var dk=keyOf[_rsNorm(ps.sheet)]; if(!dk)return;
+    var dk=_rsDrainMatchKey(ps.sheet,keys);
+    if(!dk){
+      sum.report.push({sheet:ps.sheet,status:'lewat',
+        alasan:'nama lembar tidak cocok dengan catchment mana pun di aplikasi ('+keys.join(', ')+')'});
+      return;
+    }
+    terpakai[dk]=1;
     var data=d[dk]||{};
-    var path=getP(ps.sheet); if(!path||!files[path])return;
+    var path=getP(ps.sheet);
+    if(!path||!files[path]){
+      sum.report.push({sheet:ps.sheet,catchment:dk,status:'lewat',
+        alasan:'lembar ini tidak ditemukan di dalam berkas .xlsx/.xlsm'});
+      return;
+    }
     var xml=fflate.strFromU8(files[path]);
     var bStyle=_rsColSampleStyle(xml,'B',ps.rows[0]?ps.rows[0].excelRow:5);
-    var wrote=0;
+    var wrote=0,sama=0,rumus=0,takAdaData=0,adaBaris={};
     ps.rows.forEach(function(r){
-      var v=data[r.date]; if(v==null)return;
-      if(typeof v==='number'&&typeof r.val==='number'&&Math.abs(v-r.val)<1e-9)return; // unchanged
+      adaBaris[r.date]=1;
+      var v=data[r.date];
+      if(v==null){takAdaData++;return;}
+      if(typeof v==='number'&&typeof r.val==='number'&&Math.abs(v-r.val)<1e-9){sama++;return;}
       var addr='B'+r.excelRow;
-      if(_rsCellIsFormula(xml,addr))return;
+      // sel rumus sengaja tidak ditimpa supaya rumus debit tetap utuh -- tapi
+      // sekarang dihitung, bukan hilang begitu saja
+      if(_rsCellIsFormula(xml,addr)){rumus++;return;}
       xml=_rsWriteCell(xml,addr,{num:(typeof v==='number'?v:parseFloat(v)||0)},bStyle); wrote++;
     });
+    var tanpaBaris=Object.keys(data).filter(function(t){return !adaBaris[t];}).length;
     if(wrote){files[path]=fflate.strToU8(xml);sum.sheets++;sum.cells+=wrote;}
+    sum.report.push({sheet:ps.sheet,catchment:dk,status:'ok',baris:ps.rows.length,
+      ditulis:wrote,sama:sama,rumus:rumus,barisTanpaData:takAdaData,tanpaBaris:tanpaBaris});
+  });
+  // catchment yang datanya ada tapi tidak punya lembar tujuan sama sekali
+  keys.forEach(function(k){
+    if(terpakai[k])return;
+    var n=Object.keys(d[k]||{}).length; if(!n)return;
+    sum.report.push({sheet:'(tidak ada lembar untuk "'+k+'")',catchment:k,status:'lewat',
+      alasan:n+' tanggal di aplikasi tidak punya lembar tujuan di berkas ini'});
   });
   return sum;
 }
 function _rsDrainRunImport(wbx){
   var d=_rsDrainStore();
-  var keyOf={}; Object.keys(d).forEach(function(k){keyOf[_rsNorm(k)]=k;});
+  var keys=Object.keys(d);
   var parsed=_rsDrainParse(wbx);
-  var updated=0,added=0;
+  var updated=0,added=0,report=[],baru=[];
   parsed.forEach(function(ps){
-    var dk=keyOf[_rsNorm(ps.sheet)]||ps.sheet;
+    // Y456: kalau namanya tidak cocok, catchment baru MASIH dibuat (menambah
+    // site baru itu sah) -- tapi tidak lagi diam-diam. Inilah yang membuat
+    // data masuk ke tempat lain lalu ekspor tidak menemukannya.
+    var dk=_rsDrainMatchKey(ps.sheet,keys),cbaru=false;
+    if(!dk){dk=ps.sheet;cbaru=!d[dk];}
     var tgt=d[dk]=d[dk]||{};
+    var u=0,a=0,bukanAngka=0;
     ps.rows.forEach(function(r){
-      if(typeof r.val!=='number')return;
-      if(tgt[r.date]==null){tgt[r.date]=r.val;added++;}
-      else if(Math.abs(tgt[r.date]-r.val)>1e-9){tgt[r.date]=r.val;updated++;}
+      if(typeof r.val!=='number'){bukanAngka++;return;}
+      if(tgt[r.date]==null){tgt[r.date]=r.val;added++;a++;}
+      else if(Math.abs(tgt[r.date]-r.val)>1e-9){tgt[r.date]=r.val;updated++;u++;}
     });
+    if(cbaru)baru.push(dk);
+    report.push({sheet:ps.sheet,catchment:dk,baru:cbaru,baris:ps.rows.length,
+      ditambah:a,diperbarui:u,bukanAngka:bukanAngka});
   });
   if(updated||added){
     try{localStorage.setItem('env26_drain',JSON.stringify(d));}catch(e){}
     if(typeof DRAIN_DATA!=='undefined')try{DRAIN_DATA=d;}catch(e){}
     if(typeof saveStorage==='function')saveStorage('Import raw Debit Drainase');
   }
-  return {updated:updated,added:added,sheets:parsed.length};
+  return {updated:updated,added:added,sheets:parsed.length,report:report,baru:baru,wbx:wbx};
 }
 // ================= ENV Mon Program =================
 // Real raw file layout (verified against actual uploads, not assumed): NOT
@@ -26718,7 +26847,8 @@ function _rsApplyImport(){
       var resD=_rsDrainRunImport(_rsImportBuf.wbx);
       if(typeof _linBatchEnd==='function')_linBatchEnd({ditambah:resD.added||0,diubah:resD.updated||0,sheet:resD.sheets||0});
       if(typeof toast==='function')toast('✅ Curah hujan di-import: '+resD.added+' baru, '+resD.updated+' diperbarui.');
-      if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resD.added+' tanggal baru, '+resD.updated+' diperbarui dari '+resD.sheets+' sheet site.</span>';
+      if(info)info.innerHTML=(typeof _rsDrainImportReportHtml==='function')?_rsDrainImportReportHtml(resD)
+        :('<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resD.added+' tanggal baru, '+resD.updated+' diperbarui dari '+resD.sheets+' sheet site.</span>');
       return;
     }
     if(_rsImportBuf.mode==='program'){
@@ -26915,7 +27045,8 @@ function _rsRunExport(){
       var isXlsm=/\.xlsm$/i.test(_rsExportBuf.origName||'');
       var nmDr=(_rsExportBuf.origName||'Debit_Drainase.xlsm').replace(/\.(xlsx|xlsm)$/i,'')+'_updated.'+(isXlsm?'xlsm':'xlsx');
       _rsDownloadZipBytes(bytesDr,nmDr);
-      if(info)info.innerHTML='<span style="color:#1565c0;font-size:10.5px;font-weight:700">✓ '+sumDr.cells+' sel curah hujan ditimpa di '+sumDr.sheets+' sheet site. Rumus debit & macro VBA utuh. File terunduh.</span>';
+      if(info)info.innerHTML=(typeof _rsDrainReportHtml==='function')?_rsDrainReportHtml(sumDr)
+        :('<span style="color:#1565c0;font-size:10.5px;font-weight:700">✓ '+sumDr.cells+' sel curah hujan ditimpa di '+sumDr.sheets+' sheet site. Rumus debit & macro VBA utuh. File terunduh.</span>');
       if(typeof toast==='function')toast('✅ Debit Drainase ter-update ('+sumDr.cells+' sel).');
       return;
     }
