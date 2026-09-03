@@ -5534,6 +5534,9 @@ const REVISION='R12';
 
 // ── localStorage ──
 function _rfaMergeSeed(){
+  // Y448: id dulu -- penggabungan seed di bawah berpatokan pada id, dan id
+  // ganda berarti dua RFA berbeda menjawab satu id yang sama.
+  if(typeof _rfaRepairIds==='function')_rfaRepairIds();
   const rfaIds=new Set(RFA_DATA.map(x=>x.id));
   const trashedRfaIds=new Set(TRASH.filter(t=>t.type==='rfa').map(t=>t.data&&t.data.id).filter(Boolean));
   const missingRfa=RFA_SEED.filter(x=>!rfaIds.has(x.id)&&!trashedRfaIds.has(x.id));
@@ -10975,6 +10978,7 @@ function openCalEv(id){
       </div>
     </div>
     ${ev.site?`<div class="mo-row"><label>Site</label><p>${ev.site}</p></div>`:''}
+    ${(typeof _evCoverageHtml==='function')?_evCoverageHtml(ev):''}
     ${showPtTag?`<div class="mo-row"><label>Titik Sampling</label>
       ${evIndivPts.length
         ?`<div style="margin-top:3px;display:flex;flex-direction:column;gap:3px">${evIndivPts.map(p=>`<span style="font-size:10px;color:var(--g4);display:flex;align-items:center;gap:5px"><span style="width:5px;height:5px;border-radius:50%;background:var(--teal);flex-shrink:0;display:inline-block"></span>${p}</span>`).join('')}</div>`
@@ -11643,6 +11647,96 @@ function _calxDecode(ev){
   if(_fb)return [_fb];
   return [{kind:'unresolved'}];
 }
+// Y446: Cakupan Titik per jadwal.
+function _evIsRoutine(ev){return ['Monthly','Semesterly','Yearly'].indexOf(ev&&ev.type)>=0;}
+function _evMasterPoints(ev){
+  if(!_evIsRoutine(ev)||!ev.site)return [];
+  try{
+    return _calxExpand({kind:'routine',keg:ev.type,site:ev.site,date:ev.date})
+      .map(function(p){return p.titik;})
+      .filter(function(v,i,a){return v&&a.indexOf(v)===i;});
+  }catch(_){return [];}
+}
+// Titik yang BELUM tercakup kegiatan lain yang sejenis di bulan yang sama dan
+// tanggalnya lebih awal -- ini yang biasanya jadi jadwal susulan.
+function _evDefaultPoints(ev){
+  var all=_evMasterPoints(ev);
+  if(!all.length)return [];
+  var covered={};
+  (typeof CAL_EVENTS!=='undefined'?CAL_EVENTS:[]).forEach(function(e){
+    if(!e||e.id===ev.id||e.type!==ev.type)return;
+    if(String(e.site||'')!==String(ev.site||''))return;
+    if(String(e.date||'').slice(0,7)!==String(ev.date||'').slice(0,7))return;
+    if(String(e.date||'')>String(ev.date||''))return;
+    if(!(e.points&&e.points.length))return;
+    e.points.forEach(function(p){covered[p]=1;});
+  });
+  var rest=all.filter(function(p){return !covered[p];});
+  return rest.length?rest:all;
+}
+function _evCovFind(id){
+  return (typeof CAL_EVENTS!=='undefined'?CAL_EVENTS:[]).find(function(e){return e&&e.id===id;});
+}
+function _evCoverageHtml(ev){
+  var all=_evMasterPoints(ev);
+  if(!all.length)return '';
+  var sel=(ev.points&&ev.points.length)?ev.points:null;
+  var n=sel?all.filter(function(p){return sel.indexOf(p)>=0;}).length:all.length;
+  var eid=String(ev.id||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  var bs='border:1px solid var(--g2);background:var(--card,#fff);color:inherit;border-radius:6px;padding:2px 9px;font-size:10px;cursor:pointer;font-family:inherit';
+  return '<div class="mo-row"><label>Cakupan Titik</label><div style="font-size:11px">'
+   + '<span style="font-weight:700">'+n+' dari '+all.length+' titik</span>'
+   + '<span style="color:var(--g3);margin-left:6px">'+(sel?'\u00b7 tercatat':'\u00b7 belum dicatat (dianggap semua)')+'</span>'
+   + ' <button onclick="_evToggleCov()" style="margin-left:8px;'+bs+';font-weight:700">Atur\u2026</button>'
+   + '<div id="ev-cov-box" style="display:none;margin-top:8px;border:1px solid var(--g2);border-radius:8px;padding:10px 12px;background:var(--g1)">'
+   +   '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
+   +     '<button onclick="_evCovAll(1)" style="'+bs+'">Pilih semua</button>'
+   +     '<button onclick="_evCovAll(0)" style="'+bs+'">Kosongkan</button>'
+   +     '<button onclick="_evCovRest(\''+eid+'\')" style="'+bs+'">Sisa belum tercakup</button>'
+   +   '</div>'
+   +   '<div style="max-height:230px;overflow-y:auto;display:flex;flex-direction:column;gap:2px">'
+   +   all.map(function(p){
+         var on=sel?(sel.indexOf(p)>=0):true;
+         return '<label style="display:flex;gap:6px;align-items:flex-start;font-size:10.5px;line-height:1.45;cursor:pointer">'
+              + '<input type="checkbox" class="ev-cov-cb" data-p="'+_calxEsc(p).replace(/"/g,'&quot;')+'"'+(on?' checked':'')+' style="margin-top:2px;flex-shrink:0">'
+              + '<span>'+_calxEsc(p)+'</span></label>';
+       }).join('')
+   +   '</div>'
+   +   '<div style="margin-top:10px"><label style="display:block;font-size:10px;font-weight:700;color:var(--g3);margin-bottom:3px">Keterangan (alasan titik tidak tersampling, kendala di lapangan, dll)</label>'
+   +   '<textarea id="ev-cov-rem" rows="2" placeholder="mis. cuaca buruk, akses ditutup, jadwal susulan untuk sisa titik" style="width:100%;box-sizing:border-box;border:1px solid var(--g2);border-radius:6px;padding:5px 7px;font-size:11px;font-family:inherit;resize:vertical">'+_calxEsc(ev.rem||'')+'</textarea></div>'
+   +   '<div style="margin-top:9px;display:flex;gap:6px">'
+   +     '<button onclick="_evSaveCov(\''+eid+'\')" style="border:none;background:var(--teal);color:#fff;border-radius:6px;padding:4px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Simpan</button>'
+   +     '<button onclick="_evToggleCov()" style="'+bs+';padding:4px 12px;font-size:11px">Batal</button>'
+   +   '</div>'
+   + '</div></div></div>';
+}
+window._evToggleCov=function(){var b=document.getElementById('ev-cov-box');if(b)b.style.display=(b.style.display==='none'?'block':'none');};
+window._evCovAll=function(on){Array.prototype.forEach.call(document.querySelectorAll('.ev-cov-cb'),function(c){c.checked=!!on;});};
+window._evCovRest=function(id){
+  var ev=_evCovFind(id);if(!ev)return;
+  var rest=_evDefaultPoints(ev);
+  Array.prototype.forEach.call(document.querySelectorAll('.ev-cov-cb'),function(c){
+    c.checked=rest.indexOf(c.getAttribute('data-p'))>=0;});
+};
+window._evSaveCov=function(id){
+  var ev=_evCovFind(id);if(!ev)return;
+  var all=_evMasterPoints(ev),sel=[];
+  Array.prototype.forEach.call(document.querySelectorAll('.ev-cov-cb'),function(c){
+    if(c.checked)sel.push(c.getAttribute('data-p'));});
+  var rt=document.getElementById('ev-cov-rem');
+  var rem=rt?String(rt.value||'').trim():'';
+  // Semua tercentang dan tidak ada keterangan = sama saja dengan tidak berkata
+  // apa-apa, jadi biarkan tidak tercatat daripada membekukan daftar induk hari
+  // ini ke dalam kegiatan -- kalau daftar induk berubah nanti, kegiatan lama
+  // tidak boleh ikut membeku.
+  if(sel.length===all.length&&!rem)delete ev.points; else ev.points=sel;
+  if(rem)ev.rem=rem; else delete ev.rem;
+  ev._edited=true;
+  if(typeof saveStorage==='function')saveStorage('Cakupan titik');
+  if(typeof openCalEv==='function')openCalEv(ev.id);
+  if(typeof renderCalendar==='function')renderCalendar();
+  if(typeof toast==='function')toast('\u2705 Cakupan titik disimpan ('+sel.length+'/'+all.length+' titik)');
+};
 function _calxExpand(pl){
   var SP=(typeof SAMPLING_POINTS!=='undefined')?SAMPLING_POINTS:{};
   var out=[],site=String(pl.site||'').toUpperCase();
@@ -13082,7 +13176,7 @@ function openRfaModal(id,ctxActId){window._azRfaId=id;
         ${(r.actId||r.calEventId)?`<button onclick="rfaModalSyncFromAct('${id}')" title="Isi otomatis dari kegiatan terkait" style="border:1px solid #90bef5;background:#eaf2ff;color:#1565c0;border-radius:6px;padding:2px 10px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">⚡ Sync dari Kegiatan</button>`:''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:11px;background:var(--g1);padding:8px 10px;border-radius:8px;margin-bottom:12px">
-        ${infoRow('No RFA',`<b style="font-size:11px">${_esc(r.noRfa||'–')}</b>`)}
+        ${infoRow('No RFA',`<b style="font-size:11px">${_esc(r.noRfa||'–')}</b>${(typeof _rfaKoreksiNote==='function')?_rfaKoreksiNote(r):''}`)}
         ${infoRow('Bulan',`<b style="font-size:11px">${_esc(r.bulan||'–')}</b>`)}
         ${infoRow('Jenis',`<b style="font-size:11px">${_esc(r.jenis||'–')}</b><input type="hidden" id="rm-jenis" value="${_esc(r.jenis||'')}">`)}
         ${infoRow('Sampel',`<b style="font-size:11px">${_esc(r.sampel||'–')}</b><input type="hidden" id="rm-sampel" value="${_esc(r.sampel||'')}">`)}
@@ -15565,6 +15659,111 @@ function _rfaHealHydrotestScanGap(){
   // sebelum dikosongkan, bukan diasumsikan.
   return false;
 }
+// Y448: id RFA ganda. Dua record berbeda yang menjawab satu id membuat setiap
+// operasi berbasis id mengenai record yang salah.
+function _rfaRepairIds(){
+  if(typeof RFA_DATA==='undefined'||!RFA_DATA.length)return 0;
+  var top=(typeof RFA_NID==='number')?RFA_NID:1;
+  RFA_DATA.forEach(function(r){
+    var m=/^rfa-(\d+)$/.exec(String(r&&r.id||''));
+    if(m&&parseInt(m[1],10)>=top)top=parseInt(m[1],10)+1;
+  });
+  if(typeof TRASH!=='undefined')TRASH.forEach(function(t){
+    if(t&&t.type==='rfa'&&t.data){
+      var m2=/^rfa-(\d+)$/.exec(String(t.data.id||''));
+      if(m2&&parseInt(m2[1],10)>=top)top=parseInt(m2[1],10)+1;
+    }
+  });
+  var seen={},n=0;
+  RFA_DATA.forEach(function(r){
+    if(!r)return;
+    if(!r.id||seen[r.id]){r.id='rfa-'+(top++);n++;}
+    seen[r.id]=1;
+  });
+  if(typeof RFA_NID==='number'&&top>RFA_NID)RFA_NID=top;
+  if(n){
+    // perbaikannya harus sampai ke penyimpanan juga: _dpBuildPack() mengekspor
+    // salinan yang di IndexedDB, jadi perbaikan yang cuma hidup di memori
+    // hilang lagi pada ekspor dan pemuatan berikutnya
+    console.warn('[RFA] '+n+' id ganda diperbaiki');
+    if(typeof _dpIdbSet==='function'){try{_dpIdbSet('env26_rfa',RFA_DATA);}catch(e){}}
+  }
+  return n;
+}
+window._rfaRepairIds=_rfaRepairIds;
+// Tanggal yang tertanam di dalam nomor RFA sendiri.
+function _rfaNoDate(no){
+  var m=String(no||'').match(/^(\d{2})(\d{2})(\d{2})-/);
+  if(!m)return null;
+  var dd=+m[1],mm=+m[2],yy=2000+ +m[3];
+  if(mm<1||mm>12||dd<1||dd>31)return null;
+  return {d:dd,m:mm,y:yy};
+}
+function _rfaReconcileNumbers(){
+  if(typeof RFA_DATA==='undefined'||!RFA_DATA)return {fixed:0,flagged:0};
+  var fixed=0,flagged=0;
+  // indeks record yang nomornya SUDAH konsisten dengan tanggalnya, per CoC+tanggal
+  var good={};
+  RFA_DATA.forEach(function(r){
+    var nd=_rfaNoDate(r.noRfa), ts=String(r.tglSampling||'');
+    if(!nd||ts.length<4)return;
+    if(nd.y!==+ts.slice(0,4))return;
+    var k=String(r.coc||'')+'|'+ts;
+    if(!r.coc)return;
+    (good[k]=good[k]||[]).push(r);
+  });
+  RFA_DATA.forEach(function(r){
+    if(r.noRfaAsli)return;                       // sudah pernah dicocokkan
+    var nd=_rfaNoDate(r.noRfa), ts=String(r.tglSampling||'');
+    if(!nd||ts.length<4)return;
+    var ty=+ts.slice(0,4);
+    if(nd.y===ty)return;                         // konsisten, tidak ada yang perlu
+    // Satu CoC menaungi beberapa permintaan, jadi CoC+tanggal+site saja tidak
+    // cukup memilih saudara yang benar. Salah ketiknya hanya di digit TAHUN,
+    // jadi hari & bulan pada nomor masih menunjuk baris yang dimaksud.
+    var sib=(good[String(r.coc||'')+'|'+ts]||[]).filter(function(x){
+      if(x===r||String(x.site||'')!==String(r.site||''))return false;
+      var xd=_rfaNoDate(x.noRfa);
+      return !!xd && xd.d===nd.d && xd.m===nd.m;
+    });
+    if(sib.length===1){
+      // persis satu saudara sepakat soal CoC, tanggal sampling dan site, dan
+      // tanggal di nomornya sendiri lolos -- itulah nomor yang dimaksud
+      r.noRfaAsli=r.noRfa;
+      r.koreksiAlasan='nomor '+r.noRfa+' memuat tanggal '+nd.d+'/'+nd.m+'/'+nd.y
+        +' padahal sampling '+ts+'; disamakan dengan '+sib[0].noRfa
+        +' (CoC '+r.coc+', tanggal & site sama)';
+      r.noRfa=sib[0].noRfa;
+      fixed++;
+    }else{
+      // tidak ada saksi yang tak meragukan: katakan apa adanya, jangan menebak
+      if(!r.koreksiRagu){
+        r.koreksiRagu='nomor memuat tanggal '+nd.d+'/'+nd.m+'/'+nd.y
+          +' tapi tanggal sampling '+ts+' — belum ada pembanding yang cocok (CoC+tanggal+site)';
+        flagged++;
+      }
+    }
+  });
+  return {fixed:fixed,flagged:flagged};
+}
+window._rfaReconcileNumbers=_rfaReconcileNumbers;
+// Y448: nomor RFA tidak boleh berubah diam-diam. Apa pun yang dikoreksi atau
+// diragukan oleh _rfaReconcileNumbers ditampilkan di modal RFA-nya sendiri.
+function _rfaKoreksiNote(r){
+  if(!r)return '';
+  var esc=(typeof _esc==='function')?_esc:function(s){return String(s==null?'':s);};
+  if(r.noRfaAsli){
+    return '<span class="rfa-koreksi-note" title="'+esc(r.koreksiAlasan||'')
+      +'" style="margin-left:6px;background:#fff3e0;color:#8a5a00;border:1px solid #f0c060;border-radius:5px;padding:1px 6px;font-size:9.5px;font-weight:700;cursor:help">dikoreksi dari '
+      +esc(r.noRfaAsli)+'</span>';
+  }
+  if(r.koreksiRagu){
+    return '<span class="rfa-koreksi-note" title="'+esc(r.koreksiRagu)
+      +'" style="margin-left:6px;background:#fdecea;color:#c62828;border:1px solid #f5b7b1;border-radius:5px;padding:1px 6px;font-size:9.5px;font-weight:700;cursor:help">tanggal nomor tidak cocok</span>';
+  }
+  return '';
+}
+window._rfaKoreksiNote=_rfaKoreksiNote;
 function _rfaNormalizeAll(){
   if(typeof RFA_DATA==='undefined'||!RFA_DATA)return;
   RFA_DATA.forEach(function(r){
@@ -15573,6 +15772,7 @@ function _rfaNormalizeAll(){
     r.jenis=_rfaCanonJenis(r);
     r.sampel=_rfaCanonSampel(r);
   });
+  try{if(typeof _rfaReconcileNumbers==='function')_rfaReconcileNumbers();}catch(_){}
   _rfaLinkSyncedEvents();
   _rfaSyncEventStatus();
   _rfaHealHydrotestScanGap();
@@ -20074,6 +20274,12 @@ function _hsSetOverrideNilai(group,rowKey,val,label){
 }
 window._hsSetOverrideNilai=_hsSetOverrideNilai;
 function _hsRowsFor(group){
+  // Y447: pecah sel yang memuat beberapa nomor RFA sekaligus, sekali per
+  // kelompok, sebelum baris-barisnya dipakai siapa pun.
+  if(typeof _hsNormalizeRfaLists==='function'){
+    _hsNormalizeRfaLists(HS_GROUPS_DATA[group]);
+    _hsNormalizeRfaLists(HASIL_MANUAL);
+  }
   const base=(HS_GROUPS_DATA[group]||[]).concat(HASIL_MANUAL.filter(r=>r.group===group));
   return base.map(r=>{
     if(r.extra&&r.extra.manualId)return r;   // manual rows edit HASIL_MANUAL directly, not via override
@@ -20231,13 +20437,151 @@ function _hsFindRfaMatches(noRfaList,titik,idx){
   });
   return filtered.length?filtered:cands;
 }
-function _hsRfaLinks(noRfa,titik,idx){
-  if(!noRfa||!noRfa.length)return '<span style="color:#ccc">–</span>';
+// Y447: satu sel di berkas sumber kadang memuat beberapa nomor RFA sekaligus,
+// dipisah "/" atau baris baru. Kembalikan semua kode yang ditemukan; kalau
+// bentuknya tidak dikenali, teruskan apa adanya daripada dibuang.
+const _HS_RFA_CODE_RE=/\d{6}-\d+[A-Za-z]?/g;
+function _hsSplitRfaCell(v){
+  const s=String(v==null?'':v).trim();
+  if(!s)return [];
+  if(s.indexOf('/')<0&&s.indexOf('\n')<0&&s.indexOf('\r')<0)return [s];
+  const m=s.match(_HS_RFA_CODE_RE);
+  return (m&&m.length)?m:[s];
+}
+window._hsSplitRfaCell=_hsSplitRfaCell;
+// Rapikan noRfa satu kelompok sekali saja, di tempat, saat kelompok itu
+// pertama kali dibaca. Penandanya non-enumerable supaya tidak ikut terekspor.
+function _hsNormalizeRfaLists(rows){
+  if(!rows||rows._rfaSplit)return rows;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i];const src=r&&r.noRfa;
+    if(!src||!src.length)continue;
+    let out=null;
+    for(let j=0;j<src.length;j++){
+      const parts=_hsSplitRfaCell(src[j]);
+      if(parts.length!==1||parts[0]!==String(src[j]).trim()){
+        if(!out)out=src.slice(0,j);
+        for(let k=0;k<parts.length;k++)out.push(parts[k]);
+      }else if(out)out.push(parts[0]);
+    }
+    if(out)r.noRfa=out.filter((x,i2,a)=>a.indexOf(x)===i2);
+  }
+  try{Object.defineProperty(rows,'_rfaSplit',{value:true,enumerable:false});}catch(e){rows._rfaSplit=true;}
+  return rows;
+}
+window._hsNormalizeRfaLists=_hsNormalizeRfaLists;
+// Indeks nomor RFA -> semua baris Tracker yang memakainya. Cache-nya menyimpan
+// panjang RFA_DATA saat dibangun: versi lama tidak, jadi sesudah impor RFA baru
+// penandanya diam-diam memakai data lama.
+let _hsRfaDupIdxCache=null,_hsRfaDupIdxLen=-1;
+function _hsRfaDupIndex(){
+  const len=(typeof RFA_DATA!=='undefined')?RFA_DATA.length:0;
+  if(_hsRfaDupIdxCache&&_hsRfaDupIdxLen===len)return _hsRfaDupIdxCache;
+  var m={};
+  if(typeof RFA_DATA!=='undefined'){
+    RFA_DATA.forEach(function(r){
+      var n=String(r.noRfa||'').trim(); if(!n)return;
+      (m[n]=m[n]||[]).push(r);
+    });
+  }
+  _hsRfaDupIdxCache=m;_hsRfaDupIdxLen=len;return m;
+}
+function _hsRfaDupReset(){_hsRfaDupIdxCache=null;_hsRfaDupIdxLen=-1;}
+window._hsRfaDupReset=_hsRfaDupReset;
+function _hsRfaGuessReset(){if(typeof _hsRfaGuessIdxCache!=='undefined')_hsRfaGuessIdxCache=null;}
+window._hsRfaGuessReset=_hsRfaGuessReset;
+// Kosong kalau nomornya tidak ambigu; kalau tidak, penanda kecil + penjelasan.
+function _hsRfaDupMark(no){
+  var recs=_hsRfaDupIndex()[String(no||'').trim()];
+  if(!recs||recs.length<2)return '';
+  var seen={},lines=[];
+  recs.forEach(function(r){
+    var k=(r.site||'?')+' | '+(r.tglSampling||'tanpa tanggal')+' | '+(r.sampel||'?')+' | '+(r.statusRfa||'?');
+    if(!seen[k]){seen[k]=1;lines.push(k);}
+  });
+  if(lines.length<2)return '';   // barisnya kembar identik -- tidak ada yang ambigu
+  var tip='No RFA ini dipakai '+recs.length+'x di RFA Tracker untuk sampel yang berbeda:\n- '+lines.join('\n- ')+
+    '\n\nAplikasi hanya bisa menampilkan yang pertama. Perbaiki penomoran di berkas Monitoring RFA/Backup agar tidak ambigu.';
+  return '<span title="'+_ep(tip)+'" style="color:#e65100;font-weight:700;cursor:help;margin-left:3px">&#9888;'+recs.length+'</span>';
+}
+// Nomor RFA memuat kode tahun di dua digit terakhir sebelum tanda hubung.
+function _hsRfaEncodedYear(no){
+  const m=String(no||'').match(/^\d{2}\d{2}(\d{2})-/);
+  return m?('20'+m[1]):'';
+}
+function _hsRfaNote(no,row){
+  const n=String(no||'').trim();
+  const lines=[];
+  const recs=_hsRfaDupIndex()[n]||[];
+  const rec=recs[0];
+  if(rec){
+    lines.push('Tercatat di RFA Tracker:');
+    lines.push('  Site        : '+(rec.site||'-'));
+    lines.push('  Tgl sampling: '+(rec.tglSampling||'-'));
+    lines.push('  Sampel      : '+(rec.sampel||'-'));
+    lines.push('  Status      : '+(rec.statusRfa||'-'));
+  }else{
+    lines.push('Nomor ini TIDAK ada di RFA Tracker.');
+    lines.push('Kemungkinan RFA-nya belum dibuat/belum diinput, atau nomornya');
+    lines.push('beda dengan yang tercatat di recap.');
+  }
+  const enc=_hsRfaEncodedYear(n);
+  const rowY=row?_hsYearOf(row):'';
+  const gap=(enc&&rowY)?(parseInt(enc,10)-parseInt(rowY,10)):0;
+  if(gap){
+    lines.push('');
+    lines.push('⚠ TAHUN TIDAK COCOK');
+    lines.push('Nomor ini berkode tahun '+enc+' (format DDMMYY-NN),');
+    lines.push('sedangkan baris hasil ini tahun '+rowY+'.');
+    if(gap>=2||gap<0){
+      lines.push('Selisih '+Math.abs(gap)+' tahun -- nomor ini tidak mungkin benar.');
+      lines.push('Harus diambil ulang dari recap tahun '+rowY+'.');
+    }else{
+      lines.push('Selisih 1 tahun. Bisa saja wajar (sampling Desember,');
+      lines.push('RFA terbit Januari) -- tapi tetap perlu dicek.');
+    }
+  }
+  if(recs.length>1){
+    const seen={},v=[];
+    recs.forEach(function(r){
+      const k='  - '+(r.site||'?')+' | '+(r.tglSampling||'tanpa tanggal')+' | '+(r.sampel||'?')+' | '+(r.statusRfa||'?');
+      if(!seen[k]){seen[k]=1;v.push(k);}
+    });
+    if(v.length>1){
+      lines.push('');
+      lines.push('⚠ Nomor ini dipakai '+recs.length+'x untuk sampel berbeda:');
+      v.forEach(function(x){lines.push(x);});
+      lines.push('Aplikasi hanya bisa menampilkan yang pertama.');
+    }
+  }
+  if(rec)lines.push('','Klik untuk buka di RFA Tracker.');
+  return lines.join('\n');
+}
+window._hsRfaNote=_hsRfaNote;
+function _hsRfaLinks(noRfa,titik,idx,row){
+  if(!noRfa||!noRfa.length){
+    // Y447: tidak ada yang tercatat -- tawarkan nomor hasil perkiraan, ditandai
+    // jelas (kuning tua + "≈") supaya tidak pernah bisa dikira data tercatat.
+    const g=(row&&typeof _hsGuessRfa==='function')?_hsGuessRfa(row):null;
+    if(g){
+      const rec=(typeof RFA_DATA!=='undefined')?RFA_DATA.find(x=>x.noRfa===g.no):null;
+      const tip='Perkiraan — No RFA tidak tercatat di data historis ini. Dicocokkan ke RFA Tracker lewat site + tahun + bulan + jenis sampel'+(g.conf==='base'?' (beberapa RFA cocok, semuanya satu nomor dasar yang sama)':' (cocok persis satu RFA)')+'. Bukan data tercatat.';
+      return '<span title="'+_ep(tip)+'" style="color:#8a6d00;font-weight:700;'+(rec?'cursor:pointer;text-decoration:underline dotted':'')+'"'+(rec?' onclick="openRfaModal(\''+rec.id+'\')"':'')+'>≈ '+_ep(g.no)+'</span>';
+    }
+    return '<span style="color:#ccc">–</span>';
+  }
   const matches=_hsFindRfaMatches(noRfa,titik,idx);
   return noRfa.map(n=>{
     const m=matches.find(x=>x.noRfa===n);
-    return m?`<span onclick="openRfaModal('${m.id}')" title="Buka RFA di RFA Tracker" style="cursor:pointer;color:#1565c0;font-weight:700;text-decoration:underline">${_ep(n)}</span>`
-            :`<span title="Belum ditemukan di RFA_DATA" style="color:#999">${_ep(n)}</span>`;
+    // Warna tautan sengaja dibiarkan normal: kalau semua yang bermasalah ikut
+    // diwarnai, halamannya tenggelam. Penanda kecil membawa sinyalnya, tooltip
+    // membawa rinciannya.
+    const _enc=_hsRfaEncodedYear(n),_ry=row?_hsYearOf(row):'';
+    const _gap=(_enc&&_ry)?(parseInt(_enc,10)-parseInt(_ry,10)):0;
+    const _note=_ep(_hsRfaNote(n,row));
+    const _warn=_gap?`<span style="color:${Math.abs(_gap)>=2?'#e65100':'#b08900'};font-weight:700;margin-left:2px;cursor:help" title="${_note}">&#9888;</span>`:'';
+    return m?`<span onclick="openRfaModal('${m.id}')" title="${_note}" style="cursor:pointer;color:#1565c0;font-weight:700;text-decoration:underline">${_ep(n)}</span>${_warn}${_hsRfaDupMark(n)}`
+            :`<span title="${_note}" style="color:#999;cursor:help">${_ep(n)}</span>${_warn}`;
   }).join(', ');
 }
 function _hsStatusBadge(status){
@@ -21637,7 +21981,7 @@ function _hsRenderCore(){
       const manualId=r.extra&&r.extra.manualId;
       const manualTag=manualId?`<span title="Input manual" style="background:#eef2ff;color:#3949ab;border-radius:4px;padding:0 4px;font-size:8px;font-weight:700;margin-right:5px">manual</span><span onclick="event.stopPropagation();_hsDeleteManual('${manualId}')" title="Hapus" style="cursor:pointer;color:#c62828">🗑</span>`:'';
       return `<tr style="${r.status==='exceed'?'background:#fff8f7':''}">
-        <td style="${TD}">${_hsRfaLinks(r.noRfa,r.titik,_rfaIdx)}</td>
+        <td style="${TD}">${_hsRfaLinks(r.noRfa,r.titik,_rfaIdx,r)}</td>
         <td style="${TD}">${_ep(r.site||'')}</td>
         <td style="${TD};max-width:220px">${_ep(r.titik||'')}</td>
         <td style="${TD};white-space:nowrap">${_ep(tgl)}</td>
@@ -21645,7 +21989,7 @@ function _hsRenderCore(){
         <td style="${TD};white-space:nowrap">${manualId?`<input value="${_ep(r.nilai==null?'':r.nilai)}" onchange="_hsSetManualNilai('${manualId}',this.value)" placeholder="isi nilai" style="width:78px;border:1px solid #ddd;border-radius:4px;padding:2px 5px;font-family:inherit;font-size:10.5px">${r.satuan&&r.satuan!=='-'?` <span style="color:#999;font-size:9px">${_ep(r.satuan)}</span>`:''}`:_hsNilai(r)}</td>
         <td style="${TD};white-space:nowrap">${_hsBaku(r)}</td>
         <td style="${TD}">${_hsStatusBadge(r.status)}${r.status==='exceed'?`<br><button onclick="_hsReanalisaRow(${ri})" title="Daftarkan reanalisa untuk baris ini" style="margin-top:4px;border:1px solid #e67e22;background:#fff5ec;color:#d35400;border-radius:6px;padding:2px 7px;font-size:9px;font-weight:700;cursor:pointer;font-family:inherit">🔁 Reanalisa</button>`:''}</td>
-        <td style="${TD};max-width:200px;color:#777;font-size:9.5px">${manualTag}${_ep(r.catatan||'')}</td>
+        <td style="${TD};max-width:200px;color:#777;font-size:9.5px">${manualTag}${_ep(r.catatan||'')}<a href="javascript:void(0)" onclick="event.stopPropagation();_linShowRow(${ri})" title="Dari file, sheet dan batch mana angka ini berasal" style="margin-left:6px;color:#1565c0;font-weight:700;text-decoration:none">&#9432;</a></td>
       </tr>`;
     }).join('');
     el.innerHTML=controls+sheetBtns+siteBtns+searchBar+
@@ -22102,7 +22446,7 @@ function _hsRenderCore(){
           ${nExc?`<span style="background:#fdecea;color:#c62828;border-radius:12px;padding:1px 8px;font-size:9.5px;font-weight:700">${nExc} lewat BM</span>`:`<span style="color:#2e7d32;font-size:10px">✓ semua sesuai</span>`}
           <span style="margin-left:auto;font-size:10px;color:#888">${tglSet.length?'📅 '+_ep(tglSet.join(', ')):''}</span>
         </div>
-        <div style="font-size:10px;color:#555;margin-top:2px">RFA: ${_hsRfaLinks(prs[0].noRfa||[],_hsTitik)}</div>
+        <div style="font-size:10px;color:#555;margin-top:2px">RFA: ${_hsRfaLinks(prs[0].noRfa||[],_hsTitik,null,prs[0])}</div>
       </div>
       ${tabSwitcher}
       ${body}
@@ -25351,7 +25695,8 @@ function renderRawSync(host){
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;justify-content:center">'+RS_FILES.map(chip).join('')+'</div>'+
     _step('2',_ep(f.label).toUpperCase())+
     (f.note?'<div style="font-size:10px;color:var(--g4);margin-bottom:10px;line-height:1.55;max-width:900px;margin-left:auto;margin-right:auto">'+_ep(f.note)+'</div>':'')+
-    (shTog||'')+_capMsg+body;
+    (shTog||'')+_capMsg+body
+    +((typeof _linBatchPanelHtml==='function')?_linBatchPanelHtml():'');
 }
 // ==== Y407: alat ekspor/impor dari cabang audit ========================
 // Enam alat yang saling melengkapi, semuanya berdiri sendiri:
@@ -25660,6 +26005,176 @@ function _linBatchBegin(domain,mode,extra){
   var L=_linBatches();L.push(rec);_linBatchSave(L);
   return rec;
 }
+// Y450: sisi PEMAKAI dari potret yang selama ini dibuat _linSnapStore.
+function _linSnapRead(id){
+  return _dpIdbGet('batchsnap:'+id).then(function(v){
+    if(!v)return null;
+    if(v.raw)return JSON.parse(v.raw);
+    if(v.gz&&typeof fflate!=='undefined')return JSON.parse(fflate.strFromU8(fflate.gunzipSync(v.gz)));
+    return null;
+  }).catch(function(){return null;});
+}
+// Tutup batch yang sedang berjalan: catat hasilnya, lalu tandai baris yang
+// benar-benar masuk pada lintasan ini. Semua baris itu berbagi satu
+// window._rsSrcTime, jadi satu kali jalan cukup -- tidak perlu menyalurkan
+// nomor batch lewat enam importir yang berbeda.
+function _linBatchEnd(counts){
+  var rec=window._linCurrent;if(!rec)return null;
+  rec.counts=counts||{};
+  var tagged=0;
+  try{
+    if(typeof HASIL_MANUAL!=='undefined'&&rec.srcTime){
+      HASIL_MANUAL.forEach(function(r){
+        var e=r&&r.extra;
+        if(e&&e.waktuImpor===rec.srcTime&&!e.batch){e.batch=rec.id;tagged++;}
+      });
+    }
+  }catch(e){}
+  rec.counts.barisDitandai=tagged;
+  var L=_linBatches();
+  for(var i=0;i<L.length;i++)if(L[i].id===rec.id){L[i]=rec;break;}
+  _linBatchSave(L);
+  window._linCurrent=null;
+  return rec;
+}
+window._linBatchEnd=_linBatchEnd;
+function _linUndo(id){
+  var L=_linBatches(),rec=null;
+  for(var i=0;i<L.length;i++)if(L[i].id===id)rec=L[i];
+  if(!rec){if(typeof toast==='function')toast('⚠ Batch tidak ditemukan.');return;}
+  if(!rec.snap){if(typeof toast==='function')toast('⚠ Batch ini tidak punya titik kembali (potret gagal disimpan saat itu).');return;}
+  var go=function(){
+    _linSnapRead(id).then(function(snap){
+      if(!snap){if(typeof toast==='function')toast('⚠ Titik kembali sudah tidak tersimpan.');return;}
+      Object.keys(snap.ls||{}).forEach(function(k){try{localStorage.setItem(k,snap.ls[k]);}catch(e){}});
+      var jobs=Object.keys(snap.idb||{}).map(function(k){
+        var val;try{val=JSON.parse(snap.idb[k]);}catch(e){return Promise.resolve();}
+        return _dpIdbSet(k,val).catch(function(){});
+      });
+      Promise.all(jobs).then(function(){
+        rec.undoneAt=new Date().toISOString();
+        var L2=_linBatches();
+        for(var j=0;j<L2.length;j++)if(L2[j].id===id)L2[j]=rec;
+        _linBatchSave(L2);
+        if(typeof toast==='function')toast('↩ Sinkron dibatalkan. Halaman dimuat ulang…');
+        setTimeout(function(){location.reload();},800);
+      });
+    });
+  };
+  var msg='Batalkan sinkron ini?\n\n'+(rec.file||'(tanpa nama file)')+'\n'
+    +((typeof _shDate==='function'?_shDate(rec.at):'')||rec.at||'')
+    +'\n\nSeluruh data akan dikembalikan ke keadaan tepat sebelum sinkron itu dijalankan. '
+    +'Perubahan lain yang kamu buat SETELAH sinkron itu juga ikut hilang.';
+  if(typeof _uiConfirm==='function')_uiConfirm(msg,go);
+  else if(typeof azConfirm==='function')azConfirm(msg,go);
+  else go();
+}
+window._linUndo=_linUndo;
+// Asal-usul satu baris: file, sheet, waktu, batch -- atau "diisi di aplikasi".
+function _linOf(r){
+  var e=(r&&r.extra)||{};
+  var b=null,L=_linBatches();
+  if(e.batch)for(var i=0;i<L.length;i++)if(L[i].id===e.batch)b=L[i];
+  return {file:e.sumberFile||(b&&b.file)||'',sheet:e.sumberSheet||'',
+          at:e.waktuImpor||(b&&b.at)||'',batch:e.batch||'',
+          batchRec:b,manual:!e.importedFromRaw,
+          manualId:e.manualId||'',rules:[]};
+}
+function _linRowHtml(r,extraRules){
+  var l=_linOf(r);
+  var row=function(k,v){return v?('<div style="display:flex;gap:8px;font-size:10.5px;padding:2px 0">'
+    +'<span style="min-width:104px;color:var(--g3)">'+k+'</span><span style="flex:1">'+v+'</span></div>'):'';};
+  var h='';
+  h+=row('Nilai',(r.nilai==null||r.nilai==='')?'<span style="color:var(--g3)">kosong</span>':('<b>'+_ep(String(r.nilai))+'</b>'+(r.satuan?(' '+_ep(r.satuan)):'')));
+  h+=row('Parameter',_ep(r.parameter||''));
+  h+=row('Titik',_ep(r.titik||''));
+  h+=row('Tanggal',_ep((r.tanggal&&r.tanggal.join(', '))||''));
+  h+=row('No RFA',_ep((r.noRfa&&r.noRfa.join(', '))||''));
+  h+='<div style="border-top:1px dashed var(--g2);margin:7px 0 5px"></div>';
+  if(l.manual){
+    h+=row('Asal','<b>Diisi/diedit di aplikasi</b>'+(l.manualId?(' <span style="color:var(--g3)">('+_ep(l.manualId)+')</span>'):''));
+  }else{
+    h+=row('File sumber',l.file?('<b>'+_ep(l.file)+'</b>'):'<span style="color:var(--g3)">tidak tercatat</span>');
+    h+=row('Sheet',l.sheet?_ep(l.sheet):'<span style="color:var(--g3)">tidak tercatat</span>');
+    h+=row('Masuk',l.at?_ep((typeof _shDate==='function'?_shDate(l.at):'')||l.at):'');
+    h+=row('Batch',l.batch?('<span style="font-family:monospace">'+_ep(l.batch)+'</span>'
+        +(l.batchRec&&l.batchRec.snap&&!l.batchRec.undoneAt
+          ?(' <a href="javascript:void(0)" onclick="document.getElementById(\'lin-ov\').remove();_linUndo(\''+l.batch+'\')" style="color:#c62828;font-weight:700">batalkan batch ini</a>'):''))
+      :'<span style="color:var(--g3)">sebelum pencatatan batch ada</span>');
+  }
+  var rules=(extraRules||[]).filter(Boolean);
+  if(rules.length){
+    h+='<div style="border-top:1px dashed var(--g2);margin:7px 0 5px"></div>';
+    h+='<div style="font-size:10px;color:var(--g3);margin-bottom:3px">Aturan yang berlaku pada nilai ini</div>';
+    rules.forEach(function(id){
+      var R=(window.ENV_RULES||{})[id];if(!R)return;
+      h+='<div style="font-size:10.5px;padding:2px 0"><b>'+_ep(id)+'</b> — '+_ep(R.label)
+        +'<div style="font-size:9.5px;color:var(--g4)">'+_ep(R.reason)+'</div></div>';
+    });
+  }
+  if(!l.manual&&!l.file){
+    h+='<div style="font-size:9.5px;color:var(--g4);margin-top:7px;border-top:1px dashed var(--g2);padding-top:6px">'
+      +'Baris ini berasal dari Data Pack atau dari impor sebelum jejak sumber dicatat, jadi nama file aslinya tidak tersimpan. '
+      +'Baris yang masuk lewat Sinkron Raw mulai sekarang selalu membawa file, sheet, dan nomor batch-nya.</div>';
+  }
+  return h;
+}
+function _linShowRow(idx){
+  var rows=window._hsLastTableRows||[];
+  var r=rows[idx];if(!r)return;
+  var old=document.getElementById('lin-ov');if(old)old.remove();
+  var ov=document.createElement('div');ov.id='lin-ov';ov.className='mo-overlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:430;display:flex;align-items:center;justify-content:center';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  var box=document.createElement('div');box.className='mo-box';
+  box.style.cssText='max-width:520px;width:92vw;text-align:left;padding:0';
+  var rules=[];
+  if(String(r.parameter||'').indexOf('Beban Pencemar')===0)rules.push('WMR-NONDETECT-LOAD-001');
+  if(typeof _ruleIsNondetect==='function'&&_ruleIsNondetect(r.nilai))rules.push('WMR-NONDETECT-LOAD-001');
+  box.innerHTML='<div class="mo-head" style="display:flex;align-items:center;gap:8px;padding:12px 16px">'
+    +'<h3 style="margin:0;font-size:13px;flex:1;text-align:left">Dari mana angka ini</h3>'
+    +'<button aria-label="Tutup" class="mo-close" onclick="document.getElementById(\'lin-ov\').remove()" '
+    +'style="border:none;background:none;font-size:16px;cursor:pointer;color:var(--g3)">✕</button></div>'
+    +'<div style="padding:12px 16px">'+_linRowHtml(r,Array.from(new Set(rules)))+'</div>';
+  ov.appendChild(box);document.body.appendChild(ov);
+}
+window._linShowRow=_linShowRow;
+function _linBatchPanelHtml(){
+  var L=(typeof _linBatches==='function')?_linBatches().slice().reverse():[];
+  var wrap='border:1px solid var(--g2);border-radius:10px;padding:9px 12px;margin:16px auto 0;max-width:900px;background:var(--g1)';
+  if(!L.length){
+    return '<div style="'+wrap+'">'
+      +'<div style="font-size:11px;font-weight:800;margin-bottom:3px">Riwayat sinkron</div>'
+      +'<div style="font-size:10.5px;color:var(--g4)">Belum ada sinkron yang tercatat di browser ini. '
+      +'Mulai sekarang setiap sinkron dicatat di sini lengkap dengan titik kembalinya, '
+      +'jadi kalau hasilnya ternyata salah bisa dibatalkan utuh.</div></div>';
+  }
+  var fmtCounts=function(c){
+    return Object.keys(c||{}).filter(function(k){return c[k];})
+      .map(function(k){return _ep(k)+': <b>'+c[k]+'</b>';}).join(' · ');
+  };
+  var rows=L.slice(0,12).map(function(b){
+    var undone=!!b.undoneAt;
+    return '<div style="border-top:1px dashed var(--g2);padding:6px 0;font-size:10.5px'+(undone?';opacity:.55':'')+'">'
+      +'<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">'
+      +'<b>'+_ep(b.file||'(tanpa nama file)')+'</b>'
+      +'<span style="color:var(--g3)">'+_ep((typeof _shDate==='function'?_shDate(b.at):'')||'')+'</span>'
+      +'<span style="font-family:monospace;color:var(--g3);font-size:9.5px">'+_ep(b.id)+'</span>'
+      +(undone?'<span style="color:#c62828;font-weight:700">sudah dibatalkan</span>'
+        :(b.snap?'<a href="javascript:void(0)" onclick="_linUndo(\''+b.id+'\')" style="margin-left:auto;color:#c62828;font-weight:700">Batalkan sinkron ini</a>'
+                :'<span style="margin-left:auto;color:var(--g3)">tanpa titik kembali</span>'))
+      +'</div>'
+      +'<div style="color:var(--g4);font-size:10px">'+(fmtCounts(b.counts)||'tidak ada perubahan tercatat')+'</div>'
+      +'</div>';
+  }).join('');
+  return '<div style="'+wrap+'">'
+    +'<div style="font-size:11px;font-weight:800">Riwayat sinkron</div>'
+    +'<div style="font-size:10px;color:var(--g4);margin-bottom:2px">Setiap sinkron menyimpan keadaan data tepat sebelum dijalankan. '
+    +'Membatalkan mengembalikan semuanya ke titik itu — termasuk membatalkan perubahan lain yang kamu buat sesudahnya. '
+    +'Hanya '+((typeof LIN_MAX_SNAP!=='undefined')?LIN_MAX_SNAP:3)+' sinkron terakhir yang punya titik kembali (ukurannya besar).</div>'
+    +rows+'</div>';
+}
+window._linBatchPanelHtml=_linBatchPanelHtml;
 function _rsRtNum(v){
   if(typeof v==='number')return v;
   var s=String(v==null?'':v).trim().replace(/\s/g,'');
@@ -26147,6 +26662,7 @@ function _rsApplyImport(){
   try{
     if(_rsImportBuf.mode==='recap'){
       var resR=_rsRecapRunImport(_rsImportBuf.wbx);
+      if(typeof _linBatchEnd==='function')_linBatchEnd({diubah:resR.changed||0,sama:resR.same||0,tanpaPadanan:resR.unmatched||0,dilindungi:resR.dilindungi||0});
       if(typeof renderHasilSampling==='function')try{renderHasilSampling();}catch(e){}
       if(typeof toast==='function')toast('✅ Recap di-import: '+resR.changed+' nilai diperbarui.');
       if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resR.changed+' nilai diperbarui (override), '+resR.same+' sama, '+resR.unmatched+' sel tanpa padanan (dibiarkan).</span>'
@@ -26155,18 +26671,21 @@ function _rsApplyImport(){
     }
     if(_rsImportBuf.mode==='drain'){
       var resD=_rsDrainRunImport(_rsImportBuf.wbx);
+      if(typeof _linBatchEnd==='function')_linBatchEnd({ditambah:resD.added||0,diubah:resD.updated||0,sheet:resD.sheets||0});
       if(typeof toast==='function')toast('✅ Curah hujan di-import: '+resD.added+' baru, '+resD.updated+' diperbarui.');
       if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resD.added+' tanggal baru, '+resD.updated+' diperbarui dari '+resD.sheets+' sheet site.</span>';
       return;
     }
     if(_rsImportBuf.mode==='program'){
       var resP=_rsProgApply(_rsImportBuf.records);
+      if(typeof _linBatchEnd==='function')_linBatchEnd({cocok:resP.matched||0,diubah:resP.updated||0,tanpaPadanan:resP.unmatched||0});
       if(typeof toast==='function')toast('✅ Program di-import: '+resP.updated+' koordinat diperbarui.');
       if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resP.matched+' titik cocok, '+resP.updated+' koordinat diperbarui, '+resP.unmatched+' tanpa padanan nama.</span>';
       return;
     }
     if(_rsImportBuf.mode==='schedule'){
       var resS2=_rsSchedApply(_rsImportBuf.records);
+      if(typeof _linBatchEnd==='function')_linBatchEnd({ditambah:resS2.added||0,dilewati:resS2.skipped||0});
       if(typeof toast==='function')toast('✅ Schedule di-import: '+resS2.added+' event baru ditambahkan.');
       if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resS2.added+' event baru ditambahkan ke kalender, '+resS2.skipped+' sudah ada (dilewati).</span>';
       return;
@@ -26179,6 +26698,7 @@ function _rsApplyImport(){
       if(typeof RFA_DATA!=='undefined')RFA_DATA=rfaA;
       if(typeof _rfaNormalizeAll==='function')_rfaNormalizeAll();
       if(typeof saveStorage==='function')saveStorage('Import raw Monitoring RFA & CoC');
+      if(typeof _linBatchEnd==='function')_linBatchEnd({diterapkan:updA,tanpaPadanan:missA,dibaca:_rsImportBuf.records.length});
       if(typeof toast==='function')toast('✅ '+updA+' RFA diperbarui dari raw'+(missA?', '+missA+' No RFA tak dikenal':'')+'.');
       if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+updA+' RFA diperbarui'+(missA?', '+missA+' dilewati':'')+'.</span>';
       return;
@@ -26194,6 +26714,7 @@ function _rsApplyImport(){
       if(typeof RFA_DATA!=='undefined')RFA_DATA=rfa;
       if(typeof _rfaNormalizeAll==='function')_rfaNormalizeAll();
       if(typeof saveStorage==='function')saveStorage('Import raw Monitoring Backup (Tracker 2026)');
+      if(typeof _linBatchEnd==='function')_linBatchEnd({diterapkan:upd,tanpaPadanan:miss,dibaca:_rsImportBuf.records.length});
       if(typeof toast==='function')toast('✅ '+upd+' RFA diperbarui dari raw'+(miss?', '+miss+' No RFA tak dikenal':'')+'.');
       if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+upd+' RFA diperbarui'+(miss?', '+miss+' dilewati (No RFA tak dikenal)':'')+'.</span>';
       return;
@@ -30139,8 +30660,11 @@ function _edpTitikCandidates(){
   ['monthly','semesterly','yearly'].forEach(k=>{
     ((typeof SAMPLING_POINTS!=='undefined'&&SAMPLING_POINTS[k])||[]).forEach(m=>{
       const nm=(m.sampleName||'').trim();if(!nm)return;
-      const key=nm+'|'+m.site;if(seen.has(key))return;seen.add(key);
-      out.push({titik:nm,site:m.site});
+      // Y449: varian "set N"/"duplicate" semuanya disimpan ke kunci yang sama
+      // (lihat _edpApply) -- tampilkan satu pilihan bersih, bukan kembaran.
+      const base=(typeof _edpBaseTitikName==='function')?_edpBaseTitikName(nm):nm;
+      const key=base+'|'+m.site;if(seen.has(key))return;seen.add(key);
+      out.push({titik:base,site:m.site});
     });
   });
   return out;
@@ -30466,6 +30990,13 @@ function _cfSaveConfigFromForm(){
     adminToken:(document.getElementById('cf-admin')||{}).value||''
   });
   if(typeof toast==='function')toast('✅ Pengaturan Cloudflare disimpan (tersimpan lokal di browser ini saja).');
+  // Y451: key-nya yang membuka perpustakaan, jadi ambil sekarang juga daripada
+  // menunggu tiap alat menemukan sendiri bahwa templatenya belum ada.
+  if(typeof _cfTplPullAll==='function'){
+    var _c=_cfConfig();
+    if(_c.url&&_c.readToken)_cfTplPullAll(true);
+  }
+  if(typeof _cfRefreshSettingsUI==='function')_cfRefreshSettingsUI();
 }
 window._cfSaveConfigFromForm=_cfSaveConfigFromForm;
 async function _dpFetchWeb(){
@@ -30565,6 +31096,146 @@ async function _cfUploadRawTemplate(rsKey,arrbuf,origName){
     return res.ok;
   }catch(e){return false;}
 }
+// ── Y451: perpustakaan template terpadu ────────────────────────────────
+// Semua template berbentuk berkas yang dipegang aplikasi tinggal di gudang KV
+// yang sama, di balik pasangan token yang sama dengan Data Pack. Menambah
+// jenis template baru cukup mendaftarkannya di CF_TPL_KINDS.
+function _cfStrBuf(s){return new TextEncoder().encode(s).buffer;}
+function _cfBufStr(b){return new TextDecoder().decode(new Uint8Array(b));}
+function _cfRawTplKeys(){
+  var out=[];
+  (typeof RS_FILES!=='undefined'?RS_FILES:[]).forEach(function(f){
+    // berkas Backup itu dua sheet yang berdiri sendiri, disimpan di dua kunci
+    if(f.k==='backup'){out.push('backup:rea');out.push('backup:rfa2026');}
+    else out.push(f.k);
+  });
+  return out;
+}
+var CF_TPL_KINDS=[
+ {id:'emf',label:'Template EMF (.docx)',idx:'emftpl:__index',
+  key:function(n){return 'emftpl:'+n;},
+  list:function(){
+    if(typeof _emfTplLoad!=='function')return Promise.resolve([]);
+    return _emfTplLoad().then(function(m){
+      return Object.keys(m).sort().map(function(n){return {name:n,buf:m[n].buf};});
+    }).catch(function(){return [];});
+  },
+  save:function(items){
+    if(typeof _emfTplLoad!=='function')return Promise.resolve();
+    return _emfTplLoad().then(function(m){
+      items.forEach(function(it){
+        m[it.name]={name:it.name,size:it.buf.byteLength,at:new Date().toISOString(),buf:it.buf,cloud:true};
+      });
+      return _emfTplSave(m);
+    }).then(function(){if(typeof _emfRerender==='function')_emfRerender();}).catch(function(){});
+  }},
+ {id:'raw',label:'Format Raw Excel (.xlsx/.xlsm)',idx:'rawtpl:__index',
+  key:function(n){return n;},
+  list:function(){
+    var out=[];
+    return _cfRawTplKeys().reduce(function(pr,k){
+      return pr.then(function(){
+        return _dpIdbGet('rsraw:'+k).then(function(arr){
+          if(!arr)return null;
+          return _dpIdbGet('rsrawname:'+k).then(function(nm){out.push({name:k,buf:arr,orig:nm||'raw.xlsx'});});
+        }).catch(function(){});
+      });
+    },Promise.resolve()).then(function(){return out;});
+  },
+  save:function(items){
+    return items.reduce(function(pr,it){
+      return pr.then(function(){
+        return _dpIdbSet('rsraw:'+it.name,it.buf)
+          .then(function(){return _dpIdbSet('rsrawname:'+it.name,it.orig||'raw.xlsx');});
+      }).catch(function(){});
+    },Promise.resolve());
+  }}
+];
+// Ambil semua yang ada di gudang tapi belum ada di browser ini. `auto` membuatnya
+// diam kalau tidak ada yang datang, jadi membuka browser yang sudah terpasang
+// key tidak memunculkan pemberitahuan tiap kali.
+async function _cfTplPullAll(auto){
+  var cfg=_cfConfig();
+  if(!cfg.url||!cfg.readToken){
+    if(!auto&&typeof toast==='function')toast('⚠ Isi URL Worker + Token Pembaca dulu.');
+    return 0;
+  }
+  var n=0;
+  for(var i=0;i<CF_TPL_KINDS.length;i++){
+    var k=CF_TPL_KINDS[i], idx=null;
+    try{idx=await _cfFetchRawTemplate(k.idx);}catch(e){}
+    if(!idx)continue;
+    var names=[];
+    try{names=JSON.parse(_cfBufStr(idx.arr))||[];}catch(e){names=[];}
+    var have={};
+    (await k.list()).forEach(function(x){have[x.name]=1;});
+    var got=[];
+    for(var j=0;j<names.length;j++){
+      var nm=(typeof names[j]==='string')?names[j]:(names[j]&&names[j].name);
+      if(!nm||have[nm])continue;               // yang sudah ada tidak pernah ditimpa
+      var rec=null;
+      try{rec=await _cfFetchRawTemplate(k.key(nm));}catch(e){}
+      if(!rec)continue;
+      got.push({name:nm,buf:rec.arr,orig:rec.name});
+    }
+    if(got.length){await k.save(got);n+=got.length;}
+  }
+  if(typeof toast==='function'){
+    if(n)toast('☁ '+n+' template diambil dari Cloudflare.');
+    else if(!auto)toast('✅ Template di browser ini sudah sama dengan yang di Cloudflare.');
+  }
+  _cfTplRefreshStatus();
+  return n;
+}
+async function _cfTplPushAll(){
+  var cfg=_cfConfig();
+  if(!cfg.url||!cfg.adminToken){
+    if(typeof toast==='function')toast('⚠ Perlu URL Worker + Token Admin untuk mengunggah template.');
+    return 0;
+  }
+  var n=0, total=0;
+  for(var i=0;i<CF_TPL_KINDS.length;i++){
+    var k=CF_TPL_KINDS[i], items=await k.list(), names=[];
+    total+=items.length;
+    for(var j=0;j<items.length;j++){
+      try{
+        if(await _cfUploadRawTemplate(k.key(items[j].name),items[j].buf,items[j].orig||items[j].name)){
+          names.push(items[j].name);n++;
+        }
+      }catch(e){}
+    }
+    // indeks paling akhir: perpustakaan yang baru separuh terunggah masih
+    // menunjuk daftar sebelumnya yang utuh
+    try{await _cfUploadRawTemplate(k.idx,_cfStrBuf(JSON.stringify(names)),k.id+'-index.json');}catch(e){}
+  }
+  if(typeof toast==='function'){
+    if(!total)toast('⚠ Belum ada template tersimpan di browser ini untuk diunggah.');
+    else if(n===total)toast('✅ '+n+' template tersimpan di Cloudflare — device lain tinggal isi key.');
+    else toast('⚠ '+n+' dari '+total+' template berhasil diunggah.');
+  }
+  _cfTplRefreshStatus();
+  return n;
+}
+window._cfTplPullAll=_cfTplPullAll;window._cfTplPushAll=_cfTplPushAll;
+async function _cfTplRefreshStatus(){
+  var el=document.getElementById('cf-tpl-status');
+  if(!el)return;
+  var cfg=_cfConfig(), rows=[];
+  for(var i=0;i<CF_TPL_KINDS.length;i++){
+    var k=CF_TPL_KINDS[i], loc=(await k.list()).length, cloud='?';
+    if(cfg.url&&cfg.readToken){
+      var idx=null;
+      try{idx=await _cfFetchRawTemplate(k.idx);}catch(e){}
+      cloud=0;
+      if(idx){try{cloud=(JSON.parse(_cfBufStr(idx.arr))||[]).length;}catch(e){cloud=0;}}
+    }
+    rows.push('<div style="display:flex;gap:8px;font-size:10px;padding:1px 0"><span style="min-width:0;flex:1">'
+      +_ep(k.label)+'</span><span style="color:var(--g3)">di browser <b style="color:var(--text)">'+loc
+      +'</b> · di Cloudflare <b style="color:var(--text)">'+cloud+'</b></span></div>');
+  }
+  el.innerHTML=rows.join('');
+}
+window._cfTplRefreshStatus=_cfTplRefreshStatus;
 async function _cfFetchRawTemplate(rsKey){
   const cfg=_cfConfig();
   if(!cfg.url||!cfg.readToken)return null;
@@ -30615,6 +31286,9 @@ function _cfAutoSyncToggle(checked){
 function _cfRefreshSettingsUI(){
   const host=document.getElementById('dp-cf-settings');
   if(host&&typeof _cfSettingsHtml==='function')host.innerHTML=_cfSettingsHtml();
+  // Y451: hitungan "di browser vs di Cloudflare" perlu membaca IndexedDB dan
+  // jaringan, jadi dijalankan setelah panelnya benar-benar terpasang.
+  if(typeof _cfTplRefreshStatus==='function')setTimeout(_cfTplRefreshStatus,0);
 }
 window._cfAutoSyncToggle=_cfAutoSyncToggle;
 // debounced auto-upload after any local save, and a one-time auto-check on load
@@ -30628,6 +31302,9 @@ function _cfAutoUploadDebounced(){
 async function _cfAutoCheckOnLoad(){
   const cfg=_cfConfig();
   if(!cfg.autoSync||!cfg.url||!cfg.readToken)return;
+  // Y451: template dulu -- menerapkan Data Pack memuat ulang halaman, dan itu
+  // akan memotong pengambilan template di tengah jalan.
+  try{if(typeof _cfTplPullAll==='function')await _cfTplPullAll(true);}catch(e){}
   // Cloudflare is an absolute cross-origin URL with CORS enabled server-side,
   // so this works from a locally double-clicked file:// page too — no guard.
   try{
@@ -30809,6 +31486,10 @@ window._rfaProdIdbBootRestore=_rfaProdIdbBootRestore;
     const pCurrent=_dpIdbGet('current').then(function(p){
       if(!p)return;
       _dpMergeStores(p.debitDaily,p.phDaily,false);
+      // Y449: rapikan ejaan nama titik SESUDAH gudang harian tergabung, diam-diam
+      // saat boot -- kalau tidak, satu titik fisik tetap terpecah jadi beberapa
+      // deret dan tiap deret terlihat bolong.
+      if(typeof _edpNormalizeTitikSpelling==='function'){try{_edpNormalizeTitikSpelling(true);}catch(_eSp){}}
       if(p.hsHistoris)window._HS_HISTORIS=p.hsHistoris;
       if(p.recapArsip)window._RECAP_ARSIP=p.recapArsip;
       if(p.hasilSeed&&_hsApplySeedPack(p.hasilSeed)){
@@ -30853,6 +31534,14 @@ function _cfSettingsHtml(){
    +'<button onclick="_cfSaveConfigFromForm()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">💾 Simpan Pengaturan</button>'
    +'<button onclick="_dpUploadCloudflare()" style="background:#e65100;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">⬆ Upload Data Pack Sekarang ke Cloudflare</button>'
    +'</div>'
+   +'<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--g2)">'
+   +'<div style="font-size:10.5px;font-weight:700;color:var(--text);margin-bottom:3px">📚 Perpustakaan Template</div>'
+   +'<div style="font-size:10px;color:var(--g4);margin-bottom:7px;line-height:1.55">Template EMF dan format raw Excel disimpan di gudang yang sama dengan Data Pack, memakai key yang sama. Token Pembaca cukup untuk mengambil; Token Admin diperlukan untuk mengunggah.</div>'
+   +'<div id="cf-tpl-status" style="margin-bottom:7px"></div>'
+   +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+   +'<button onclick="_cfTplPullAll()" style="flex:1 1 220px;border:1px solid var(--g2);background:transparent;color:var(--text);border-radius:7px;padding:6px 12px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit">⬇ Ambil Semua Template</button>'
+   +'<button onclick="_cfTplPushAll()" style="flex:1 1 220px;border:1px solid var(--g2);background:transparent;color:var(--text);border-radius:7px;padding:6px 12px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit">☁ Simpan Semua Template</button>'
+   +'</div></div>'
    +'<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--g2)">'
    +'<label style="'+lbl+';display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" '+(cfg.autoSync?'checked':'')+' onchange="_cfAutoSyncToggle(this.checked)"> <b style="color:var(--text)">Auto-Sync</b> — otomatis upload tiap ada perubahan &amp; otomatis cek versi terbaru saat dibuka (perlu verifikasi Token Admin untuk mengaktifkan)</label>'
    +'</div>'
@@ -34881,6 +35570,103 @@ function _edpSetTitik(id,val){
 function _edpRemove(id){
   window._edpQueue=(window._edpQueue||[]).filter(x=>x.id!==id);_edpRenderList();
 }
+// Y449: satu nama untuk aturan "buang embel-embel set N / duplicate", supaya
+// daftar pilihan dan penyimpanan memakai aturan yang sama persis.
+function _edpBaseTitikName(t){
+  return String(t||'').replace(/\s*\((set\s*\d+|duplicate|dupl\w*)\)/ig,'').replace(/\s+(set\s*\d+|duplicate|dupl\w*)\s*$/i,'').trim()||String(t||'').trim();
+}
+window._edpBaseTitikName=_edpBaseTitikName;
+// Kunci pembanding ejaan: beda spasi/strip/huruf besar dianggap sama.
+function _edpNormKey(t){
+  return String(t||'').toLowerCase().replace(/[\s\-]+/g,'');
+}
+// Gabungkan gudang harian yang namanya cuma beda ejaan. Kalau dua ejaan punya
+// nilai BERBEDA di tanggal yang sama, jangan digabung -- catat sebagai konflik
+// dan biarkan apa adanya. Menggabung berarti membuang salah satu angka.
+function _edpMergeSpellingDupes(store){
+  const byNorm=new Map();
+  Object.keys(store||{}).forEach(function(k){
+    const n=_edpNormKey(k);
+    if(!byNorm.has(n))byNorm.set(n,[]);
+    byNorm.get(n).push(k);
+  });
+  const cands=(typeof _edpTitikCandidates==='function')?_edpTitikCandidates():[];
+  let merged=0;const conflicts=[];
+  byNorm.forEach(function(keys){
+    if(keys.length<2)return;
+    const conflictDates=[];
+    for(let i=0;i<keys.length;i++)for(let j=i+1;j<keys.length;j++){
+      const a=store[keys[i]]||{},b=store[keys[j]]||{};
+      Object.keys(a).forEach(function(d){if(b[d]!=null&&b[d]!==a[d])conflictDates.push(keys[i]+' vs '+keys[j]+' @ '+d);});
+    }
+    if(conflictDates.length){conflicts.push({keys:keys,dates:conflictDates});return;}
+    // ejaan resmi (yang ada di daftar titik) menang; kalau tidak ada, yang
+    // datanya paling banyak
+    const official=cands.find(function(c){return keys.indexOf(c.titik)>=0;});
+    const canonical=official?official.titik:keys.slice().sort(function(a,b){
+      return Object.keys(store[b]||{}).length-Object.keys(store[a]||{}).length;
+    })[0];
+    const combined={};
+    keys.forEach(function(k){Object.assign(combined,store[k]);});
+    keys.forEach(function(k){if(k!==canonical)delete store[k];});
+    store[canonical]=combined;
+    merged++;
+  });
+  return {merged:merged,conflicts:conflicts};
+}
+function _edpNormalizeTitikSpelling(silent){
+  const rd=_edpMergeSpellingDupes(typeof HASIL_DEBIT_DAILY!=='undefined'?HASIL_DEBIT_DAILY:{});
+  const rp=_edpMergeSpellingDupes(typeof HASIL_PH_DAILY!=='undefined'?HASIL_PH_DAILY:{});
+  if(rd.merged||rp.merged){
+    if(typeof _hsSaveDebitDaily==='function')_hsSaveDebitDaily();
+    if(typeof _hsSavePhDaily==='function')_hsSavePhDaily();
+    if(!silent&&typeof toast==='function')toast('🧹 '+(rd.merged+rp.merged)+' titik dengan ejaan beda digabungkan jadi satu.');
+  }
+  const allConflicts=rd.conflicts.concat(rp.conflicts);
+  window._edpSpellingConflicts=allConflicts;
+  // Y449: versi lama menyimpan konflik ini lalu tidak pernah menampilkannya.
+  // Data yang bertabrakan harus terlihat, bukan didiamkan.
+  if(allConflicts.length&&!silent&&typeof toast==='function'){
+    toast('⚠ '+allConflicts.length+' nama titik beda ejaan TIDAK digabung karena datanya bertabrakan di tanggal yang sama. Cek lewat _edpSpellingConflicts.');
+  }
+  if(allConflicts.length)console.warn('[EDP] konflik ejaan titik:',allConflicts);
+  return {merged:rd.merged+rp.merged,conflicts:allConflicts};
+}
+window._edpNormalizeTitikSpelling=_edpNormalizeTitikSpelling;
+// Y449: dropdown titik yang mencocokkan di mana pun dalam nama, bukan hanya
+// dari awal kata seperti <datalist>. Posisinya dihitung ulang tiap dibuka
+// (position:fixed relatif ke layar, jadi salinan absolute akan melenceng
+// begitu halaman digeser -- lihat Y291).
+function _edpTitikFilter(id){
+  const inp=document.getElementById('edp-titik-inp-'+id);
+  const dd=document.getElementById('edp-titik-dd-'+id);
+  if(!inp||!dd)return;
+  const _r=inp.getBoundingClientRect();
+  dd.style.left=_r.left+'px';dd.style.top=_r.bottom+'px';dd.style.width=_r.width+'px';
+  const q=inp.value.trim().toLowerCase();
+  const cands=_edpTitikCandidates();
+  const matches=q?cands.filter(function(c){return c.titik.toLowerCase().indexOf(q)>=0;}):cands;
+  dd._edpMatches=matches;
+  if(!matches.length){dd.style.display='none';dd.innerHTML='';return;}
+  dd.innerHTML=matches.map(function(c,i){
+    return '<div data-idx="'+i+'" onmousedown="_edpTitikPick(\''+id+'\',this)" style="padding:6px 10px;font-size:10.5px;cursor:pointer" onmouseover="this.style.background=\'var(--g1)\'" onmouseout="this.style.background=\'transparent\'">'+_ep(c.titik)+'</div>';
+  }).join('');
+  dd.style.display='block';
+}
+function _edpTitikPick(id,el){
+  const dd=document.getElementById('edp-titik-dd-'+id);
+  const idx=parseInt(el.getAttribute('data-idx'),10);
+  const titik=(dd&&dd._edpMatches&&dd._edpMatches[idx])?dd._edpMatches[idx].titik:'';
+  const inp=document.getElementById('edp-titik-inp-'+id);
+  if(inp){inp.value=titik;inp.blur();}
+}
+function _edpTitikBlur(id){
+  const dd=document.getElementById('edp-titik-dd-'+id);
+  if(dd)dd.style.display='none';
+  const inp=document.getElementById('edp-titik-inp-'+id);
+  _edpSetTitik(id,inp?inp.value:'');
+}
+window._edpTitikFilter=_edpTitikFilter;window._edpTitikPick=_edpTitikPick;window._edpTitikBlur=_edpTitikBlur;
 function _edpApply(id){
   const item=(window._edpQueue||[]).find(x=>x.id===id);
   if(!item||item.applied)return;
@@ -34889,7 +35675,7 @@ function _edpApply(id){
   if(!data){if(typeof toast==='function')toast('⚠ Tidak ada data '+(item.type==='ph'?'pH':'debit')+' pada sheet ini.');return;}
   // recording is per physical titik: collapse "set 2"/"duplicate" sampling
   // variants onto the base titik so all months land under one key
-  const storeKey=item.titik.replace(/\s*\((set\s*\d+|duplicate|dupl\w*)\)/ig,'').replace(/\s+(set\s*\d+|duplicate|dupl\w*)\s*$/i,'').trim()||item.titik;
+  const storeKey=_edpBaseTitikName(item.titik)||item.titik;
   if(item.type==='ph'){
     HASIL_PH_DAILY[storeKey]=Object.assign({},HASIL_PH_DAILY[storeKey]||{},data);
     _hsSavePhDaily();
@@ -34916,7 +35702,7 @@ function _edpRenderList(){
   const q=window._edpQueue||[];
   if(!q.length){host.innerHTML='<div style="text-align:center;color:#bbb;font-size:11px;padding:20px">Belum ada file diupload.</div>';return;}
   const cands=_edpTitikCandidates();
-  const dl='<datalist id="edp-titik-dl">'+cands.map(cd=>`<option value="${_ep(cd.titik)}">`).join('')+'</datalist>';
+  const dl='';
   const rows=q.map(item=>{
     const canDebit=!!item.debitData,canPh=!!item.phData;
     const data=item.type==='ph'?item.phData:item.debitData;
@@ -34929,8 +35715,9 @@ function _edpRenderList(){
           <option value="ph" ${item.type==='ph'?'selected':''} ${canPh?'':'disabled'}>🧫 pH</option>
         </select>
       </td>
-      <td style="padding:5px 8px;border:1px solid #eee">
-        <input list="edp-titik-dl" value="${_ep(item.titik)}" onchange="_edpSetTitik('${item.id}',this.value)" placeholder="pilih/ketik titik" style="width:170px;font-size:10px;border:1px solid #ddd;border-radius:4px;padding:2px 5px" ${item.applied?'disabled':''}>
+      <td style="padding:5px 8px;border:1px solid #eee;position:relative">
+        <input id="edp-titik-inp-${item.id}" type="text" autocomplete="off" value="${_ep(item.titik)}" oninput="_edpTitikFilter('${item.id}')" onfocus="_edpTitikFilter('${item.id}')" onblur="_edpTitikBlur('${item.id}')" placeholder="pilih/ketik titik" style="width:170px;font-size:10px;border:1px solid #ddd;border-radius:4px;padding:2px 5px" ${item.applied?'disabled':''}>
+        <div id="edp-titik-dd-${item.id}" style="display:none;position:fixed;z-index:400;background:var(--card,#fff);border:1px solid var(--g2);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.15);max-height:180px;overflow-y:auto;min-width:170px"></div>
       </td>
       <td style="padding:5px 8px;border:1px solid #eee;font-size:10px;text-align:center">${n}</td>
       <td style="padding:5px 8px;border:1px solid #eee;font-size:9.5px;white-space:nowrap">${_ep(item.dateFrom)}<br>s/d ${_ep(item.dateTo)}</td>
