@@ -25570,18 +25570,30 @@ function _rsProgApply(recs){
   var sp=null; try{sp=JSON.parse(localStorage.getItem('env26_sampling_points')||'null');}catch(e){}
   if(!sp&&typeof SAMPLING_POINTS!=='undefined')sp=SAMPLING_POINTS;
   if(!sp)return {matched:0,updated:0,unmatched:recs.length};
+  // Y459: dulu `m[_rsNormKey(k)]=r` -- menang yang TERAKHIR, sehingga empat titik
+  // Dumping Dredging yang arahnya berbeda semuanya menerima koordinat yang sama.
+  // Sekarang nama lengkap dulu, longgar hanya kalau tepat satu, ambigu dilewati
+  // dan dihitung.
   var byCat={};
-  recs.forEach(function(r){
-    var m=byCat[r.cat]=byCat[r.cat]||{};
-    [r.name,r.position,r.penulisan].filter(Boolean).forEach(function(k){m[_rsNormKey(k)]=r;});
-  });
-  var matched=0,updated=0;
+  recs.forEach(function(r){(byCat[r.cat]=byCat[r.cat]||[]).push(r);});
+  var idxCat={};
   Object.keys(byCat).forEach(function(cat){
-    var m=byCat[cat];
+    idxCat[cat]=_rsProgBuildIdx(byCat[cat],function(r){return [r.name,r.position,r.penulisan];});
+  });
+  var matched=0,updated=0,ambigu=0;
+  Object.keys(byCat).forEach(function(cat){
+    var idx=idxCat[cat];
     (sp[cat]||[]).forEach(function(p){
       var names=[p.sampleName,p.position,p.penulisan].filter(Boolean);
-      var hit=null;
-      for(var i=0;i<names.length&&!hit;i++)hit=m[_rsNormKey(names[i])];
+      var ca=idx.cari(names);
+      if(ca.lewat==='ambigu'){ambigu++;return;}
+      // beberapa record bisa cocok (titik yang sama, matrix berbeda). Kalau
+      // koordinatnya sepakat, tidak ada yang perlu ditebak; kalau berbeda,
+      // itu baru ambigu.
+      var sig=function(r){return String(r.latD)+','+String(r.lngD);};
+      var beda=false; for(var q=1;q<ca.list.length;q++)if(sig(ca.list[q])!==sig(ca.list[0]))beda=true;
+      if(beda){ambigu++;return;}
+      var hit=ca.list[0];
       if(!hit)return;
       matched++;
       var chg=false;
@@ -25593,7 +25605,7 @@ function _rsProgApply(recs){
   try{localStorage.setItem('env26_sampling_points',JSON.stringify(sp));}catch(e){}
   if(typeof SAMPLING_POINTS!=='undefined')try{SAMPLING_POINTS=sp;}catch(e){}
   if(typeof saveStorage==='function')saveStorage('Import raw ENV Mon Program (koordinat titik)');
-  return {matched:matched,updated:updated,unmatched:Math.max(0,recs.length-matched)};
+  return {matched:matched,updated:updated,ambigu:ambigu,unmatched:Math.max(0,recs.length-matched)};
 }
 // ---- ENV Mon Program — EXPORT app -> raw (write koordinat back, DMS format) ----
 // Only Monthly/Semesterly (separate Lintang/Bujur columns) support write-back;
@@ -25604,6 +25616,46 @@ function _rsDecToProgDms(deg,isLat){
   var d=Math.floor(abs); var mFull=(abs-d)*60; var m=Math.floor(mFull); var s=(mFull-m)*60;
   return d+'°'+m+"'"+s.toFixed(2)+'"'+hemi;
 }
+// Y459: kunci nama yang mempertahankan isi dalam kurung. "(Restaurant)" dan
+// "(Toilet)" adalah dua titik berbeda; "(500 m arah utara)" dan "(500 m arah
+// Selatan)" apalagi.
+function _rsNameExact(s){return String(s==null?'':s).toLowerCase().replace(/\s+/g,' ').trim();}
+window._rsNameExact=_rsNameExact;
+// Susun indeks dua lapis dari daftar tujuan: NAMA LENGKAP dulu (kurung tidak
+// dibuang), kunci longgar hanya sebagai cadangan.
+//
+// Nama lengkap yang sama boleh menunjuk lebih dari satu tujuan, dan itu BUKAN
+// ambigu: di data ini satu titik fisik memang tercatat dua kali dengan matrix
+// berbeda (Water & Sediment) -- nama, site, dan koordinatnya identik. Jadi
+// semuanya dikembalikan, dan pemanggilnya yang memutuskan.
+// Yang benar-benar ambigu hanya kunci LONGGAR yang menunjuk beberapa tujuan
+// berbeda -- di situ menebak lebih buruk daripada berhenti.
+function _rsProgBuildIdx(daftar,ambilNama){
+  var tepat={},longgar={};
+  var tambah=function(peta,k,it){if(!k)return;(peta[k]=peta[k]||[]).push(it);};
+  daftar.forEach(function(it){
+    (ambilNama(it)||[]).forEach(function(v){
+      if(v==null||String(v).trim()==='')return;
+      tambah(tepat,_rsNameExact(v),it);
+      tambah(longgar,_rsNormKey(String(v)),it);
+    });
+  });
+  var unik=function(a){var o=[];(a||[]).forEach(function(x){if(o.indexOf(x)<0)o.push(x);});return o;};
+  return {cari:function(nama){
+    var i,h;
+    for(i=0;i<nama.length;i++){ if(!nama[i])continue;
+      h=unik(tepat[_rsNameExact(nama[i])]);
+      if(h.length)return {list:h,lewat:'tepat'};
+    }
+    for(i=0;i<nama.length;i++){ if(!nama[i])continue;
+      h=unik(longgar[_rsNormKey(String(nama[i]))]);
+      if(h.length===1)return {list:h,lewat:'longgar'};
+      if(h.length>1)return {list:[],lewat:'ambigu'};
+    }
+    return {list:[],lewat:'tidak ada'};
+  }};
+}
+window._rsProgBuildIdx=_rsProgBuildIdx;
 function _rsProgRowIndex(wbx){
   var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
   var out=[];
@@ -25615,7 +25667,9 @@ function _rsProgRowIndex(wbx){
       var name=map.cols.name!=null?r[map.cols.name]:null; if(name==null||String(name).trim()==='')continue;
       var keys=[name,map.cols.pos!=null?r[map.cols.pos]:null,map.cols.penulisan!=null?r[map.cols.penulisan]:null]
         .filter(function(v){return v!=null&&String(v).trim()!=='';}).map(function(v){return _rsNormKey(String(v));});
-      out.push({cat:sd.k,sheet:sn,excelRow:i+1,latCol:_rsColLetter(map.cols.lat),lngCol:_rsColLetter(map.cols.lng),keys:keys});
+      var namaAsli=[name,map.cols.pos!=null?r[map.cols.pos]:null,map.cols.penulisan!=null?r[map.cols.penulisan]:null]
+        .filter(function(v){return v!=null&&String(v).trim()!=='';}).map(String);
+      out.push({cat:sd.k,sheet:sn,excelRow:i+1,latCol:_rsColLetter(map.cols.lat),lngCol:_rsColLetter(map.cols.lng),keys:keys,namaAsli:namaAsli});
     }
   });
   return out;
@@ -26855,7 +26909,8 @@ function _rsApplyImport(){
       var resP=_rsProgApply(_rsImportBuf.records);
       if(typeof _linBatchEnd==='function')_linBatchEnd({cocok:resP.matched||0,diubah:resP.updated||0,tanpaPadanan:resP.unmatched||0});
       if(typeof toast==='function')toast('✅ Program di-import: '+resP.updated+' koordinat diperbarui.');
-      if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resP.matched+' titik cocok, '+resP.updated+' koordinat diperbarui, '+resP.unmatched+' tanpa padanan nama.</span>';
+      if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resP.matched+' titik cocok, '+resP.updated+' koordinat diperbarui, '+resP.unmatched+' tanpa padanan nama.</span>'
+        +(resP.ambigu?('<div style="font-size:10px;color:#b26a00;margin-top:3px">⚠ '+resP.ambigu+' titik <b>dilewati karena namanya ambigu</b> — lebih dari satu baris raw cocok, dan menebak koordinat lebih buruk daripada berhenti. Bedakan namanya di Konfigurasi Titik Penaatan.</div>'):'');
       return;
     }
     if(_rsImportBuf.mode==='schedule'){
@@ -27043,6 +27098,7 @@ function _rsExpReportHtml(judul,s){
   if(s.selRumus)baris.push(['var(--g4)',s.selRumus+' sel rumus sengaja tidak ditimpa supaya rumusnya tetap utuh.']);
   if(s.recordTanpaBaris)baris.push(['#b26a00',s.recordTanpaBaris+' data di aplikasi <b>tidak punya baris</b> di berkas ini, jadi nilainya tidak ikut keluar.']);
   if(s.barisTanpaRecord)baris.push(['var(--g4)',s.barisTanpaRecord+' baris di berkas tidak punya padanan di aplikasi — dibiarkan apa adanya.']);
+  if(s.ambigu)baris.push(['#b26a00',s.ambigu+' data <b>dilewati karena namanya ambigu</b> — beberapa baris cocok dan tidak ada yang bisa dipastikan. Bedakan namanya di Konfigurasi Titik Penaatan.']);
   if(s.tabrakan){
     // Y458: sebutkan yang MANA. "29 baris bentrok" tidak bisa ditindaklanjuti;
     // daftar namanya bisa langsung dicari dan diperbaiki di sumbernya.
@@ -27099,7 +27155,8 @@ function _rsRunExport(){
     }
     if(_rsExportBuf.mode==='program'){
       var progIdx2=_rsExportBuf.progIdx, spP2=_rsExportBuf.sp;
-      var byKeyP={}; progIdx2.forEach(function(r){r.keys.forEach(function(k){if(!(k in byKeyP))byKeyP[k]=r;});});
+      // Y459: nama lengkap dulu; kunci longgar hanya kalau tepat satu tujuan.
+      var idxP=_rsProgBuildIdx(progIdx2,function(rr){return rr.namaAsli||[];});
       var getPP=_rsSheetPath(files);
       var xmlCacheP={}; // sheet path -> xml (Monthly + Semesterly bisa tersentuh sekaligus)
       // Y457: dua titik yang namanya menormal ke kunci yang sama akan menunjuk
@@ -27107,35 +27164,55 @@ function _rsRunExport(){
       // jadi barisnya dihitung dan tabrakannya dilaporkan.
       var stP={sel:0,selDibuat:0,selGagal:0,selRumus:0,barisTanpaRecord:0,recordTanpaBaris:0,tabrakan:0};
       var patchedP=0;
-      var barisKenaP={},kenaBarisP={},namaKenaP={};
+      var barisKenaP={},kenaBarisP={},namaKenaP={},bentrokTag={};
       ['monthly','semesterly'].forEach(function(cat){
         ((spP2&&spP2[cat])||[]).forEach(function(p){
           if(p.lat_d==null||p.lng_d==null)return;
           var namesP=[p.sampleName,p.position,p.penulisan].filter(Boolean);
-          var hitRow=null;
-          for(var ip=0;ip<namesP.length&&!hitRow;ip++)hitRow=byKeyP[_rsNormKey(namesP[ip])];
-          if(!hitRow||hitRow.cat!==cat){stP.recordTanpaBaris++;return;}
-          var pathP=getPP(hitRow.sheet); if(!pathP||!files[pathP]){stP.recordTanpaBaris++;return;}
-          if(xmlCacheP[pathP]==null)xmlCacheP[pathP]=fflate.strFromU8(files[pathP]);
-          var xmlP=xmlCacheP[pathP];
+          var caP=idxP.cari(namesP);
+          if(caP.lewat==='ambigu'){stP.ambigu=(stP.ambigu||0)+1;return;}
+          var barisCocok=caP.list.filter(function(rr){return rr.cat===cat;});
+          if(!barisCocok.length){stP.recordTanpaBaris++;return;}
+          // Y459: nama lengkap yang sama bisa menunjuk BEBERAPA baris -- di data
+          // ini satu titik fisik tercatat dua kali dengan matrix berbeda
+          // (Water & Sediment), koordinatnya identik. Ditulis ke SEMUANYA, bukan
+          // cuma yang pertama; kalau tidak, separuh barisnya tetap kosong.
+          var nilaiP=p.lat_d.toFixed(7)+','+p.lng_d.toFixed(7);
           var didP=false;
-          var addrLat=hitRow.latCol+hitRow.excelRow, addrLng=hitRow.lngCol+hitRow.excelRow;
-          var tag=hitRow.sheet+'!'+hitRow.excelRow;
-          barisKenaP[tag]=(barisKenaP[tag]||0)+1; kenaBarisP[tag]=1;
-          (namaKenaP[tag]=namaKenaP[tag]||[]).push(p.sampleName||p.position||'(tanpa nama)');
-          var sebelum=stP.sel;
-          if(_rsCellIsFormula(xmlP,addrLat))stP.selRumus++;
-          else xmlP=_rsPutCell(xmlP,addrLat,{text:_rsDecToProgDms(p.lat_d,true)},_rsColSampleStyle(xmlP,hitRow.latCol,hitRow.excelRow),stP);
-          if(_rsCellIsFormula(xmlP,addrLng))stP.selRumus++;
-          else xmlP=_rsPutCell(xmlP,addrLng,{text:_rsDecToProgDms(p.lng_d,false)},_rsColSampleStyle(xmlP,hitRow.lngCol,hitRow.excelRow),stP);
-          if(stP.sel>sebelum)didP=true;
-          xmlCacheP[pathP]=xmlP;
+          barisCocok.forEach(function(hitRow){
+            var pathP=getPP(hitRow.sheet); if(!pathP||!files[pathP]){stP.recordTanpaBaris++;return;}
+            if(xmlCacheP[pathP]==null)xmlCacheP[pathP]=fflate.strFromU8(files[pathP]);
+            var xmlP=xmlCacheP[pathP];
+            var addrLat=hitRow.latCol+hitRow.excelRow, addrLng=hitRow.lngCol+hitRow.excelRow;
+            var tag=hitRow.sheet+'!'+hitRow.excelRow;
+            kenaBarisP[tag]=1;
+            var namaP=p.sampleName||p.position||'(tanpa nama)';
+            // Satu baris boleh dituju beberapa titik ASAL nilainya sama. Yang
+            // dilaporkan sebagai rebutan hanya kalau koordinatnya benar-benar BEDA
+            // -- dan KEDUA namanya disebut, karena untuk memperbaikinya user perlu
+            // tahu pasangannya, bukan cuma yang kalah.
+            if(barisKenaP[tag]==null)barisKenaP[tag]={nilai:nilaiP,nama:namaP};
+            else if(barisKenaP[tag].nilai!==nilaiP){
+              bentrokTag[tag]=1;
+              var ls=(namaKenaP[tag]=namaKenaP[tag]||[]);
+              if(ls.indexOf(barisKenaP[tag].nama)<0)ls.push(barisKenaP[tag].nama);
+              if(ls.indexOf(namaP)<0)ls.push(namaP);
+            }
+            var sebelum=stP.sel;
+            if(_rsCellIsFormula(xmlP,addrLat))stP.selRumus++;
+            else xmlP=_rsPutCell(xmlP,addrLat,{text:_rsDecToProgDms(p.lat_d,true)},_rsColSampleStyle(xmlP,hitRow.latCol,hitRow.excelRow),stP);
+            if(_rsCellIsFormula(xmlP,addrLng))stP.selRumus++;
+            else xmlP=_rsPutCell(xmlP,addrLng,{text:_rsDecToProgDms(p.lng_d,false)},_rsColSampleStyle(xmlP,hitRow.lngCol,hitRow.excelRow),stP);
+            if(stP.sel>sebelum)didP=true;
+            xmlCacheP[pathP]=xmlP;
+          });
           if(didP)patchedP++;
         });
       });
       var bentrokP=[];
-      Object.keys(barisKenaP).forEach(function(t){
-        if(barisKenaP[t]>1){stP.tabrakan++;(namaKenaP[t]||[]).forEach(function(nm){if(bentrokP.indexOf(nm)<0)bentrokP.push(nm);});}
+      Object.keys(bentrokTag).forEach(function(t){
+        stP.tabrakan++;
+        (namaKenaP[t]||[]).forEach(function(nm){if(bentrokP.indexOf(nm)<0)bentrokP.push(nm);});
       });
       stP.bentrok=bentrokP; stP.bentrokLabel='nama titik kembar di aplikasi';
       progIdx2.forEach(function(rr){if(!kenaBarisP[rr.sheet+'!'+rr.excelRow])stP.barisTanpaRecord++;});
