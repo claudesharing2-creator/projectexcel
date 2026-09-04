@@ -27043,7 +27043,16 @@ function _rsExpReportHtml(judul,s){
   if(s.selRumus)baris.push(['var(--g4)',s.selRumus+' sel rumus sengaja tidak ditimpa supaya rumusnya tetap utuh.']);
   if(s.recordTanpaBaris)baris.push(['#b26a00',s.recordTanpaBaris+' data di aplikasi <b>tidak punya baris</b> di berkas ini, jadi nilainya tidak ikut keluar.']);
   if(s.barisTanpaRecord)baris.push(['var(--g4)',s.barisTanpaRecord+' baris di berkas tidak punya padanan di aplikasi — dibiarkan apa adanya.']);
-  if(s.tabrakan)baris.push(['#c62828',s.tabrakan+' baris jadi tujuan <b>lebih dari satu</b> data (nama kembar). Hanya yang terakhir tersimpan — periksa penamaannya.']);
+  if(s.tabrakan){
+    // Y458: sebutkan yang MANA. "29 baris bentrok" tidak bisa ditindaklanjuti;
+    // daftar namanya bisa langsung dicari dan diperbaiki di sumbernya.
+    var daftar=(s.bentrok&&s.bentrok.length)
+      ? (' Yang kembar: <b>'+s.bentrok.slice(0,8).map(_ep).join('</b>, <b>')+'</b>'
+         +(s.bentrok.length>8?(' dan '+(s.bentrok.length-8)+' lagi'):'')+'.')
+      : '';
+    baris.push(['#c62828',s.tabrakan+' tujuan jadi rebutan <b>lebih dari satu</b> data ('
+      +(s.bentrokLabel||'nama kembar')+'). Hanya yang terakhir tersimpan.'+daftar]);
+  }
   if(!baris.length)baris.push(['#2e7d32','Semua data yang punya baris tujuan berhasil ditulis; tidak ada yang dilewati.']);
   baris.forEach(function(b){
     h+='<div style="font-size:10px;color:'+b[0]+';margin-top:3px">'+(b[0]==='#2e7d32'?'✓ ':'• ')+b[1]+'</div>';
@@ -27098,7 +27107,7 @@ function _rsRunExport(){
       // jadi barisnya dihitung dan tabrakannya dilaporkan.
       var stP={sel:0,selDibuat:0,selGagal:0,selRumus:0,barisTanpaRecord:0,recordTanpaBaris:0,tabrakan:0};
       var patchedP=0;
-      var barisKenaP={},kenaBarisP={};
+      var barisKenaP={},kenaBarisP={},namaKenaP={};
       ['monthly','semesterly'].forEach(function(cat){
         ((spP2&&spP2[cat])||[]).forEach(function(p){
           if(p.lat_d==null||p.lng_d==null)return;
@@ -27113,6 +27122,7 @@ function _rsRunExport(){
           var addrLat=hitRow.latCol+hitRow.excelRow, addrLng=hitRow.lngCol+hitRow.excelRow;
           var tag=hitRow.sheet+'!'+hitRow.excelRow;
           barisKenaP[tag]=(barisKenaP[tag]||0)+1; kenaBarisP[tag]=1;
+          (namaKenaP[tag]=namaKenaP[tag]||[]).push(p.sampleName||p.position||'(tanpa nama)');
           var sebelum=stP.sel;
           if(_rsCellIsFormula(xmlP,addrLat))stP.selRumus++;
           else xmlP=_rsPutCell(xmlP,addrLat,{text:_rsDecToProgDms(p.lat_d,true)},_rsColSampleStyle(xmlP,hitRow.latCol,hitRow.excelRow),stP);
@@ -27123,7 +27133,11 @@ function _rsRunExport(){
           if(didP)patchedP++;
         });
       });
-      Object.keys(barisKenaP).forEach(function(t){if(barisKenaP[t]>1)stP.tabrakan++;});
+      var bentrokP=[];
+      Object.keys(barisKenaP).forEach(function(t){
+        if(barisKenaP[t]>1){stP.tabrakan++;(namaKenaP[t]||[]).forEach(function(nm){if(bentrokP.indexOf(nm)<0)bentrokP.push(nm);});}
+      });
+      stP.bentrok=bentrokP; stP.bentrokLabel='nama titik kembar di aplikasi';
       progIdx2.forEach(function(rr){if(!kenaBarisP[rr.sheet+'!'+rr.excelRow])stP.barisTanpaRecord++;});
       stP.baris=patchedP;
       var cellsP=stP.sel;
@@ -27137,7 +27151,10 @@ function _rsRunExport(){
       return;
     }
     if(_rsExportBuf.mode==='rfa'){
-      var byNoR={}; recs.forEach(function(r){byNoR[String(r.noRfa)]=r;});
+      // Y458: dua record yang memakai satu nomor RFA akan menulis ke baris yang
+      // sama -- yang terakhir menang. Dicatat nomornya, bukan cuma jumlahnya.
+      var byNoR={},dupR={};
+      recs.forEach(function(r){var n=String(r.noRfa);if(n in byNoR)dupR[n]=1;byNoR[n]=r;});
       var getPR=_rsSheetPath(files);
       // Y457: hitung juga yang DILEWATI, jangan cuma yang berhasil.
       var stR={sel:0,selDibuat:0,selGagal:0,selRumus:0,barisTanpaRecord:0,recordTanpaBaris:0,tabrakan:0};
@@ -27165,6 +27182,8 @@ function _rsRunExport(){
         files[path]=fflate.strToU8(xml);
       });
       Object.keys(byNoR).forEach(function(no){if(!kenaR[no])stR.recordTanpaBaris++;});
+      stR.bentrok=Object.keys(dupR); stR.tabrakan=stR.bentrok.length;
+      stR.bentrokLabel='nomor RFA kembar di aplikasi';
       stR.baris=patchedR;
       var cellsR=stR.sel;
       var bytesR=_rsWriteZip(files);
@@ -27180,6 +27199,9 @@ function _rsRunExport(){
       if(!path2||!files[path2]){if(typeof toast==='function')toast('⚠ Sheet 2026 tidak ada di file.');return;}
       var xml2=fflate.strFromU8(files[path2]);
       var byNo={}; loc.forEach(function(L){if(!(L.rfa in byNo))byNo[L.rfa]=L.excelRow;});
+      // Y458: nomor yang dipakai lebih dari satu record di aplikasi
+      var lihat2={},dup2={};
+      recs.forEach(function(r){var n=String(r.noRfa);if(lihat2[n])dup2[n]=1;lihat2[n]=1;});
       // Y457: hitung juga yang dilewati; skip2 (RFA tanpa baris) sudah ada
       // sejak dulu dan tetap dipertahankan.
       var st2={sel:0,selDibuat:0,selGagal:0,selRumus:0,barisTanpaRecord:0,recordTanpaBaris:0,tabrakan:0};
@@ -27203,6 +27225,8 @@ function _rsRunExport(){
         if(did)patched2++;
       });
       st2.recordTanpaBaris=skip2;
+      st2.bentrok=Object.keys(dup2); st2.tabrakan=st2.bentrok.length;
+      st2.bentrokLabel='nomor RFA kembar di aplikasi';
       Object.keys(byNo).forEach(function(no){if(!kena2[no])st2.barisTanpaRecord++;});
       st2.baris=patched2;
       var cells2=st2.sel;
