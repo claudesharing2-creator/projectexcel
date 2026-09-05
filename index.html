@@ -41383,6 +41383,9 @@ function _emfFmt(v,param){
 function _emfIndex(){
   var rows=_emfRows('Monthly');
   var idx={}, seen={};
+  // Y462: satu kali generate = satu daftar ambigu. _emfIndex dipanggil di
+  // awal _emfGenerate, jadi di sinilah tempatnya dikosongkan.
+  try{if(typeof _EMF_AMBIGU!=='undefined')_EMF_AMBIGU.length=0;}catch(_eA){}
   _EMF_PACK_PARAMS=[];_EMF_TITIK_PARAMS={};
   for(var i=0;i<rows.length;i++){
     var r=rows[i], tg=r.tanggal||[];
@@ -42417,7 +42420,11 @@ function _emfTitikIzin(site,kind){
 }
 function _emfLokasiKind(cap){
   var c=String(cap||'').toLowerCase();
-  if(c.indexOf('lokasi titik penaatan')<0)return null;
+  // Y462: dua ejaan judul untuk tabel yang sama. "Lokasi pemantauan badan
+  // air" sengaja TIDAK ikut -- tabel itu punya jalurnya sendiri.
+  var punya=(c.indexOf('lokasi titik penaatan')>=0)
+         ||(c.indexOf('lokasi pemantauan')>=0&&c.indexOf('air limbah')>=0);
+  if(!punya)return null;
   if(c.indexOf('domestik')>=0)return 'domestik';
   if(c.indexOf('saniter')>=0)return 'saniter';
   if(c.indexOf('drainase')>=0)return 'drainase';
@@ -43068,7 +43075,11 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
              report.push({caption:tc[i].caption+' \u2014 '+rh.rows+' baris',filled:rh.filled,empty:0,log:rh.log});}
       continue;
     }
-    if(!waterOnly&&_emfIsDwiDredge(tc[i].tbl)){
+    // Y462: dulu ikut dilewati saat mode bagian-air, dan karena SELURUH isi
+    // dokumen DWI hanya tabel ini, hasilnya 0 sel terisi -- dokumen keluar
+    // dengan angka semester lalu. Pengerukan DWI adalah pemantauan air laut,
+    // jadi memang bagian air.
+    if(_emfIsDwiDredge(tc[i].tbl)){
       var rw=_emfPatchDwiDredge(tc[i].tbl,year,months);
       if(rw&&rw.rows){tot+=rw.filled;dredgeRows+=rw.rows||0;
         report.push({caption:tc[i].caption+' \u2014 '+rw.rows+' baris',filled:rw.filled,empty:0,log:rw.log});}
@@ -43178,7 +43189,8 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   }
   parts[docName]={data:new TextEncoder().encode(outXml)};
   var blob=await _emfZipWrite(parts,z.order);
-  return {blob:blob,report:report,filled:tot,empty:totEmpty,wording:nWord,charts:charts,chartSkip:chartSkip,hydro:hydro,manual:manual,sisaPeriode:sisaPeriode};
+  var _ambigu=[];try{if(typeof _EMF_AMBIGU!=='undefined')_ambigu=_EMF_AMBIGU.slice();}catch(_eB){}
+  return {blob:blob,report:report,filled:tot,empty:totEmpty,wording:nWord,charts:charts,chartSkip:chartSkip,hydro:hydro,manual:manual,sisaPeriode:sisaPeriode,ambigu:_ambigu};
 }
 </script><script id="emf-water-only-2026-08-26">
 // Y82: the user edits only the water part of an existing EMF document.
@@ -44052,18 +44064,24 @@ function _emfWaterOnlyWording(doc,year,sem,months){
   var mm=Array.isArray(months)&&months.length?months.slice():((sem===1)?EMF_MON:EMF_MON2);
   var customLabel=_emfCustomPeriodLabel(year,sem,mm);
   var isCustom=mm.length!==6;
+  // Y462: baris periode milik dokumen secara keseluruhan.
+  var judulPeriode=/^\s*(subjek|subject|perihal)\s*:/i;
+  var kalimatPeriode=/(laporan|hasil)\s+pemantauan\s+lingkungan/i;
   var reSem=/Semester\s*([12])\s*(20\d{2})/gi;
   var reSem2=/semester\s*ke(satu|dua)\s*(20\d{2})/gi;
   var reRange=/(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)(\s*(?:[-–—]|s\.?\s*d\.?|sampai(?:\s+dengan)?)\s*)(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)(\s+)(20\d{2})/gi;
   var reOrd=/(Semester)(\s+)(Pertama|Kesatu|Kedua)(\s+)(20\d{2})/gi;
   var reTh=/(Semester)(\s+)([12]|Pertama|Kesatu|Kedua)(\s+)(Tahun)(\s+)(20\d{2})/gi;
-  var water=/air|badan air|terproduksi|saniter|drainase|desalin|pengerukan|trenching|hidrostatik|hydrotest/i;
+  // Y464: "dumping" ditambahkan -- seluruh laporan DWI adalah pembuangan ke
+  // laut, dan tanpa kata ini kalimat rangkumannya tertinggal di tahun lama.
+  var water=/air|badan air|terproduksi|saniter|drainase|desalin|pengerukan|dredging|trenching|hidrostatik|hydrotest|dumping/i;
   var nonwater=/emisi|ambien|kebisingan|kebauan|getaran/i;
   var ps=doc.getElementsByTagNameNS(EMF_W,'p'),n=0;
   for(var i=0;i<ps.length;i++){
     (function(pEl){
       var joined=String(pEl.textContent||'');
-      if(!water.test(joined)||nonwater.test(joined))return;
+      var periodeDokumen=judulPeriode.test(joined)||kalimatPeriode.test(joined);
+      if((!water.test(joined)&&!periodeDokumen)||nonwater.test(joined))return;
       n+=_emfParaEdit(pEl,function(s){
         var edits=[],m;
         if(isCustom){
@@ -44375,30 +44393,119 @@ function _etCoordGuideInput(q){
   box.style.display='block';
 }
 </script><script id="emf-template-point-canonical-matcher-2026-08-27">
+// Y462: kunci nama titik yang tahan beda kata sambung. Dokumen menulis
+// "DWW 2 Camp G dan K", Data Pack menulis "DWW2 (Camp G,K)" -- keduanya titik
+// yang sama. Kurung, koma, "&" dan kata "dan"/"and" dibuang, lalu seluruh
+// tanda baca dan spasi dibuang. HANYA dipakai sebagai cadangan.
+function _emfTKey(s){
+  return _emfSq(s).toLowerCase()
+    .replace(/[()]/g,' ').replace(/[,&]/g,' ')
+    .replace(/(^|[^a-z0-9])(dan|and)([^a-z0-9]|$)/g,' ')
+    .replace(/[^a-z0-9]/g,'');
+}
+// Yang tidak bisa diputuskan tanpa menebak dicatat di sini dan ditampilkan di
+// layar, bukan didiamkan. Dikosongkan tiap kali _emfIndex() dibangun ulang.
+var _EMF_AMBIGU=[];
+function _emfAmbigu(jenis,apa,pilihan){
+  try{
+    var kunci=jenis+'|'+apa;
+    for(var i=0;i<_EMF_AMBIGU.length;i++)if(_EMF_AMBIGU[i].kunci===kunci)return;
+    _EMF_AMBIGU.push({kunci:kunci,jenis:jenis,apa:String(apa),pilihan:(pilihan||[]).slice(0,6)});
+  }catch(_e){}
+}
 function _emfSeries(idx,titik,param,year,months,sheet,satuan){
+  var tahun=String(year), gabung=null;
   var cp=_emfSq(_emfCanonTitik(titik)).toLowerCase();
   var wanted=_emfSq(_emfCanonParam(param)).toLowerCase();
   var alt=null;
   try{alt=_emfParamAlt(_emfCanonTitik(titik),param);}catch(_){alt=null;}
   var altKey=alt?_emfSq(alt).toLowerCase():'';
-  var kWant=_emfPKey(param), buckets={};
+  var kWant=_emfPKey(param);
+  // 1) semua baris TAHUN INI, dipisah: yang titiknya cocok persis vs sisanya
+  var pilih=[], lain=[];
   for(var key in idx){
     var q=key.split('\u0000');
-    if(q.length!==3||q[2]!==String(year))continue;
-    if(_emfSq(_emfCanonTitik(q[0])).toLowerCase()!==cp)continue;
-    var qParam=_emfSq(_emfCanonParam(q[1])).toLowerCase();
-    var qRaw=_emfSq(q[1]).toLowerCase();
-    var match=(qParam===wanted||qRaw===wanted||(_emfPKey(q[1])===kWant));
-    if(!match&&altKey)match=(qRaw===altKey||qParam===altKey||_emfPKey(q[1])===_emfPKey(alt));
-    if(!match)continue;
-    var d=idx[key]||{};
+    if(q.length!==3||q[2]!==tahun)continue;
+    var baris={key:key,titik:q[0],param:q[1]};
+    if(_emfSq(_emfCanonTitik(q[0])).toLowerCase()===cp)pilih.push(baris); else lain.push(baris);
+  }
+  // 2) cadangan nama titik -- hanya kalau tepat SATU titik yang cocok longgar
+  if(!pilih.length){
+    var tk=_emfTKey(_emfCanonTitik(titik)), sudah={}, calon=[];
+    for(var a=0;a<lain.length;a++){
+      if(_emfTKey(_emfCanonTitik(lain[a].titik))!==tk)continue;
+      var nm=_emfSq(_emfCanonTitik(lain[a].titik));
+      if(!sudah[nm]){sudah[nm]=1;calon.push(nm);}
+    }
+    if(calon.length===1){
+      pilih=lain.filter(function(r){return _emfSq(_emfCanonTitik(r.titik))===calon[0];});
+    }else if(calon.length>1){
+      // Y463: gabungkan dulu. Menolak di sini membuang bulan yang hanya
+      // dibawa salah satu ejaan. Konfliknya diperiksa per bulan di bawah:
+      // hanya nilai yang BERBEDA di bulan yang sama yang dilaporkan.
+      pilih=lain.filter(function(r){return _emfTKey(_emfCanonTitik(r.titik))===tk;});
+      gabung=calon.slice();
+    }
+  }
+  // 3) parameter: pencocokan tegas dulu (persis / kanonik / alias)
+  var pakai=[];
+  for(var b=0;b<pilih.length;b++){
+    var qParam=_emfSq(_emfCanonParam(pilih[b].param)).toLowerCase();
+    var qRaw=_emfSq(pilih[b].param).toLowerCase();
+    var match=(qParam===wanted||qRaw===wanted||(_emfPKey(pilih[b].param)===kWant));
+    if(!match&&altKey)match=(qRaw===altKey||qParam===altKey||_emfPKey(pilih[b].param)===_emfPKey(alt));
+    if(match)pakai.push(pilih[b]);
+  }
+  // 4) cadangan nama parameter, DIBATASI TAHUN YANG DIMINTA. Inilah bedanya
+  // dengan _emfParamAlt: alias itu memilih dari seluruh tahun, jadi ejaan
+  // lama (mis. "pH" 2025) menang atas ejaan yang benar-benar ada di 2026
+  // ("pH on site") lalu selnya kosong. Beda ejaan yang kuncinya sama
+  // (mis. "BOD 5 days 20 °C **" vs tanpa bintang) dihitung SATU.
+  if(!pakai.length&&kWant.length>=2){
+    var kunci={}, urut=[];
+    for(var c=0;c<pilih.length;c++){
+      var k2=_emfPKey(pilih[c].param);
+      if(!k2)continue;
+      var depan=k2.length>=kWant.length&&(k2.indexOf(kWant)===0||k2.slice(k2.length-kWant.length)===kWant);
+      var belakang=kWant.length>=k2.length&&(kWant.indexOf(k2)===0||kWant.slice(kWant.length-k2.length)===k2);
+      if(!(depan||belakang))continue;
+      if(!kunci[k2]){kunci[k2]=[];urut.push(k2);}
+      if(kunci[k2].indexOf(_emfSq(pilih[c].param))<0)kunci[k2].push(_emfSq(pilih[c].param));
+    }
+    if(urut.length===1){
+      pakai=pilih.filter(function(r){return _emfPKey(r.param)===urut[0];});
+    }else if(urut.length>1){
+      var nama=[];urut.forEach(function(k){nama=nama.concat(kunci[k]);});
+      _emfAmbigu('parameter',_emfSq(titik)+' \u2014 '+_emfSq(param),nama);
+    }
+  }
+  var buckets={};
+  for(var e=0;e<pakai.length;e++){
+    var d=idx[pakai[e].key]||{};
     for(var mm in d)(buckets[mm]=buckets[mm]||[]).push.apply(buckets[mm],d[mm]||[]);
   }
+  // Y463: dua nilai dianggap sama kalau angkanya sama (0.03 dan "0.03"), atau
+  // teksnya sama setelah dirapikan ("Nihil" vs " nihil ").
+  var _samaNilai=function(a,b){
+    var x=String(a==null?'':a).trim(), y=String(b==null?'':b).trim();
+    if(x.toLowerCase()===y.toLowerCase())return true;
+    var nx=parseFloat(x.replace(',','.')), ny=parseFloat(y.replace(',','.'));
+    return isFinite(nx)&&isFinite(ny)&&Math.abs(nx-ny)<1e-9;
+  };
   return months.map(function(m){
     var c=(buckets[m]||[]).slice();
     if(sheet){var f=c.filter(function(x){return x.sheet===sheet;});if(f.length)c=f;}
     if(satuan){var g=c.filter(function(x){return _emfSatEq(x.satuan,satuan);});if(g.length)c=g;}
-    return c.length?c[0]:null;
+    if(!c.length)return null;
+    if(gabung&&c.length>1){
+      for(var i2=1;i2<c.length;i2++){
+        if(_samaNilai(c[0].nilai,c[i2].nilai))continue;
+        _emfAmbigu('titik',_emfSq(titik)+' \u2014 '+_emfSq(param)+' bulan '+m,
+                   gabung.concat(['nilai berbeda: '+String(c[0].nilai)+' vs '+String(c[i2].nilai)]));
+        return null;
+      }
+    }
+    return c[0];
   });
 }
 // DWI is a legitimate report template even though its document layout does
