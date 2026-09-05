@@ -14789,6 +14789,106 @@ window._persCfAutoPull=_persCfAutoPull;
 window._persRefreshStatusUI=_persRefreshStatusUI;
 // ==== akhir Y461 ========================================================
 
+// ==== Y469: kalimat temuan disusun dari data =============================
+var EMF_BULAN_URUT=['Januari','Februari','Maret','April','Mei','Juni',
+                    'Juli','Agustus','September','Oktober','November','Desember'];
+// Kumpulkan pelampauan baku mutu untuk titik-titik yang dilaporkan dokumen.
+// `titikDoc` = peta { nama kanonik -> label seperti yang ditulis dokumen }.
+function _emfTemuanBM(titikDoc,year,months){
+  var out=[];
+  try{
+    var rows=_emfRows('Monthly')||[];
+    var kel={};
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i];
+      if(String(r.status||'')!=='exceed')continue;
+      var ct=_emfSq(_emfCanonTitik(r.titik||''));
+      var label=titikDoc[ct.toLowerCase()];
+      if(!label)continue;
+      var tg=r.tanggal||[];
+      for(var j=0;j<tg.length;j++){
+        var m=/^(\d{4})-(\d{2})/.exec(String(tg[j]));
+        if(!m||m[1]!==String(year)||months.indexOf(m[2])<0)continue;
+        var k=_emfSq(r.parameter||'')+'\u0000'+label;
+        // Y470: _emfSq merapatkan kurung ("Ammonia (NH3-N)" -> "Ammonia(NH3-N)").
+        // Itu boleh untuk kunci, tapi tidak boleh untuk teks yang dicetak.
+        if(!kel[k])kel[k]={param:String(r.parameter||'').replace(/\s+/g,' ').trim(),titik:label,bulan:{}};
+        kel[k].bulan[m[2]]=1;
+        break;
+      }
+    }
+    for(var k2 in kel){
+      var g=kel[k2], bl=Object.keys(g.bulan).sort();
+      out.push({param:g.param,titik:g.titik,
+                bulan:bl.map(function(mm){return EMF_BULAN_URUT[parseInt(mm,10)-1];})});
+    }
+    out.sort(function(a,b){return (a.titik+a.param)<(b.titik+b.param)?-1:1;});
+  }catch(_e){}
+  return out;
+}
+function _emfDaftarBulan(list){
+  if(!list||!list.length)return '';
+  if(list.length===1)return list[0];
+  return list.slice(0,-1).join(', ')+' dan '+list[list.length-1];
+}
+function _emfKalimatTemuan(temuan,year){
+  if(!temuan.length)return '';
+  // Y471: dikelompokkan per parameter, titik-titiknya menyusul di belakang
+  // dengan bulannya masing-masing. Sepuluh pasangan parameter x titik jadi
+  // enam bagian yang masih bisa dibaca dalam satu kalimat.
+  var perParam={}, urut=[];
+  for(var i=0;i<temuan.length;i++){
+    var t=temuan[i];
+    if(!perParam[t.param]){perParam[t.param]=[];urut.push(t.param);}
+    perParam[t.param].push(t.titik+' ('+_emfDaftarBulan(t.bulan)+')');
+  }
+  var bagian=urut.map(function(p){
+    return p+' pada titik '+_emfDaftarBulan(perParam[p]);
+  });
+  return ', kecuali untuk parameter '+bagian.join('; ')+' pada tahun '+year+'.';
+}
+// Berapa PARAMETER yang terlibat -- itu yang menentukan panjang kalimatnya,
+// bukan jumlah pasangan parameter x titik.
+function _emfTemuanJumlahParam(temuan){
+  var s={},n=0;
+  (temuan||[]).forEach(function(t){if(!s[t.param]){s[t.param]=1;n++;}});
+  return n;
+}
+// Hanya menulis ulang anak kalimat yang SUDAH ada di dokumen. Tidak pernah
+// menambahkan pernyataan temuan ke kalimat yang tidak punya anak kalimat itu.
+function _emfPatchTemuan(doc,temuan,year){
+  // Y470: satu kalimat berisi belasan kelompok temuan tidak terbaca. Di atas
+  // batas ini kalimatnya dibiarkan dan daftarnya ditampilkan di layar supaya
+  // pemilik menuliskannya sendiri.
+  // Y471: ambangnya dihitung per parameter, bukan per pasangan.
+  if(temuan&&typeof _emfTemuanJumlahParam==='function'&&_emfTemuanJumlahParam(temuan)>10)
+    return {diubah:0,temuan:temuan,terlaluBanyak:true};
+  var ganti=_emfKalimatTemuan(temuan,year);
+  var ps=doc.getElementsByTagNameNS(EMF_W,'p'), n=0;
+  for(var i=0;i<ps.length;i++){
+    (function(pEl){
+      var joined=String(pEl.textContent||'');
+      if(!/kecuali untuk parameter/i.test(joined))return;
+      // Y470: hanya kalimat rangkuman AIR LIMBAH. Kalimat badan air /
+      // rona awal / kekeruhan / pengerukan punya dasar dan cakupan sendiri
+      // dan tidak boleh disusun ulang dari temuan air limbah.
+      if(!/air limbah|limbah domestik|saniter|drainase|limbah klinik/i.test(joined))return;
+      if(/badan air|biota laut|rona awal|kekeruhan|pengerukan|dredging|dumping|air laut/i.test(joined))return;
+      n+=_emfParaEdit(pEl,function(s){
+        var m=/,?\s*kecuali untuk parameter[^.]*\.?/i.exec(s);
+        if(!m)return [];
+        if(m[0].length>400)return [];   // bukan anak kalimat, jangan disentuh
+        return [[m.index,m.index+m[0].length,ganti||'.']];
+      });
+    })(ps[i]);
+  }
+  return {diubah:n,temuan:temuan};
+}
+window._emfTemuanBM=_emfTemuanBM;
+window._emfPatchTemuan=_emfPatchTemuan;
+window._emfKalimatTemuan=_emfKalimatTemuan;
+// ==== akhir Y469 ========================================================
+
 
 // ==== Y418: satu pintu muat Data Pack, dengan pilihan per bagian ========
 // Sebelumnya ada dua tombol terpisah (pilih berkas / muat dari web) dan
@@ -41269,7 +41369,11 @@ var EMF_LABEL={
  'PPA observation pool':'Outlet PPA Observation Pool',
  'STP-1 BPN':'Outlet STP-1','STP-2 BPN':'Outlet STP-2','STP-3 BPN':'Outlet STP-3',
  'wetland outlet 1 Sepinggan':'Wetland 1','wetland outlet 2 Sepinggan':'Wetland 2',
- 'BPN New CWW':'CWW Outlet','BPN New DWW':'Clinic DWW Outlet','Sepinggan Outlet BPN':'DWW Mess Outlet'
+ 'BPN New CWW':'CWW Outlet','BPN New DWW':'Clinic DWW Outlet'
+ /* Y466: 'Sepinggan Outlet BPN':'DWW Mess Outlet' DIBUANG -- di berkas mentah
+    2025 keduanya dua titik terpisah, dan "Sepinggan Outlet" memang tidak
+    disampling lagi pada 2026. Alias ini membuat tabelnya terisi angka milik
+    titik lain. */
 };
 var EMF_PARAM={'residu klorin (cl2)':'Residu Chlorine (Cl-)','residu klorin':'Residu Chlorine (Cl-)',
  'minyak dan lemak':'Minyak dan Lemak','h2s':'Sulfida terlarut (H2S)','ph':'pH',
@@ -42680,7 +42784,20 @@ function _emfDredgeJenis(cap){
   if(c.indexOf('baku mutu')>=0)return null;
   if(c.indexOf('penggelaran pipa')>=0)return 'trenching';
   if(c.indexOf('kluster')>=0||c.indexOf('penyiapan akses')>=0)return 'dredging';
+  // Y468: CPU dan SPS memakai satu judul gabungan. Diisi dengan data
+  // dredging; kalau periodenya juga punya trenching, itu diberitahukan
+  // (lihat dredgeGabung di _emfGenerate) supaya dokumennya ditambah tabel
+  // kedua, bukan ditumpuk ke sini dengan aturan titik yang salah.
+  if(/hasil pemantauan kegiatan pengerukan/.test(c))return 'dredging';
   return null;
+}
+// true kalau judulnya bentuk gabungan itu -- dipakai untuk memutuskan apakah
+// perlu memperingatkan soal trenching yang tidak punya tabel.
+function _emfDredgeCaptionGabung(cap){
+  var c=String(cap||'').toLowerCase();
+  if(c.indexOf('baku mutu')>=0)return false;
+  return /hasil pemantauan kegiatan pengerukan/.test(c)
+      && c.indexOf('penggelaran pipa')<0 && c.indexOf('kluster')<0 && c.indexOf('penyiapan akses')<0;
 }
 function _emfIsBadanAirCaption(cap){
   if(!cap)return false;
@@ -43038,6 +43155,8 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
     }
   }
   var idx=_emfIndex(), months=(Array.isArray(monthsOverride)&&monthsOverride.length)?monthsOverride.slice():((sem===1)?EMF_MON:EMF_MON2);
+  var dredgeGabung=0, trenchAda=0;
+  var dredgeGabung=0, trenchAda=0, titikDoc={};
   var report=[],tot=0,totEmpty=0;
   var tc=_emfTablesWithCaptions(doc);
   var baIdx=_emfBaIndex(), hydroDone=0, dredgeRows=0;
@@ -43086,7 +43205,8 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
       continue;
     }
     var dj=_emfDredgeJenis(tc[i].caption);
-    if(!waterOnly&&dj){
+    if(dj&&typeof _emfDredgeCaptionGabung==='function'&&_emfDredgeCaptionGabung(tc[i].caption))dredgeGabung++;
+    if(dj){
       var rd=_emfPatchDredge(tc[i].tbl,dj,year,months,siteOverride?[siteOverride]:_emfDocSites(file.name));
       if(rd){tot+=rd.filled;dredgeRows+=rd.rows||0;
              report.push({caption:tc[i].caption+' \u2014 '+rd.rows+' baris',filled:rd.filled,empty:0,log:rd.log});}
@@ -43102,6 +43222,20 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
     var r=_emfPatchTitikTable(tc[i].tbl,idx,year,months,tc[i].caption);
     if(r.skipped)continue;
     tot+=r.filled; totEmpty+=r.empty;
+    // Y469: catat titik yang MEMANG punya tabel di dokumen ini, beserta label
+    // sebagaimana dokumen menulisnya -- itu yang dipakai kalimat temuan.
+    try{
+      // Y470: hanya tabel air limbah yang boleh menyumbang titik ke kalimat
+      // temuan. Tabel badan air dan pengerukan punya kalimatnya sendiri.
+      var _capT=String(tc[i].caption||'');
+      if(/air limbah|limbah domestik|saniter|drainase|limbah klinik/i.test(_capT)
+         &&!/badan air|biota laut|pengerukan|dredging|dumping/i.test(_capT)){
+        (r.log||[]).forEach(function(l){
+          var ct=_emfSq(_emfCanonTitik(l.titik||'')).toLowerCase();
+          if(ct&&!titikDoc[ct])titikDoc[ct]=String(l.titik||'').replace(/\s+/g,' ').trim();
+        });
+      }
+    }catch(_eTd){}
     report.push({caption:tc[i].caption,filled:r.filled,empty:r.empty,log:r.log});
   }
   var parts={};
@@ -43171,6 +43305,15 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   // warning ask for the table instead.
   if(!waterOnly&&!hydroDone&&!hydro)_emfPatchNoHydro(doc,year,sem);
   if(!waterOnly&&!dredgeRows)_emfPatchNoDredge(doc,year,sem);
+  // Y469: kalimat "kecuali untuk parameter ..." disusun ulang dari data
+  // periode ini, bukan digeser tahunnya.
+  var temuan=[],temuanDiubah=0,temuanTerlaluBanyak=0;
+  try{
+    temuan=_emfTemuanBM(titikDoc,year,months);
+    var rt2=_emfPatchTemuan(doc,temuan,year);
+    temuanDiubah=rt2.diubah;
+    if(rt2.terlaluBanyak)temuanTerlaluBanyak=1;
+  }catch(_eTm){}
   var nWord=waterOnly?_emfWaterOnlyWording(doc,year,sem,months):_emfPatchWording(doc,year,sem);
   var manual=waterOnly?{done:[],left:[]}:_emfPatchManual(doc,year,sem);
   if(siteOverride&&!waterOnly)_emfPatchSite(doc,_emfDetectSite(doc),siteOverride);
@@ -43189,8 +43332,32 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   }
   parts[docName]={data:new TextEncoder().encode(outXml)};
   var blob=await _emfZipWrite(parts,z.order);
+  // Y468: kalau dokumen ini hanya punya SATU tabel pengerukan gabungan, tapi
+  // periodenya juga membawa kegiatan trenching, dokumennya perlu tabel kedua.
+  try{
+    if(dredgeGabung){
+      var sitesT=siteOverride?[String(siteOverride).toUpperCase()]:_emfDocSites(file.name);
+      var rowsT=[].concat(_emfRows('Dredging'),_emfRows('NonRoutine'));
+      var lihatT={};
+      for(var ti=0;ti<rowsT.length;ti++){
+        var rt=rowsT[ti], nt=String(rt.titik||'');
+        if(!/trenching/i.test(nt))continue;
+        if(!/during/i.test(nt))continue;
+        if(sitesT&&sitesT.indexOf(String(rt.site||'').toUpperCase())<0)continue;
+        var tgT=rt.tanggal||[];
+        for(var tj=0;tj<tgT.length;tj++){
+          var mT=/^(\d{4})-(\d{2})/.exec(String(tgT[tj]));
+          if(mT&&mT[1]===String(year)&&months.indexOf(mT[2])>=0){
+            var kegT=nt.split(/\s+[-\u2013]\s+/)[0];
+            if(!lihatT[kegT]){lihatT[kegT]=1;trenchAda++;}
+            break;
+          }
+        }
+      }
+    }
+  }catch(_eT){}
   var _ambigu=[];try{if(typeof _EMF_AMBIGU!=='undefined')_ambigu=_EMF_AMBIGU.slice();}catch(_eB){}
-  return {blob:blob,report:report,filled:tot,empty:totEmpty,wording:nWord,charts:charts,chartSkip:chartSkip,hydro:hydro,manual:manual,sisaPeriode:sisaPeriode,ambigu:_ambigu};
+  return {blob:blob,report:report,filled:tot,empty:totEmpty,wording:nWord,charts:charts,chartSkip:chartSkip,hydro:hydro,manual:manual,sisaPeriode:sisaPeriode,ambigu:_ambigu,dredgeGabung:dredgeGabung,trenchTanpaTabel:(dredgeGabung?trenchAda:0),temuan:temuan,temuanDiubah:temuanDiubah,temuanTerlaluBanyak:temuanTerlaluBanyak};
 }
 </script><script id="emf-water-only-2026-08-26">
 // Y82: the user edits only the water part of an existing EMF document.
@@ -44081,6 +44248,12 @@ function _emfWaterOnlyWording(doc,year,sem,months){
     (function(pEl){
       var joined=String(pEl.textContent||'');
       var periodeDokumen=judulPeriode.test(joined)||kalimatPeriode.test(joined);
+      // Y467: dumping LIMBAH PENGEBORAN bukan bagian air; yang bagian air
+      // hanya dumping material keruk. Paragraf tentang lumpur/serbuk bor
+      // dikeluarkan, kecuali kalau ia juga bicara air/keruk/sedimen.
+      var bukanAir=/limbah pengebo|lumpur bor|serbuk bor|fresh mud|cutting/i;
+      var airTegas=/air|keruk|pengerukan|dredging|sedimen/i;
+      if(bukanAir.test(joined)&&!airTegas.test(joined))return;
       if((!water.test(joined)&&!periodeDokumen)||nonwater.test(joined))return;
       n+=_emfParaEdit(pEl,function(s){
         var edits=[],m;
