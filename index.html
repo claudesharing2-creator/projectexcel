@@ -2195,7 +2195,7 @@ window._dpApplyRfaSync=_dpApplyRfaSync;
   resize:none;overflow:auto;display:flex;flex-direction:column}
 .dash-grid.dash-animate .dash-card{transition:left .28s cubic-bezier(.2,.8,.25,1),top .28s cubic-bezier(.2,.8,.25,1),width .28s cubic-bezier(.2,.8,.25,1),box-shadow .15s}
 .dash-card.dash-card-dragging{box-shadow:0 10px 28px rgba(0,0,0,.22);z-index:50;transition:none!important;opacity:.92}
-.dash-card-head{display:flex;align-items:center;gap:6px;padding:9px 10px;border-bottom:1px solid var(--g1);background:var(--g1);cursor:grab;flex-shrink:0;user-select:none}
+.dash-card-head{display:flex;align-items:center;gap:6px;padding:9px 10px;border-bottom:1px solid var(--g1);background:var(--g1);cursor:grab;flex-shrink:0;user-select:none;touch-action:none}
 .dash-card-head:active{cursor:grabbing}
 .dash-card-drag{color:var(--g3);cursor:grab;font-size:13px;line-height:1}
 .dash-card-title{font-size:12px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -4139,8 +4139,9 @@ function _dashCardMouseDown(e,id){
   const cr=card.getBoundingClientRect();
   _dashDrag={id:id,el:card,grid:grid,offX:e.clientX-cr.left,offY:e.clientY-cr.top};
   card.classList.add('dash-card-dragging');
-  document.addEventListener('mousemove',_dashCardMouseMove);
-  document.addEventListener('mouseup',_dashCardMouseUp);
+  document.addEventListener('pointermove',_dashCardMouseMove);
+  document.addEventListener('pointerup',_dashCardMouseUp);
+  document.addEventListener('pointercancel',_dashCardMouseUp);
 }
 function _dashCardMouseMove(e){
   if(!_dashDrag)return;
@@ -4170,8 +4171,9 @@ function _dashCardMouseMove(e){
 function _dashCardMouseUp(){
   if(!_dashDrag)return;
   _dashDrag.el.classList.remove('dash-card-dragging');
-  document.removeEventListener('mousemove',_dashCardMouseMove);
-  document.removeEventListener('mouseup',_dashCardMouseUp);
+  document.removeEventListener('pointermove',_dashCardMouseMove);
+  document.removeEventListener('pointerup',_dashCardMouseUp);
+  document.removeEventListener('pointercancel',_dashCardMouseUp);
   _dashDrag=null;
   _dashSaveLayout();
   _dashPack(); // snap the dropped card into its slot (animated)
@@ -4264,7 +4266,7 @@ function renderDashboard(){
     let inner;
     try{inner=c.render();}catch(e){inner='<div style="color:#c0392b;font-size:11px;padding:10px">Gagal memuat card ini: '+String((e&&e.message)||e)+'</div>';}
     return '<div class="dash-card" data-card-id="'+c.id+'">'+
-      '<div class="dash-card-head" onmousedown="_dashCardMouseDown(event,\''+c.id+'\')"><span class="dash-card-drag" title="Geser untuk memindahkan">⠿</span><span class="dash-card-title">'+c.icon+' '+c.title+'</span>'+
+      '<div class="dash-card-head" onpointerdown="_dashCardMouseDown(event,\''+c.id+'\')"><span class="dash-card-drag" title="Geser untuk memindahkan">⠿</span><span class="dash-card-title">'+c.icon+' '+c.title+'</span>'+
       (c.isCustom?'<button class="dash-card-hide" onclick="event.stopPropagation();_dashCustomOpen(\''+c.customId+'\')" title="Edit card kustom ini">✎</button>':'')+
       '<button class="dash-card-hide" onclick="_dashToggleHide(\''+c.id+'\')" title="Sembunyikan card ini">✕</button></div>'+
       '<div class="dash-card-body">'+inner+'</div>'+
@@ -11211,8 +11213,8 @@ function openEvTagPicker(field, anchorEl){
   picker.style.top=`${rect.bottom+6}px`;
   document.body.appendChild(picker);
   setTimeout(()=>{
-    const close=e=>{if(!picker.contains(e.target)){picker.remove();document.removeEventListener('mousedown',close);}};
-    document.addEventListener('mousedown',close);
+    const close=e=>{if(!picker.contains(e.target)){picker.remove();document.removeEventListener('pointerdown',close);}};
+    document.addEventListener('pointerdown',close);
   },0);
 }
 
@@ -11248,8 +11250,8 @@ function _pickerBtn(label,active,color){
 }
 function _attachPickerClose(p){
   setTimeout(()=>{
-    const close=e=>{if(!p.contains(e.target)){p.remove();document.removeEventListener('mousedown',close);}};
-    document.addEventListener('mousedown',close);
+    const close=e=>{if(!p.contains(e.target)){p.remove();document.removeEventListener('pointerdown',close);}};
+    document.addEventListener('pointerdown',close);
   },0);
 }
 
@@ -14699,6 +14701,94 @@ window._persIsPlaceholder=_persIsPlaceholder;
 window._persStatusHtml=_persStatusHtml;
 window._persImportFile=_persImportFile;
 // ==== akhir Y417 ========================================================
+// ==== Y461: daftar petugas lewat Cloudflare =============================
+// Kunci raw tersendiri di gerbang yang sama dengan perpustakaan template
+// (Y451). Tidak pernah masuk berkas HTML, tidak pernah masuk git.
+var PERS_CF_KEY='personnel-v1';
+async function _persCfPush(){
+  var cfg=(typeof _cfConfig==='function')?_cfConfig():{};
+  if(!cfg.url||!cfg.adminToken){
+    if(typeof toast==='function')toast('\u26a0 Perlu URL Worker + Token Admin di Pengaturan Cloudflare untuk menyimpan daftar petugas.');
+    return false;
+  }
+  // Penjaga terpenting di seluruh Y461: mengunggah nama contoh akan MENIMPA
+  // nama asli yang sudah ada di Cloudflare.
+  if(_persIsPlaceholder()){
+    if(typeof toast==='function')toast('\u26a0 Daftar di browser ini masih nama contoh. Mengunggahnya justru akan menimpa nama asli di perangkat lain \u2014 muat berkas daftar petugas dulu.');
+    return false;
+  }
+  var isi={ppcList:(window.PPC_LIST||[]),
+           persSeed:((typeof PERS_SEED!=='undefined'&&PERS_SEED)?PERS_SEED:[]),
+           savedAt:new Date().toISOString()};
+  var ok=false;
+  try{ok=await _cfUploadRawTemplate(PERS_CF_KEY,_cfStrBuf(JSON.stringify(isi)),'personnel.json');}catch(e){ok=false;}
+  if(typeof toast==='function')toast(ok
+    ?('\u2705 '+isi.ppcList.length+' nama petugas tersimpan di Cloudflare \u2014 perangkat lain cukup mengisi token baca.')
+    :'\u274c Gagal menyimpan daftar petugas ke Cloudflare.');
+  if(ok&&typeof _persRefreshStatusUI==='function')_persRefreshStatusUI();
+  return ok;
+}
+async function _persCfPull(auto){
+  var cfg=(typeof _cfConfig==='function')?_cfConfig():{};
+  if(!cfg.url||!cfg.readToken){
+    if(!auto&&typeof toast==='function')toast('\u26a0 Isi URL Worker + Token Pembaca dulu di Pengaturan Cloudflare.');
+    return 0;
+  }
+  var rec=null;
+  try{rec=await _cfFetchRawTemplate(PERS_CF_KEY);}catch(e){rec=null;}
+  if(!rec){
+    // Y414 berlaku di sini juga: gagal ambil harus terlihat, bukan diam.
+    if(!auto&&typeof toast==='function')toast('\u2139 Belum ada daftar petugas di Cloudflare. Muat berkasnya di perangkat ini, lalu tekan "Simpan ke Cloudflare".');
+    return 0;
+  }
+  var obj=null;
+  try{obj=JSON.parse(_cfBufStr(rec.arr));}catch(e){obj=null;}
+  var list=obj&&(obj.ppcList||obj.PPC_LIST);
+  if(!list||!list.length){
+    if(!auto&&typeof toast==='function')toast('\u26a0 Isi daftar petugas di Cloudflare tidak terbaca.');
+    return 0;
+  }
+  var n=_persApplyFromPack({ppcList:list,persSeed:(obj.persSeed&&obj.persSeed.length)?obj.persSeed:undefined});
+  if(!n)return 0;
+  // Tampilan yang sudah tergambar masih memegang nama lama, jadi digambar
+  // ulang. Sengaja TIDAK memuat ulang halaman: ini berjalan sendiri saat
+  // halaman dibuka, dan memuat ulang tanpa diminta akan membuang apa pun
+  // yang sedang diketik pemakai.
+  try{if(typeof renderCalendar==='function')renderCalendar();}catch(e){}
+  try{if(typeof renderActList==='function')renderActList();}catch(e){}
+  try{if(typeof renderRoutineTracker==='function')renderRoutineTracker();}catch(e){}
+  try{if(typeof _persRefreshStatusUI==='function')_persRefreshStatusUI();}catch(e){}
+  if(typeof toast==='function')toast('\u2705 '+list.length+' nama petugas diambil dari Cloudflare'
+    +((obj.persSeed&&obj.persSeed.length)?(' + '+obj.persSeed.length+' entri jadwal'):'')+'.');
+  return n;
+}
+// Dijalankan sendiri saat halaman dibuka -- HANYA kalau daftar di browser ini
+// masih nama contoh. Daftar yang sudah benar tidak pernah ditimpa diam-diam.
+async function _persCfAutoPull(){
+  try{
+    var cfg=(typeof _cfConfig==='function')?_cfConfig():{};
+    if(!cfg.url||!cfg.readToken)return 0;
+    if(!_persIsPlaceholder())return 0;
+    return await _persCfPull(true);
+  }catch(e){return 0;}
+}
+// Kartu status di ENV Tools digambar ulang di tempat, tanpa menutup layar.
+function _persRefreshStatusUI(){
+  try{
+    var el=document.querySelector('[data-y417="status"]');
+    if(el&&typeof _persStatusHtml==='function'){
+      var tmp=document.createElement('div');
+      tmp.innerHTML=_persStatusHtml();
+      if(tmp.firstElementChild)el.replaceWith(tmp.firstElementChild);
+    }
+  }catch(e){}
+}
+window._persCfPush=_persCfPush;
+window._persCfPull=_persCfPull;
+window._persCfAutoPull=_persCfAutoPull;
+window._persRefreshStatusUI=_persRefreshStatusUI;
+// ==== akhir Y461 ========================================================
+
 
 // ==== Y418: satu pintu muat Data Pack, dengan pilihan per bagian ========
 // Sebelumnya ada dua tombol terpisah (pilih berkas / muat dari web) dan
@@ -23338,28 +23428,50 @@ function _addPointBubble(map,marker,labelHtml,cls){
     if(!map._loaded)return; // view (center/zoom) not assigned yet — happens after all markers are created; Leaflet throws on latLngToContainerPoint until then
     var mp=map.latLngToContainerPoint(marker.getLatLng());
     var bw=bubble.offsetWidth,bh=bubble.offsetHeight;
-    bubble.style.left=(mp.x+offX-bw/2)+'px';
-    bubble.style.top=(mp.y+offY-bh)+'px';
+    var _kx=mp.x+offX-bw/2,_ky=mp.y+offY-bh;
+    // Y460: dijaga tetap di dalam kotak peta. Kotaknya overflow:hidden, jadi
+    // label yang keluar bukan cuma "agak lewat" -- ia lenyap dari layar dan
+    // dari hasil cetak. Terukur pada 2026-09-05: satu label berada di y=-15
+    // begitu peta memendek saat dicetak.
+    var _mc=map.getContainer(),_mw=_mc?_mc.clientWidth:0,_mh=_mc?_mc.clientHeight:0;
+    if(_mw>bw+4)_kx=Math.max(2,Math.min(_kx,_mw-bw-2));
+    if(_mh>bh+4)_ky=Math.max(2,Math.min(_ky,_mh-bh-2));
+    bubble.style.left=_kx+'px';
+    bubble.style.top=_ky+'px';
     _updateConnector(marker,bubble,map);
   }
   map.whenReady(reposition); // fires immediately if the view is already set, otherwise once it is
   map.on('move zoom',reposition);
-  var dragging=false,sx=0,sy=0,bx0=0,by0=0;
-  bubble.addEventListener('mousedown',function(e){
+  // Y460: dulu mouse* saja. Di HP sentuhan tidak pernah sampai ke sini dan
+  // malah diteruskan ke Leaflet, jadi yang bergeser justru isi petanya --
+  // labelnya sendiri tidak pernah bisa dipindah. Pointer Events melayani
+  // mouse, sentuh, dan pena lewat satu jalur; touch-action:none mencegah
+  // browser merebut geseran itu lebih dulu. Pendengarnya menempel di bubble
+  // (bukan di document) dan memakai pointer capture, jadi geseran tetap
+  // terkunci walau jari keluar dari kotak labelnya.
+  bubble.style.touchAction='none';
+  var dragging=false,sx=0,sy=0,bx0=0,by0=0,pid=null;
+  bubble.addEventListener('pointerdown',function(e){
     e.preventDefault();e.stopPropagation();
-    dragging=true;sx=e.clientX;sy=e.clientY;bx0=offX;by0=offY;
+    dragging=true;pid=e.pointerId;sx=e.clientX;sy=e.clientY;bx0=offX;by0=offY;
     bubble.dataset.userMoved='1';
+    try{bubble.setPointerCapture(e.pointerId);}catch(_e){}
     if(map.dragging)map.dragging.disable();
   });
-  document.addEventListener('mousemove',function(e){
-    if(!dragging)return;
+  bubble.addEventListener('pointermove',function(e){
+    if(!dragging||e.pointerId!==pid)return;
+    e.preventDefault();
     offX=bx0+(e.clientX-sx);offY=by0+(e.clientY-sy);
     reposition();
   });
-  document.addEventListener('mouseup',function(){
-    if(dragging&&map.dragging)map.dragging.enable();
-    dragging=false;
-  });
+  var _bubSelesai=function(e){
+    if(!dragging)return;
+    try{if(e&&e.pointerId!=null)bubble.releasePointerCapture(e.pointerId);}catch(_e){}
+    dragging=false;pid=null;
+    if(map.dragging)map.dragging.enable();
+  };
+  bubble.addEventListener('pointerup',_bubSelesai);
+  bubble.addEventListener('pointercancel',_bubSelesai);
   bubble.setContent=function(html){bubble.innerHTML=html;reposition();};
   bubble.reposition=reposition;
   return bubble;
@@ -23993,7 +24105,9 @@ function _coordPrintGuide(actId,customRec){
     allPts.push({pts:sec2.pts,id:'guide-map-2'});
   }
   var guideTitle='Panduan Sampling - '+typeLabel+' - '+String(areaName);
-  var guideHtml='<!doctype html><html><head><meta charset="utf-8"><title>'+_esc(guideTitle)+'</title>'+
+  var guideHtml='<!doctype html><html><head><meta charset="utf-8">'+
+    '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<title>'+_esc(guideTitle)+'</title>'+
     '<style>'+"/* required styles */\n\n.leaflet-pane,\n.leaflet-tile,\n.leaflet-marker-icon,\n.leaflet-marker-shadow,\n.leaflet-tile-container,\n.leaflet-pane > svg,\n.leaflet-pane > canvas,\n.leaflet-zoom-box,\n.leaflet-image-layer,\n.leaflet-layer {\n\tposition: absolute;\n\tleft: 0;\n\ttop: 0;\n\t}\n.leaflet-container {\n\toverflow: hidden;\n\t}\n.leaflet-tile,\n.leaflet-marker-icon,\n.leaflet-marker-shadow {\n\t-webkit-user-select: none;\n\t   -moz-user-select: none;\n\t        user-select: none;\n\t  -webkit-user-drag: none;\n\t}\n/* Prevents IE11 from highlighting tiles in blue */\n.leaflet-tile::selection {\n\tbackground: transparent;\n}\n/* Safari renders non-retina tile on retina better with this, but Chrome is worse */\n.leaflet-safari .leaflet-tile {\n\timage-rendering: -webkit-optimize-contrast;\n\t}\n/* hack that prevents hw layers \"stretching\" when loading new tiles */\n.leaflet-safari .leaflet-tile-container {\n\twidth: 1600px;\n\theight: 1600px;\n\t-webkit-transform-origin: 0 0;\n\t}\n.leaflet-marker-icon,\n.leaflet-marker-shadow {\n\tdisplay: block;\n\t}\n/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */\n/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */\n.leaflet-container .leaflet-overlay-pane svg {\n\tmax-width: none !important;\n\tmax-height: none !important;\n\t}\n.leaflet-container .leaflet-marker-pane img,\n.leaflet-container .leaflet-shadow-pane img,\n.leaflet-container .leaflet-tile-pane img,\n.leaflet-container img.leaflet-image-layer,\n.leaflet-container .leaflet-tile {\n\tmax-width: none !important;\n\tmax-height: none !important;\n\twidth: auto;\n\tpadding: 0;\n\t}\n\n.leaflet-container img.leaflet-tile {\n\t/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */\n\tmix-blend-mode: plus-lighter;\n}\n\n.leaflet-container.leaflet-touch-zoom {\n\t-ms-touch-action: pan-x pan-y;\n\ttouch-action: pan-x pan-y;\n\t}\n.leaflet-container.leaflet-touch-drag {\n\t-ms-touch-action: pinch-zoom;\n\t/* Fallback for FF which doesn't support pinch-zoom */\n\ttouch-action: none;\n\ttouch-action: pinch-zoom;\n}\n.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {\n\t-ms-touch-action: none;\n\ttouch-action: none;\n}\n.leaflet-container {\n\t-webkit-tap-highlight-color: transparent;\n}\n.leaflet-container a {\n\t-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);\n}\n.leaflet-tile {\n\tfilter: inherit;\n\tvisibility: hidden;\n\t}\n.leaflet-tile-loaded {\n\tvisibility: inherit;\n\t}\n.leaflet-zoom-box {\n\twidth: 0;\n\theight: 0;\n\t-moz-box-sizing: border-box;\n\t     box-sizing: border-box;\n\tz-index: 800;\n\t}\n/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */\n.leaflet-overlay-pane svg {\n\t-moz-user-select: none;\n\t}\n\n.leaflet-pane         { z-index: 400; }\n\n.leaflet-tile-pane    { z-index: 200; }\n.leaflet-overlay-pane { z-index: 400; }\n.leaflet-shadow-pane  { z-index: 500; }\n.leaflet-marker-pane  { z-index: 600; }\n.leaflet-tooltip-pane   { z-index: 650; }\n.leaflet-popup-pane   { z-index: 700; }\n\n.leaflet-map-pane canvas { z-index: 100; }\n.leaflet-map-pane svg    { z-index: 200; }\n\n.leaflet-vml-shape {\n\twidth: 1px;\n\theight: 1px;\n\t}\n.lvml {\n\tbehavior: url(#default#VML);\n\tdisplay: inline-block;\n\tposition: absolute;\n\t}\n\n\n/* control positioning */\n\n.leaflet-control {\n\tposition: relative;\n\tz-index: 800;\n\tpointer-events: visiblePainted; /* IE 9-10 doesn't have auto */\n\tpointer-events: auto;\n\t}\n.leaflet-top,\n.leaflet-bottom {\n\tposition: absolute;\n\tz-index: 1000;\n\tpointer-events: none;\n\t}\n.leaflet-top {\n\ttop: 0;\n\t}\n.leaflet-right {\n\tright: 0;\n\t}\n.leaflet-bottom {\n\tbottom: 0;\n\t}\n.leaflet-left {\n\tleft: 0;\n\t}\n.leaflet-control {\n\tfloat: left;\n\tclear: both;\n\t}\n.leaflet-right .leaflet-control {\n\tfloat: right;\n\t}\n.leaflet-top .leaflet-control {\n\tmargin-top: 10px;\n\t}\n.leaflet-bottom .leaflet-control {\n\tmargin-bottom: 10px;\n\t}\n.leaflet-left .leaflet-control {\n\tmargin-left: 10px;\n\t}\n.leaflet-right .leaflet-control {\n\tmargin-right: 10px;\n\t}\n\n\n/* zoom and fade animations */\n\n.leaflet-fade-anim .leaflet-popup {\n\topacity: 0;\n\t-webkit-transition: opacity 0.2s linear;\n\t   -moz-transition: opacity 0.2s linear;\n\t        transition: opacity 0.2s linear;\n\t}\n.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {\n\topacity: 1;\n\t}\n.leaflet-zoom-animated {\n\t-webkit-transform-origin: 0 0;\n\t    -ms-transform-origin: 0 0;\n\t        transform-origin: 0 0;\n\t}\nsvg.leaflet-zoom-animated {\n\twill-change: transform;\n}\n\n.leaflet-zoom-anim .leaflet-zoom-animated {\n\t-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);\n\t   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);\n\t        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);\n\t}\n.leaflet-zoom-anim .leaflet-tile,\n.leaflet-pan-anim .leaflet-tile {\n\t-webkit-transition: none;\n\t   -moz-transition: none;\n\t        transition: none;\n\t}\n\n.leaflet-zoom-anim .leaflet-zoom-hide {\n\tvisibility: hidden;\n\t}\n\n\n/* cursors */\n\n.leaflet-interactive {\n\tcursor: pointer;\n\t}\n.leaflet-grab {\n\tcursor: -webkit-grab;\n\tcursor:    -moz-grab;\n\tcursor:         grab;\n\t}\n.leaflet-crosshair,\n.leaflet-crosshair .leaflet-interactive {\n\tcursor: crosshair;\n\t}\n.leaflet-popup-pane,\n.leaflet-control {\n\tcursor: auto;\n\t}\n.leaflet-dragging .leaflet-grab,\n.leaflet-dragging .leaflet-grab .leaflet-interactive,\n.leaflet-dragging .leaflet-marker-draggable {\n\tcursor: move;\n\tcursor: -webkit-grabbing;\n\tcursor:    -moz-grabbing;\n\tcursor:         grabbing;\n\t}\n\n/* marker & overlays interactivity */\n.leaflet-marker-icon,\n.leaflet-marker-shadow,\n.leaflet-image-layer,\n.leaflet-pane > svg path,\n.leaflet-tile-container {\n\tpointer-events: none;\n\t}\n\n.leaflet-marker-icon.leaflet-interactive,\n.leaflet-image-layer.leaflet-interactive,\n.leaflet-pane > svg path.leaflet-interactive,\nsvg.leaflet-image-layer.leaflet-interactive path {\n\tpointer-events: visiblePainted; /* IE 9-10 doesn't have auto */\n\tpointer-events: auto;\n\t}\n\n/* visual tweaks */\n\n.leaflet-container {\n\tbackground: #ddd;\n\toutline-offset: 1px;\n\t}\n.leaflet-container a {\n\tcolor: #0078A8;\n\t}\n.leaflet-zoom-box {\n\tborder: 2px dotted #38f;\n\tbackground: rgba(255,255,255,0.5);\n\t}\n\n\n/* general typography */\n.leaflet-container {\n\tfont-family: \"Helvetica Neue\", Arial, Helvetica, sans-serif;\n\tfont-size: 12px;\n\tfont-size: 0.75rem;\n\tline-height: 1.5;\n\t}\n\n\n/* general toolbar styles */\n\n.leaflet-bar {\n\tbox-shadow: 0 1px 5px rgba(0,0,0,0.65);\n\tborder-radius: 4px;\n\t}\n.leaflet-bar a {\n\tbackground-color: #fff;\n\tborder-bottom: 1px solid #ccc;\n\twidth: 26px;\n\theight: 26px;\n\tline-height: 26px;\n\tdisplay: block;\n\ttext-align: center;\n\ttext-decoration: none;\n\tcolor: black;\n\t}\n.leaflet-bar a,\n.leaflet-control-layers-toggle {\n\tbackground-position: 50% 50%;\n\tbackground-repeat: no-repeat;\n\tdisplay: block;\n\t}\n.leaflet-bar a:hover,\n.leaflet-bar a:focus {\n\tbackground-color: #f4f4f4;\n\t}\n.leaflet-bar a:first-child {\n\tborder-top-left-radius: 4px;\n\tborder-top-right-radius: 4px;\n\t}\n.leaflet-bar a:last-child {\n\tborder-bottom-left-radius: 4px;\n\tborder-bottom-right-radius: 4px;\n\tborder-bottom: none;\n\t}\n.leaflet-bar a.leaflet-disabled {\n\tcursor: default;\n\tbackground-color: #f4f4f4;\n\tcolor: #bbb;\n\t}\n\n.leaflet-touch .leaflet-bar a {\n\twidth: 30px;\n\theight: 30px;\n\tline-height: 30px;\n\t}\n.leaflet-touch .leaflet-bar a:first-child {\n\tborder-top-left-radius: 2px;\n\tborder-top-right-radius: 2px;\n\t}\n.leaflet-touch .leaflet-bar a:last-child {\n\tborder-bottom-left-radius: 2px;\n\tborder-bottom-right-radius: 2px;\n\t}\n\n/* zoom control */\n\n.leaflet-control-zoom-in,\n.leaflet-control-zoom-out {\n\tfont: bold 18px 'Lucida Console', Monaco, monospace;\n\ttext-indent: 1px;\n\t}\n\n.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {\n\tfont-size: 22px;\n\t}\n\n\n/* layers control */\n\n.leaflet-control-layers {\n\tbox-shadow: 0 1px 5px rgba(0,0,0,0.4);\n\tbackground: #fff;\n\tborder-radius: 6px;\n\t}\n.leaflet-control-layers-toggle {\n\tbackground-image: url(images/layers.png);\n\twidth: 36px;\n\theight: 36px;\n\t}\n.leaflet-retina .leaflet-control-layers-toggle {\n\tbackground-image: url(images/layers-2x.png);\n\tbackground-size: 26px 26px;\n\t}\n.leaflet-touch .leaflet-control-layers-toggle {\n\twidth: 44px;\n\theight: 44px;\n\t}\n.leaflet-control-layers .leaflet-control-layers-list,\n.leaflet-control-layers-expanded .leaflet-control-layers-toggle {\n\tdisplay: none;\n\t}\n.leaflet-control-layers-expanded .leaflet-control-layers-list {\n\tdisplay: block;\n\tposition: relative;\n\t}\n.leaflet-control-layers-expanded {\n\tpadding: 6px 10px 6px 6px;\n\tcolor: #333;\n\tbackground: #fff;\n\t}\n.leaflet-control-layers-scrollbar {\n\toverflow-y: scroll;\n\toverflow-x: hidden;\n\tpadding-right: 5px;\n\t}\n.leaflet-control-layers-selector {\n\tmargin-top: 2px;\n\tposition: relative;\n\ttop: 1px;\n\t}\n.leaflet-control-layers label {\n\tdisplay: block;\n\tfont-size: 13px;\n\tfont-size: 1.08333em;\n\t}\n.leaflet-control-layers-separator {\n\theight: 0;\n\tborder-top: 1px solid #ddd;\n\tmargin: 5px -10px 5px -6px;\n\t}\n\n/* Default icon URLs */\n.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */\n\tbackground-image: url(images/marker-icon.png);\n\t}\n\n\n/* attribution and scale controls */\n\n.leaflet-container .leaflet-control-attribution {\n\tbackground: #fff;\n\tbackground: rgba(255, 255, 255, 0.8);\n\tmargin: 0;\n\t}\n.leaflet-control-attribution,\n.leaflet-control-scale-line {\n\tpadding: 0 5px;\n\tcolor: #333;\n\tline-height: 1.4;\n\t}\n.leaflet-control-attribution a {\n\ttext-decoration: none;\n\t}\n.leaflet-control-attribution a:hover,\n.leaflet-control-attribution a:focus {\n\ttext-decoration: underline;\n\t}\n.leaflet-attribution-flag {\n\tdisplay: inline !important;\n\tvertical-align: baseline !important;\n\twidth: 1em;\n\theight: 0.6669em;\n\t}\n.leaflet-left .leaflet-control-scale {\n\tmargin-left: 5px;\n\t}\n.leaflet-bottom .leaflet-control-scale {\n\tmargin-bottom: 5px;\n\t}\n.leaflet-control-scale-line {\n\tborder: 2px solid #777;\n\tborder-top: none;\n\tline-height: 1.1;\n\tpadding: 2px 5px 1px;\n\twhite-space: nowrap;\n\t-moz-box-sizing: border-box;\n\t     box-sizing: border-box;\n\tbackground: rgba(255, 255, 255, 0.8);\n\ttext-shadow: 1px 1px #fff;\n\t}\n.leaflet-control-scale-line:not(:first-child) {\n\tborder-top: 2px solid #777;\n\tborder-bottom: none;\n\tmargin-top: -2px;\n\t}\n.leaflet-control-scale-line:not(:first-child):not(:last-child) {\n\tborder-bottom: 2px solid #777;\n\t}\n\n.leaflet-touch .leaflet-control-attribution,\n.leaflet-touch .leaflet-control-layers,\n.leaflet-touch .leaflet-bar {\n\tbox-shadow: none;\n\t}\n.leaflet-touch .leaflet-control-layers,\n.leaflet-touch .leaflet-bar {\n\tborder: 2px solid rgba(0,0,0,0.2);\n\tbackground-clip: padding-box;\n\t}\n\n\n/* popup */\n\n.leaflet-popup {\n\tposition: absolute;\n\ttext-align: center;\n\tmargin-bottom: 20px;\n\t}\n.leaflet-popup-content-wrapper {\n\tpadding: 1px;\n\ttext-align: left;\n\tborder-radius: 12px;\n\t}\n.leaflet-popup-content {\n\tmargin: 13px 24px 13px 20px;\n\tline-height: 1.3;\n\tfont-size: 13px;\n\tfont-size: 1.08333em;\n\tmin-height: 1px;\n\t}\n.leaflet-popup-content p {\n\tmargin: 17px 0;\n\tmargin: 1.3em 0;\n\t}\n.leaflet-popup-tip-container {\n\twidth: 40px;\n\theight: 20px;\n\tposition: absolute;\n\tleft: 50%;\n\tmargin-top: -1px;\n\tmargin-left: -20px;\n\toverflow: hidden;\n\tpointer-events: none;\n\t}\n.leaflet-popup-tip {\n\twidth: 17px;\n\theight: 17px;\n\tpadding: 1px;\n\n\tmargin: -10px auto 0;\n\tpointer-events: auto;\n\n\t-webkit-transform: rotate(45deg);\n\t   -moz-transform: rotate(45deg);\n\t    -ms-transform: rotate(45deg);\n\t        transform: rotate(45deg);\n\t}\n.leaflet-popup-content-wrapper,\n.leaflet-popup-tip {\n\tbackground: white;\n\tcolor: #333;\n\tbox-shadow: 0 3px 14px rgba(0,0,0,0.4);\n\t}\n.leaflet-container a.leaflet-popup-close-button {\n\tposition: absolute;\n\ttop: 0;\n\tright: 0;\n\tborder: none;\n\ttext-align: center;\n\twidth: 24px;\n\theight: 24px;\n\tfont: 16px/24px Tahoma, Verdana, sans-serif;\n\tcolor: #757575;\n\ttext-decoration: none;\n\tbackground: transparent;\n\t}\n.leaflet-container a.leaflet-popup-close-button:hover,\n.leaflet-container a.leaflet-popup-close-button:focus {\n\tcolor: #585858;\n\t}\n.leaflet-popup-scrolled {\n\toverflow: auto;\n\t}\n\n.leaflet-oldie .leaflet-popup-content-wrapper {\n\t-ms-zoom: 1;\n\t}\n.leaflet-oldie .leaflet-popup-tip {\n\twidth: 24px;\n\tmargin: 0 auto;\n\n\t-ms-filter: \"progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)\";\n\tfilter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);\n\t}\n\n.leaflet-oldie .leaflet-control-zoom,\n.leaflet-oldie .leaflet-control-layers,\n.leaflet-oldie .leaflet-popup-content-wrapper,\n.leaflet-oldie .leaflet-popup-tip {\n\tborder: 1px solid #999;\n\t}\n\n\n/* div icon */\n\n.leaflet-div-icon {\n\tbackground: #fff;\n\tborder: 1px solid #666;\n\t}\n\n\n/* Tooltip */\n/* Base styles for the element that has a tooltip */\n.leaflet-tooltip {\n\tposition: absolute;\n\tpadding: 6px;\n\tbackground-color: #fff;\n\tborder: 1px solid #fff;\n\tborder-radius: 4px;\n\tcolor: #222;\n\twhite-space: nowrap;\n\t-webkit-user-select: none;\n\t-moz-user-select: none;\n\t-ms-user-select: none;\n\tuser-select: none;\n\tpointer-events: none;\n\tbox-shadow: 0 1px 3px rgba(0,0,0,0.4);\n\t}\n.leaflet-tooltip.leaflet-interactive {\n\tcursor: pointer;\n\tpointer-events: auto;\n\t}\n.leaflet-tooltip-top:before,\n.leaflet-tooltip-bottom:before,\n.leaflet-tooltip-left:before,\n.leaflet-tooltip-right:before {\n\tposition: absolute;\n\tpointer-events: none;\n\tborder: 6px solid transparent;\n\tbackground: transparent;\n\tcontent: \"\";\n\t}\n\n/* Directions */\n\n.leaflet-tooltip-bottom {\n\tmargin-top: 6px;\n}\n.leaflet-tooltip-top {\n\tmargin-top: -6px;\n}\n.leaflet-tooltip-bottom:before,\n.leaflet-tooltip-top:before {\n\tleft: 50%;\n\tmargin-left: -6px;\n\t}\n.leaflet-tooltip-top:before {\n\tbottom: 0;\n\tmargin-bottom: -12px;\n\tborder-top-color: #fff;\n\t}\n.leaflet-tooltip-bottom:before {\n\ttop: 0;\n\tmargin-top: -12px;\n\tmargin-left: -6px;\n\tborder-bottom-color: #fff;\n\t}\n.leaflet-tooltip-left {\n\tmargin-left: -6px;\n}\n.leaflet-tooltip-right {\n\tmargin-left: 6px;\n}\n.leaflet-tooltip-left:before,\n.leaflet-tooltip-right:before {\n\ttop: 50%;\n\tmargin-top: -6px;\n\t}\n.leaflet-tooltip-left:before {\n\tright: 0;\n\tmargin-right: -12px;\n\tborder-left-color: #fff;\n\t}\n.leaflet-tooltip-right:before {\n\tleft: 0;\n\tmargin-left: -12px;\n\tborder-right-color: #fff;\n\t}\n\n/* Printing */\n\n@media print {\n\t/* Prevent printers from removing background-images of controls. */\n\t.leaflet-control {\n\t\t-webkit-print-color-adjust: exact;\n\t\tprint-color-adjust: exact;\n\t\t}\n\t}\n"+'</style>'+
     '<style>'+
     '@page{size:A4;margin:16mm}'+
@@ -24020,7 +24134,15 @@ function _coordPrintGuide(actId,customRec){
     '.guide-toolbar b{font-size:11px}'+
     '.guide-toolbar button{margin-left:auto;background:#fff;color:#1565c0;border:none;border-radius:6px;padding:7px 16px;font-size:11px;font-weight:700;cursor:pointer}'+
     '.guide-toolbar button:hover{background:#eaf2ff}'+'.guide-drag-dot{width:14px;height:14px;border-radius:50%;background:#e53935;border:2px solid #7a1717;cursor:grab;box-shadow:0 0 0 2px rgba(255,255,255,.6)}'+'.leaflet-marker-draggable.guide-drag-dot,.leaflet-marker-draggable{cursor:grab}'+
-    '@media print{.guide-toolbar,.leaflet-control-zoom,.leaflet-control-attribution,.guide-filter-panel{display:none!important}.guide-map{height:260px}}'+
+    '.guide-map-grip{position:absolute;right:0;bottom:0;width:26px;height:26px;z-index:1001;cursor:nwse-resize;touch-action:none;'+
+      'background:linear-gradient(135deg,transparent 0 46%,#1565c0 46% 56%,transparent 56% 70%,#1565c0 70% 80%,transparent 80%);'+
+      'border-bottom-right-radius:4px;opacity:.85}'+
+    '.guide-map-grip:hover{opacity:1}'+
+    /* Y460: dulu di sini ada `.guide-map{height:260px}`. Itu membuang ukuran
+       yang baru saja diatur pemakai tepat pada saat mencetak -- padahal
+       toolbar di atas yang menyuruh mereka mengaturnya. Peta memendek
+       300->260 dan label yang dekat tepi atas ikut terpotong. */
+    '@media print{.guide-toolbar,.leaflet-control-zoom,.leaflet-control-attribution,.guide-filter-panel,.guide-map-grip{display:none!important}}'+
     '</style></head><body>'+
     '<div class="guide-toolbar"><b>📍 Sesuaikan sebelum cetak</b><span>Geser sudut kanan-bawah peta untuk ubah ukuran, klik-tahan untuk geser isi peta, scroll/tombol +/- untuk zoom.</span>'+
       '<button id="edit-toggle-btn" onclick="_guideToggleEdit()" style="margin-left:12px">✏️ Edit Teks</button>'+
@@ -24079,28 +24201,39 @@ function _coordPrintGuide(actId,customRec){
     '    if(!map._loaded)return;'+
     '    var mp=map.latLngToContainerPoint(marker.getLatLng());'+
     '    var bw=bubble.offsetWidth,bh=bubble.offsetHeight;'+
-    '    bubble.style.left=(mp.x+offX-bw/2)+"px";'+
-    '    bubble.style.top=(mp.y+offY-bh)+"px";'+
+    '    var _kx=mp.x+offX-bw/2,_ky=mp.y+offY-bh;'+
+    '    var _mc=map.getContainer(),_mw=_mc?_mc.clientWidth:0,_mh=_mc?_mc.clientHeight:0;'+
+    '    if(_mw>bw+4)_kx=Math.max(2,Math.min(_kx,_mw-bw-2));'+
+    '    if(_mh>bh+4)_ky=Math.max(2,Math.min(_ky,_mh-bh-2));'+
+    '    bubble.style.left=_kx+"px";'+
+    '    bubble.style.top=_ky+"px";'+
     '    _updateConnector(marker,bubble,map);'+
     '  }'+
     '  map.whenReady(reposition);'+
     '  map.on("move zoom",reposition);'+
-    '  var dragging=false,sx=0,sy=0,bx0=0,by0=0;'+
-    '  bubble.addEventListener("mousedown",function(e){'+
+    '  bubble.style.touchAction="none";'+
+    '  var dragging=false,sx=0,sy=0,bx0=0,by0=0,pid=null;'+
+    '  bubble.addEventListener("pointerdown",function(e){'+
     '    e.preventDefault();e.stopPropagation();'+
-    '    dragging=true;sx=e.clientX;sy=e.clientY;bx0=offX;by0=offY;'+
+    '    dragging=true;pid=e.pointerId;sx=e.clientX;sy=e.clientY;bx0=offX;by0=offY;'+
     '    bubble.dataset.userMoved="1";'+
+    '    try{bubble.setPointerCapture(e.pointerId);}catch(_e){}'+
     '    if(map.dragging)map.dragging.disable();'+
     '  });'+
-    '  document.addEventListener("mousemove",function(e){'+
-    '    if(!dragging)return;'+
+    '  bubble.addEventListener("pointermove",function(e){'+
+    '    if(!dragging||e.pointerId!==pid)return;'+
+    '    e.preventDefault();'+
     '    offX=bx0+(e.clientX-sx);offY=by0+(e.clientY-sy);'+
     '    reposition();'+
     '  });'+
-    '  document.addEventListener("mouseup",function(){'+
-    '    if(dragging&&map.dragging)map.dragging.enable();'+
-    '    dragging=false;'+
-    '  });'+
+    '  var _bubSelesai=function(e){'+
+    '    if(!dragging)return;'+
+    '    try{if(e&&e.pointerId!=null)bubble.releasePointerCapture(e.pointerId);}catch(_e){}'+
+    '    dragging=false;pid=null;'+
+    '    if(map.dragging)map.dragging.enable();'+
+    '  };'+
+    '  bubble.addEventListener("pointerup",_bubSelesai);'+
+    '  bubble.addEventListener("pointercancel",_bubSelesai);'+
     '  bubble.setContent=function(html){bubble.innerHTML=html;reposition();};'+
     '  return bubble;'+
     '}'+
@@ -24246,6 +24379,35 @@ function _coordPrintGuide(actId,customRec){
     '  if(typeof ResizeObserver!=="undefined"){'+
     '    new ResizeObserver(function(){map.invalidateSize();}).observe(document.getElementById(sec.id));'+
     '  }'+
+    '  (function(){'+
+    '    var box=document.getElementById(sec.id);'+
+    '    if(!box)return;'+
+    '    var grip=document.createElement("div");'+
+    '    grip.className="guide-map-grip";'+
+    '    grip.title="Geser untuk mengubah ukuran peta";'+
+    '    box.appendChild(grip);'+
+    '    var aktif=false,pid=null,x0=0,y0=0,w0=0,h0=0;'+
+    '    grip.addEventListener("pointerdown",function(e){'+
+    '      e.preventDefault();e.stopPropagation();'+
+    '      aktif=true;pid=e.pointerId;x0=e.clientX;y0=e.clientY;'+
+    '      var r=box.getBoundingClientRect();w0=r.width;h0=r.height;'+
+    '      try{grip.setPointerCapture(e.pointerId);}catch(_e){}'+
+    '    });'+
+    '    grip.addEventListener("pointermove",function(e){'+
+    '      if(!aktif||e.pointerId!==pid)return;'+
+    '      e.preventDefault();'+
+    '      box.style.width=Math.max(220,w0+(e.clientX-x0))+"px";'+
+    '      box.style.height=Math.max(160,h0+(e.clientY-y0))+"px";'+
+    '      map.invalidateSize();'+
+    '    });'+
+    '    var selesai=function(e){'+
+    '      if(!aktif)return;'+
+    '      try{if(e&&e.pointerId!=null)grip.releasePointerCapture(e.pointerId);}catch(_e){}'+
+    '      aktif=false;pid=null;map.invalidateSize();'+
+    '    };'+
+    '    grip.addEventListener("pointerup",selesai);'+
+    '    grip.addEventListener("pointercancel",selesai);'+
+    '  })();'+
     '});'+
     'var _guideEditing=false;'+
     'function _guideToggleEdit(){'+
@@ -27619,7 +27781,7 @@ function _gtTitikFilter(q){
   window._gtTitikFiltered=f;
   if(!f.length){box.innerHTML='<div style="padding:8px 10px;font-size:11px;color:var(--g3)">Tidak ada titik cocok</div>';box.style.display='block';return;}
   box.innerHTML=f.slice(0,300).map(function(cd,i){
-    return '<div onmousedown="_gtTitikChoose('+i+')" style="padding:7px 10px;cursor:pointer;font-size:11.5px;'
+    return '<div onpointerdown="_gtTitikChoose('+i+')" style="padding:7px 10px;cursor:pointer;font-size:11.5px;'
       +'border-bottom:1px solid var(--g2);display:flex;justify-content:space-between;gap:8px" '
       +'onmouseover="this.style.background=\'var(--g2)\'" onmouseout="this.style.background=\'transparent\'">'
       +'<span style="font-weight:600;color:var(--text)">'+_ep(cd.titik)+'</span>'
@@ -31279,7 +31441,13 @@ async function _dpBuildPack(){
   try{gisGzOut=(await _dpIdbGet('env26_gis_layers'))||undefined;}catch(_eGis){gisGzOut=undefined;}
   // Y410: bawa kembali data personel, kalau ada.
   var _ppcOut,_persOut;
-  try{_ppcOut=(typeof PPC_LIST!=='undefined'&&PPC_LIST&&PPC_LIST.length)?PPC_LIST:undefined;}catch(_e1){}
+  // Y461: daftar yang masih nama contoh TIDAK diekspor. Pack yang membawa
+  // "Petugas 01..09" akan menimpa daftar asli di perangkat lain dan di
+  // Cloudflare -- kebalikan dari yang diinginkan, dan tanpa peringatan.
+  // Menghilangkan kuncinya aman: pack tanpa blok personel memang berarti
+  // "biarkan apa adanya" (lihat punya('pers') di _dpLoaderRun).
+  try{_ppcOut=(typeof PPC_LIST!=='undefined'&&PPC_LIST&&PPC_LIST.length
+      &&!(typeof _persIsPlaceholder==='function'&&_persIsPlaceholder()))?PPC_LIST:undefined;}catch(_e1){}
   try{_persOut=(typeof PERS_SEED!=='undefined'&&PERS_SEED&&PERS_SEED.length)?PERS_SEED:undefined;}catch(_e2){}
   var _bmRegOut;
   try{_bmRegOut=(typeof BM_REGISTRY!=='undefined'&&BM_REGISTRY&&BM_REGISTRY.entries&&BM_REGISTRY.entries.length)?BM_REGISTRY:undefined;}catch(_e3){}
@@ -31401,6 +31569,10 @@ function _cfSaveConfigFromForm(){
     if(_c.url&&_c.readToken)_cfTplPullAll(true);
   }
   if(typeof _cfRefreshSettingsUI==='function')_cfRefreshSettingsUI();
+  // Y461: tokennya juga yang membuka daftar petugas, jadi diambil sekarang
+  // juga daripada menunggu halaman dibuka lagi. Sengaja DI BAWAH blok Y451
+  // supaya tiga baris yang jadi penandanya tetap berdampingan.
+  try{if(typeof _persCfAutoPull==='function')_persCfAutoPull();}catch(_eP){}
 }
 window._cfSaveConfigFromForm=_cfSaveConfigFromForm;
 async function _dpFetchWeb(){
@@ -31743,8 +31915,15 @@ async function _cfAutoCheckOnLoad(){
   // guaranteed to exist by the time this runs, instead of duplicating the
   // "wait for boot to finish" logic here.
   setTimeout(function(){
-    if(typeof window._onDataReady==='function')window._onDataReady(_cfAutoCheckOnLoad);
-    else window.addEventListener('load',function(){setTimeout(_cfAutoCheckOnLoad,1500);});
+    // Y461: daftar petugas diambil TANPA syarat Auto-Sync. Auto-Sync mengatur
+    // penerapan Data Pack (yang memuat ulang halaman); mengambil nama petugas
+    // tidak melakukan keduanya, dan tanpa nama itu seluruh kalender tampil
+    // sebagai "Petugas 01".
+    var _bootPers=function(){try{if(typeof _persCfAutoPull==='function')_persCfAutoPull();}catch(_e){}};
+    if(typeof window._onDataReady==='function'){
+      window._onDataReady(_cfAutoCheckOnLoad);
+      window._onDataReady(_bootPers);
+    }else window.addEventListener('load',function(){setTimeout(_cfAutoCheckOnLoad,1500);setTimeout(_bootPers,1700);});
   },0);
 })();
 window._dpFetchWeb=_dpFetchWeb;window._dpApplyPackObj=_dpApplyPackObj;window._dpUploadCloudflare=_dpUploadCloudflare;
@@ -32559,9 +32738,13 @@ function _etRenderDataPack(host){
    +'</div>'
    +'<div class="et-card" style="margin-top:12px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">👥 Daftar Petugas (PPC)</div>'
    +(typeof _persStatusHtml==='function'?_persStatusHtml():'')
-   +'<div style="font-size:10.5px;color:#777;margin-bottom:10px">Berkas yang dishare di internet sengaja memakai nama contoh. Nama asli disimpan di berkas terpisah dan hanya dimuat di perangkat Anda \u2014 tidak pernah ikut terkirim ke mana pun.</div>'
+   +'<div style="font-size:10.5px;color:#777;margin-bottom:10px">Berkas yang dishare di internet sengaja memakai nama contoh \u2014 nama asli tidak pernah ikut ke dalamnya. Nama asli masuk lewat berkas di bawah, dan (kalau Anda mau) disimpan sekali di Cloudflare pribadi Anda supaya perangkat lain mengambilnya sendiri.</div>'
    +'<input type="file" id="pers-file" accept=".json,application/json" style="display:none" onchange="if(this.files[0])_persImportFile(this.files[0]);this.value=\'\'">'
-   +'<button onclick="document.getElementById(\'pers-file\').click()" style="background:#00695c;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">\u2b06 Muat Daftar Petugas (JSON)</button></div>'
+   +'<div style="display:flex;flex-wrap:wrap;gap:8px">'
+   +'<button onclick="document.getElementById(\'pers-file\').click()" style="background:#00695c;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">\u2b06 Muat Daftar Petugas (JSON)</button>'
+   +'<button onclick="_persCfPull()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">\u2601 Ambil dari Cloudflare</button>'
+   +'<button onclick="_persCfPush()" style="background:#6a1b9a;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">\u2601 Simpan ke Cloudflare</button>'
+   +'</div></div>'
    +_cfSettingsHtml()
    +'<div style="font-size:10.5px;color:#888">Status data sekarang: <b>'+nDeb+'</b> titik debit harian + <b>'+nPh+'</b> titik pH harian (tahun: '+Object.keys(years).sort().join(', ')+').'
    +(window._dpLoadedInfo?(' Pack terakhir dimuat: '+String(window._dpLoadedInfo).slice(0,10)+'.'):' Belum ada pack yang dimuat — data berasal dari seed bawaan + isian manual.')+(window._HS_HISTORIS?('<br>Arsip hasil sampling historis termuat: '+Object.keys(window._HS_HISTORIS).map(function(y){return y+' ('+window._HS_HISTORIS[y].length+' baris)';}).join(', ')+'.'):'')+(window._RECAP_ARSIP?('<br>Arsip sheet recap lain: '+Object.keys(window._RECAP_ARSIP).map(function(y){return y+' ('+Object.keys(window._RECAP_ARSIP[y]).length+' sheet)';}).join(', ')+'. '):'')+'</div>'+(window._RECAP_ARSIP?('<div style="margin-top:10px"><div style="font-weight:700;font-size:11px;margin-bottom:5px">🗂 Buka Arsip Recap</div>'+Object.keys(window._RECAP_ARSIP).map(function(y){return Object.keys(window._RECAP_ARSIP[y]).map(function(sn){return '<button onclick="_dpViewArsip(&quot;'+y+'&quot;,&quot;'+_ep(sn).replace(/"/g,'')+'&quot;)" style="border:1px solid #ddd;background:#fff;border-radius:6px;padding:2px 9px;font-size:9.5px;cursor:pointer;margin:2px;font-family:inherit">'+y+' · '+_ep(sn)+'</button>';}).join('');}).join('')+'</div>'):'')
@@ -36108,7 +36291,7 @@ function _edpTitikFilter(id){
   dd._edpMatches=matches;
   if(!matches.length){dd.style.display='none';dd.innerHTML='';return;}
   dd.innerHTML=matches.map(function(c,i){
-    return '<div data-idx="'+i+'" onmousedown="_edpTitikPick(\''+id+'\',this)" style="padding:6px 10px;font-size:10.5px;cursor:pointer" onmouseover="this.style.background=\'var(--g1)\'" onmouseout="this.style.background=\'transparent\'">'+_ep(c.titik)+'</div>';
+    return '<div data-idx="'+i+'" onpointerdown="_edpTitikPick(\''+id+'\',this)" style="padding:6px 10px;font-size:10.5px;cursor:pointer" onmouseover="this.style.background=\'var(--g1)\'" onmouseout="this.style.background=\'transparent\'">'+_ep(c.titik)+'</div>';
   }).join('');
   dd.style.display='block';
 }
