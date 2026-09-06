@@ -14893,6 +14893,13 @@ window._emfKalimatTemuan=_emfKalimatTemuan;
 // Kolom tabel hasil uji hidrostatik, sesuai Format_EMF.docx. Urutan dan
 // ejaannya sama di semua site, dan label inilah yang dibaca _emfPatchHydro
 // lewat EMF_HYDRO_PARAM.
+// Y478: lebar kolom, lebar tabel, dan ukuran huruf tabel uji hidrostatik --
+// disalin apa adanya dari SPU EMF S2 2025.docx, dokumen yang tabel ini
+// dibuat Word sendiri. Jangan ditebak ulang.
+var EMF_HIDRO_LEBAR=[560,954,855,806,549,511,511,587,587,650,649,653,653,588,588,588,588,499,890,742,887,881];
+var EMF_HIDRO_TBLW='5134';     // pct: 102,68% lebar teks halaman
+var EMF_HIDRO_TBLIND='-275';   // dxa: ditarik sedikit ke margin kiri
+var EMF_HIDRO_SZ='12';         // setengah-poin: 6 pt
 var EMF_HIDRO_KOLOM=[
  ['Kekeruhan','NTU'],['TSS','mg/L'],['pH','-'],['DO','mg/L'],['BOD','mg/L'],
  ['H2S','mg/L'],['Fenol','mg/L'],['Hg','mg/L'],['Cr6+','mg/L'],['As','mg/L'],
@@ -15055,6 +15062,96 @@ function _emfNomorTabelBebas(doc,nomor){
   }
   return true;
 }
+// Set tcW satu sel dalam satuan persen (pct = 1/50 persen, sama seperti tblW).
+function _emfSetTcWPct(tc,nilai){
+  if(!tc)return;
+  var d=tc.ownerDocument;
+  var prs=tc.getElementsByTagNameNS(EMF_W,'tcPr'), pr;
+  if(prs.length)pr=prs[0];
+  else{pr=d.createElementNS(EMF_W,'w:tcPr');tc.insertBefore(pr,tc.firstChild);}
+  var w=pr.getElementsByTagNameNS(EMF_W,'tcW')[0];
+  if(!w){w=d.createElementNS(EMF_W,'w:tcW');pr.insertBefore(w,pr.firstChild);}
+  w.setAttribute('w:w',String(nilai));
+  w.setAttribute('w:type','pct');
+}
+// Rapikan tabel yang dibuat sendiri: lebar tabel, lebar tiap kolom (termasuk
+// sel yang menyeberang), dan ukuran huruf. Tanpa ini setiap sel memakai lebar
+// sel cetakannya, dan tabel 22 kolom melewati margin halaman.
+function _emfTblRapikan(tbl,lebar,tblW,tblInd,sz){
+  var d=tbl.ownerDocument;
+  var grid=tbl.getElementsByTagNameNS(EMF_W,'tblGrid')[0];
+  if(!grid)return;
+  var gcs=grid.getElementsByTagNameNS(EMF_W,'gridCol');
+  var n=gcs.length;
+  var w=(lebar&&lebar.length===n)?lebar.slice():null;
+  if(!w){w=[];for(var i=0;i<n;i++)w.push(1);}
+  var total=0;for(var i2=0;i2<n;i2++)total+=w[i2];
+  for(var g=0;g<n;g++)gcs[g].setAttribute('w:w',String(w[g]));
+  // tblPr: lebar tabel dalam persen, tarikan margin, dan buang perataan
+  // tengah yang diwarisi dari tabel cetakan (tabel selebar halaman tidak
+  // perlu diratakan tengah).
+  var pr=tbl.getElementsByTagNameNS(EMF_W,'tblPr')[0];
+  if(pr){
+    var tw=pr.getElementsByTagNameNS(EMF_W,'tblW')[0];
+    if(!tw){tw=d.createElementNS(EMF_W,'w:tblW');pr.insertBefore(tw,pr.firstChild);}
+    tw.setAttribute('w:w',String(tblW));tw.setAttribute('w:type','pct');
+    var jc=pr.getElementsByTagNameNS(EMF_W,'jc');
+    for(var j=jc.length-1;j>=0;j--)jc[j].parentNode.removeChild(jc[j]);
+    var ind=pr.getElementsByTagNameNS(EMF_W,'tblInd')[0];
+    if(!ind){
+      ind=d.createElementNS(EMF_W,'w:tblInd');
+      // urutan skema: tblW, jc, tblCellSpacing, tblInd, tblBorders, ...
+      var bd=pr.getElementsByTagNameNS(EMF_W,'tblBorders')[0];
+      if(bd)pr.insertBefore(ind,bd); else pr.appendChild(ind);
+    }
+    ind.setAttribute('w:w',String(tblInd));ind.setAttribute('w:type','dxa');
+  }
+  // tiap sel: lebarnya = jumlah lebar kolom yang ditutupinya
+  var trs=_emfAnakLangsung(tbl,'tr');
+  for(var r=0;r<trs.length;r++){
+    var tcs=_emfAnakLangsung(trs[r],'tc'), pos=0;
+    for(var c=0;c<tcs.length;c++){
+      var sp=1;
+      var tp=tcs[c].getElementsByTagNameNS(EMF_W,'tcPr')[0];
+      if(tp){
+        var gsEl=tp.getElementsByTagNameNS(EMF_W,'gridSpan')[0];
+        if(gsEl)sp=parseInt(gsEl.getAttribute('w:val')||'1',10)||1;
+      }
+      var jum=0;for(var k=0;k<sp&&pos+k<n;k++)jum+=w[pos+k];
+      _emfSetTcWPct(tcs[c],Math.round(tblW*jum/total));
+      pos+=sp;
+    }
+  }
+  // ukuran huruf: 22 kolom pada halaman potret hanya terbaca di ukuran yang
+  // dipakai formatnya sendiri
+  if(sz){
+    var rs=tbl.getElementsByTagNameNS(EMF_W,'r');
+    for(var ri=0;ri<rs.length;ri++)_emfSetUkuranHuruf(rs[ri],sz);
+    var ps=tbl.getElementsByTagNameNS(EMF_W,'p');
+    for(var pi=0;pi<ps.length;pi++){
+      var ppr=ps[pi].getElementsByTagNameNS(EMF_W,'pPr')[0];
+      if(ppr)_emfSetUkuranHuruf(ppr,sz);
+    }
+  }
+}
+// Pasang w:sz / w:szCs di dalam rPr milik satu run atau satu pPr.
+function _emfSetUkuranHuruf(el,sz){
+  var d=el.ownerDocument;
+  var pr=null, kids=el.childNodes;
+  for(var i=0;i<kids.length;i++)
+    if(kids[i].nodeType===1&&kids[i].localName==='rPr'){pr=kids[i];break;}
+  if(!pr){
+    pr=d.createElementNS(EMF_W,'w:rPr');
+    el.insertBefore(pr,el.firstChild);
+  }
+  ['sz','szCs'].forEach(function(nama){
+    var e=null, kk=pr.childNodes;
+    for(var j=0;j<kk.length;j++)
+      if(kk[j].nodeType===1&&kk[j].localName===nama){e=kk[j];break;}
+    if(!e){e=d.createElementNS(EMF_W,'w:'+nama);pr.appendChild(e);}
+    e.setAttribute('w:val',String(sz));
+  });
+}
 function _emfBuatTabelHidro(tblBM,pTerakhir,label){
   var trsBM=_emfAnakLangsung(tblBM,'tr');
   if(trsBM.length<2)return null;
@@ -15094,6 +15191,10 @@ function _emfBuatTabelHidro(tblBM,pTerakhir,label){
   tbl.appendChild(r1);tbl.appendChild(r2);tbl.appendChild(r3);tbl.appendChild(r4);
   var kosong=[];for(var z=0;z<ncol;z++)kosong.push('');
   tbl.appendChild(_emfTrBaru(trsBM[1],tcRef,kosong));
+  // Y478: lebar kolom, lebar tabel dan ukuran huruf disamakan dengan format
+  // aslinya. Tanpa ini setiap sel memakai lebar sel tabel baku mutu (828 dxa)
+  // dan tabel 22 kolom melewati margin halaman.
+  _emfTblRapikan(tbl,EMF_HIDRO_LEBAR,parseInt(EMF_HIDRO_TBLW,10),parseInt(EMF_HIDRO_TBLIND,10),EMF_HIDRO_SZ);
   var pLead=_emfPSalin(pTerakhir,'Berikut hasil pemantauan kegiatan uji hidrostatik untuk pipa selama periode '+label+':');
   // Y474: nomor tabel hanya dipakai kalau nomor itu memang masih kosong.
   var _nomor=0, _mNo=/^\s*Tabel\s*(\d+)\b/.exec(String(pTerakhir.textContent||''));
@@ -42133,6 +42234,29 @@ function _emfSetCell(tc,val){
   for(var i=1;i<ts.length;i++)ts[i].textContent='';
   return true;
 }
+// Kosongkan setiap sel yang merupakan LANJUTAN penggabungan menurun.
+// Aturannya mutlak di Word: yang tampil adalah isi sel paling atas dalam satu
+// gabungan; sel di bawahnya tidak pernah menampilkan isinya sendiri. Jadi
+// mengosongkannya tidak bisa menghilangkan sesuatu yang seharusnya terlihat.
+function _emfBersihkanSelMerge(doc){
+  var tcs=doc.getElementsByTagNameNS(EMF_W,'tc'), n=0;
+  for(var i=0;i<tcs.length;i++){
+    var pr=null, kids=tcs[i].childNodes;
+    for(var k=0;k<kids.length;k++)
+      if(kids[k].nodeType===1&&kids[k].localName==='tcPr'){pr=kids[k];break;}
+    if(!pr)continue;
+    var vm=null, pk=pr.childNodes;
+    for(var j=0;j<pk.length;j++)
+      if(pk[j].nodeType===1&&pk[j].localName==='vMerge'){vm=pk[j];break;}
+    if(!vm)continue;
+    if((vm.getAttribute('w:val')||'')==='restart')continue;
+    if(!_emfCellText(tcs[i]))continue;
+    _emfSetCell(tcs[i],'');
+    n++;
+  }
+  return n;
+}
+window._emfBersihkanSelMerge=_emfBersihkanSelMerge;
 function _emfTablesWithCaptions(doc){
   var body=doc.getElementsByTagNameNS(EMF_W,'body')[0], out=[], last=null;
   if(!body)return out;
@@ -43826,6 +43950,9 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
       if(_h&&_h.tbl){
         _emfSisipSetelah(_tblHidroBM,[_h.pLead,_h.pCap,_h.tbl]);
         var _rh2=_emfPatchHydro(_h.tbl,year,months,_sitesB);
+        // Y478: baris data hasil salinan ikut disamakan ukurannya, termasuk
+        // sel yang baru ditulis isinya.
+        try{_emfTblRapikan(_h.tbl,EMF_HIDRO_LEBAR,parseInt(EMF_HIDRO_TBLW,10),parseInt(EMF_HIDRO_TBLIND,10),EMF_HIDRO_SZ);}catch(_eRp){}
         if(_rh2&&_rh2.filled){
           tot+=_rh2.filled;hydroDone+=_rh2.rows||0;
           report.push({caption:'Hasil Pemantauan uji hidrostatik '+_lbl+' (tabel dibuat otomatis) \u2014 '+_rh2.rows+' baris',filled:_rh2.filled,empty:0,log:_rh2.log});
@@ -43864,6 +43991,11 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   var manual=waterOnly?{done:[],left:[]}:_emfPatchManual(doc,year,sem);
   if(siteOverride&&!waterOnly)_emfPatchSite(doc,_emfDetectSite(doc),siteOverride);
   var sisaPeriode=waterOnly?[]:_emfAuditPeriode(doc,year);
+  // Y479: sapuan terakhir — sel yang merupakan lanjutan merge dikosongkan.
+  // Word tidak pernah menampilkan isinya, tapi teks yang tertinggal di sana
+  // akan muncul berulang begitu merge-nya diubah atau tabelnya dikonversi.
+  var selMergeBersih=0;
+  try{selMergeBersih=_emfBersihkanSelMerge(doc);}catch(_eMg){}
   var outXml=new XMLSerializer().serializeToString(doc);
   // every other part is passed through as its ORIGINAL compressed bytes --
   // that is what keeps the output byte-identical outside the patched cells
@@ -43887,7 +44019,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
     }
   }catch(_eT){}
   var _ambigu=[];try{if(typeof _EMF_AMBIGU!=='undefined')_ambigu=_EMF_AMBIGU.slice();}catch(_eB){}
-  return {blob:blob,report:report,filled:tot,empty:totEmpty,wording:nWord,charts:charts,chartSkip:chartSkip,chartWord:chartWord,chartWordList:chartWordList,hydro:hydro,manual:manual,sisaPeriode:sisaPeriode,ambigu:_ambigu,dredgeGabung:dredgeGabung,trenchTanpaTabel:(dredgeGabung&&!dibuat.length?trenchAda:0),tabelDibuat:dibuat,tabelGagal:tabelGagal,temuan:temuan,temuanDiubah:temuanDiubah,temuanTerlaluBanyak:temuanTerlaluBanyak};
+  return {blob:blob,report:report,filled:tot,empty:totEmpty,wording:nWord,charts:charts,chartSkip:chartSkip,chartWord:chartWord,chartWordList:chartWordList,selMergeBersih:selMergeBersih,hydro:hydro,manual:manual,sisaPeriode:sisaPeriode,ambigu:_ambigu,dredgeGabung:dredgeGabung,trenchTanpaTabel:(dredgeGabung&&!dibuat.length?trenchAda:0),tabelDibuat:dibuat,tabelGagal:tabelGagal,temuan:temuan,temuanDiubah:temuanDiubah,temuanTerlaluBanyak:temuanTerlaluBanyak};
 }
 </script><script id="emf-water-only-2026-08-26">
 // Y82: the user edits only the water part of an existing EMF document.
