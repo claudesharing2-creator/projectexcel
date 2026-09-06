@@ -14889,6 +14889,225 @@ window._emfPatchTemuan=_emfPatchTemuan;
 window._emfKalimatTemuan=_emfKalimatTemuan;
 // ==== akhir Y469 ========================================================
 
+// ==== Y473: membuat tabel yang belum ada ================================
+// Kolom tabel hasil uji hidrostatik, sesuai Format_EMF.docx. Urutan dan
+// ejaannya sama di semua site, dan label inilah yang dibaca _emfPatchHydro
+// lewat EMF_HYDRO_PARAM.
+var EMF_HIDRO_KOLOM=[
+ ['Kekeruhan','NTU'],['TSS','mg/L'],['pH','-'],['DO','mg/L'],['BOD','mg/L'],
+ ['H2S','mg/L'],['Fenol','mg/L'],['Hg','mg/L'],['Cr6+','mg/L'],['As','mg/L'],
+ ['Cd','mg/L'],['Cu','mg/L'],['Pb','mg/L'],['Zn','mg/L'],['Ni','mg/L'],
+ ['Taxa','S'],['Abundance','Sel/mL'],['Diversity','H'],['Equitability','E'],
+ ['Dominance','D']];
+
+// Berapa kegiatan trenching "During" yang periode ini punya, untuk site ini.
+// Dipakai dua kali (untuk memutuskan membuat tabel, dan untuk peringatan
+// kalau tabelnya tidak jadi dibuat), jadi disimpan sebagai satu fungsi
+// supaya kedua tempat itu tidak bisa berbeda jawaban.
+function _emfTrenchAda(year,months,sites){
+  var rows=[].concat(_emfRows('Dredging'),_emfRows('NonRoutine')), lihat={}, n=0;
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i], t=String(r.titik||'');
+    if(!/trenching/i.test(t))continue;
+    if(!/during/i.test(t))continue;
+    if(sites&&sites.length&&sites.indexOf(String(r.site||'').toUpperCase())<0)continue;
+    var tg=r.tanggal||[];
+    for(var j=0;j<tg.length;j++){
+      var m=/^(\d{4})-(\d{2})/.exec(String(tg[j]));
+      if(m&&m[1]===String(year)&&months.indexOf(m[2])>=0){
+        var keg=t.split(/\s+[-\u2013]\s+/)[0];
+        if(!lihat[keg]){lihat[keg]=1;n++;}
+        break;
+      }
+    }
+  }
+  return n;
+}
+// paragraf berisi tepat sebelum sebuah tabel -- dipakai sebagai cetakan gaya
+// untuk judul tabel yang dibuat.
+function _emfPSebelum(el){
+  var n=el?el.previousSibling:null;
+  while(n){
+    if(n.nodeType===1&&n.localName==='p'&&String(n.textContent||'').trim())return n;
+    n=n.previousSibling;
+  }
+  return null;
+}
+// Anak langsung saja -- tabel bersarang tidak boleh ikut terbaca.
+function _emfAnakLangsung(el,nama){
+  var out=[],all=el.getElementsByTagNameNS(EMF_W,nama);
+  for(var i=0;i<all.length;i++)if(all[i].parentNode===el)out.push(all[i]);
+  return out;
+}
+// Salin satu paragraf sebagai cetakan gaya, lalu ganti teksnya. Field
+// (nomor tabel otomatis) dibuang supaya penomorannya tidak tergandakan.
+function _emfPSalin(pRef,teks){
+  if(!pRef)return null;
+  var p=pRef.cloneNode(true);
+  var fl=p.getElementsByTagNameNS(EMF_W,'fldSimple');
+  for(var f=fl.length-1;f>=0;f--)fl[f].parentNode.removeChild(fl[f]);
+  var it=p.getElementsByTagNameNS(EMF_W,'instrText');
+  for(var g=it.length-1;g>=0;g--){var r=it[g].parentNode;if(r&&r.parentNode)r.parentNode.removeChild(r);}
+  var ts=p.getElementsByTagNameNS(EMF_W,'t');
+  if(!ts.length){
+    var rs=p.getElementsByTagNameNS(EMF_W,'r');
+    if(!rs.length)return null;
+    var d=p.ownerDocument, tNew=d.createElementNS(EMF_W,'w:t');
+    rs[0].appendChild(tNew); ts=[tNew];
+  }
+  ts[0].textContent=teks;
+  ts[0].setAttribute('xml:space','preserve');
+  for(var i=1;i<ts.length;i++)ts[i].textContent='';
+  return p;
+}
+// Salin satu sel sebagai cetakan gaya, lalu ganti teksnya. gridSpan dan
+// vMerge bawaan dibuang supaya selnya berdiri sendiri.
+function _emfTcSalin(tcRef,teks){
+  var tc=tcRef.cloneNode(true);
+  var pr=tc.getElementsByTagNameNS(EMF_W,'tcPr')[0];
+  if(pr){
+    ['gridSpan','vMerge','hMerge'].forEach(function(n){
+      var e=pr.getElementsByTagNameNS(EMF_W,n);
+      for(var i=e.length-1;i>=0;i--)e[i].parentNode.removeChild(e[i]);
+    });
+  }
+  // sisakan satu paragraf saja, supaya tinggi barisnya tidak melar
+  var ps=_emfAnakLangsung(tc,'p');
+  for(var j=ps.length-1;j>=1;j--)tc.removeChild(ps[j]);
+  _emfSetCell(tc,String(teks==null?'':teks));
+  return tc;
+}
+// Bangun satu baris dari daftar teks, memakai sel cetakan.
+function _emfTrBaru(trRef,tcRef,isi){
+  var tr=trRef.cloneNode(false);   // bawa trPr, tanpa selnya
+  var pr=trRef.getElementsByTagNameNS(EMF_W,'trPr')[0];
+  if(pr)tr.appendChild(pr.cloneNode(true));
+  for(var i=0;i<isi.length;i++)tr.appendChild(_emfTcSalin(tcRef,isi[i]));
+  return tr;
+}
+// Salin kerangka tabel (tblPr) dan susun ulang tblGrid jadi n kolom yang
+// lebarnya dibagi rata dari lebar total tabel cetakan.
+function _emfTblKerangka(tblRef,ncol){
+  var d=tblRef.ownerDocument;
+  var tbl=d.createElementNS(EMF_W,'w:tbl');
+  var pr=tblRef.getElementsByTagNameNS(EMF_W,'tblPr')[0];
+  if(pr)tbl.appendChild(pr.cloneNode(true));
+  var gridRef=tblRef.getElementsByTagNameNS(EMF_W,'tblGrid')[0];
+  var total=0;
+  if(gridRef){
+    var gcs=gridRef.getElementsByTagNameNS(EMF_W,'gridCol');
+    for(var i=0;i<gcs.length;i++)total+=parseInt(gcs[i].getAttribute('w:w')||'0',10)||0;
+  }
+  if(!total)total=9360;   // lebar isi A4 potret baku, kalau cetakannya tidak menyebut
+  var lebar=Math.max(220,Math.floor(total/ncol));
+  var grid=d.createElementNS(EMF_W,'w:tblGrid');
+  for(var c=0;c<ncol;c++){
+    var gc=d.createElementNS(EMF_W,'w:gridCol');
+    gc.setAttribute('w:w',String(lebar));
+    grid.appendChild(gc);
+  }
+  tbl.appendChild(grid);
+  return tbl;
+}
+function _emfSisipSetelah(ref,nodes){
+  var induk=ref.parentNode, next=ref.nextSibling;
+  for(var i=0;i<nodes.length;i++){
+    if(!nodes[i])continue;
+    if(next)induk.insertBefore(nodes[i],next); else induk.appendChild(nodes[i]);
+  }
+}
+// Cabut lagi apa yang sudah terlanjur dipasang -- dipakai kalau ternyata
+// tabelnya tidak terisi satu sel pun.
+function _emfCabut(nodes){
+  for(var i=0;i<nodes.length;i++){
+    var n=nodes[i];
+    if(n&&n.parentNode)n.parentNode.removeChild(n);
+  }
+}
+// Bikin tabel hasil uji hidrostatik memakai tabel baku mutu hidrostatik di
+// dokumen yang sama sebagai cetakan gaya, dan sebagai sumber angka baku
+// mutunya. Empat baris kepala + satu baris data kosong (yang akan diisi
+// _emfPatchHydro, yang memang mencari baris data mulai indeks 4).
+function _emfSetGridSpan(tc,n){
+  if(!tc)return;
+  var d=tc.ownerDocument;
+  var prs=tc.getElementsByTagNameNS(EMF_W,'tcPr'), pr;
+  if(prs.length)pr=prs[0];
+  else{pr=d.createElementNS(EMF_W,'w:tcPr');tc.insertBefore(pr,tc.firstChild);}
+  var gs=pr.getElementsByTagNameNS(EMF_W,'gridSpan')[0];
+  if(!gs){
+    gs=d.createElementNS(EMF_W,'w:gridSpan');
+    var tcW=pr.getElementsByTagNameNS(EMF_W,'tcW')[0];
+    if(tcW&&tcW.nextSibling)pr.insertBefore(gs,tcW.nextSibling);
+    else if(tcW)pr.appendChild(gs);
+    else pr.insertBefore(gs,pr.firstChild);
+  }
+  gs.setAttribute('w:val',String(n));
+}
+// Nomor tabel di dokumen ini diketik, bukan field Word. Jadi nomor baru hanya
+// boleh dipakai kalau memang belum ada judul lain yang memakainya.
+function _emfNomorTabelBebas(doc,nomor){
+  if(!nomor)return false;
+  var ps=doc.getElementsByTagNameNS(EMF_W,'p');
+  for(var i=0;i<ps.length;i++){
+    var m=/^\s*Tabel\s*(\d+)\b/.exec(String(ps[i].textContent||''));
+    if(m&&parseInt(m[1],10)===nomor)return false;
+  }
+  return true;
+}
+function _emfBuatTabelHidro(tblBM,pTerakhir,label){
+  var trsBM=_emfAnakLangsung(tblBM,'tr');
+  if(trsBM.length<2)return null;
+  var tcRef=_emfAnakLangsung(trsBM[1],'tc')[0];
+  if(!tcRef)return null;
+  // Parameter -> baku mutu, dibaca dari tabel baku mutu dokumen ini sendiri.
+  var bm={};
+  for(var i=1;i<trsBM.length;i++){
+    var tcs=_emfAnakLangsung(trsBM[i],'tc');
+    if(tcs.length<4)continue;
+    bm[_emfSq(_emfCellText(tcs[1])).toLowerCase()]=_emfCellText(tcs[3]);
+  }
+  var ncol=2+EMF_HIDRO_KOLOM.length;
+  var tbl=_emfTblKerangka(tblBM,ncol);
+  var nama=['Bulan','Well'],satuan=['',''],mutu=['',''],kepala=['Bulan','Well'];
+  for(var k=0;k<EMF_HIDRO_KOLOM.length;k++){
+    nama.push(EMF_HIDRO_KOLOM[k][0]);
+    satuan.push(EMF_HIDRO_KOLOM[k][1]);
+    mutu.push(bm[EMF_HIDRO_KOLOM[k][0].toLowerCase()]||EMF_KOSONG);
+    kepala.push(k===0?'Parameter':'');
+  }
+  var trRef=trsBM[0];
+  var r1=_emfTrBaru(trRef,tcRef,kepala);
+  // Y474: "Parameter" satu sel menyeberangi seluruh kolom parameter, seperti
+  // di Format_EMF.docx -- bukan satu sel berisi lalu 19 sel kosong.
+  var _t1=_emfAnakLangsung(r1,'tc');
+  for(var _d=_t1.length-1;_d>=3;_d--)r1.removeChild(_t1[_d]);
+  _emfSetGridSpan(_t1[2],EMF_HIDRO_KOLOM.length);
+  var r2=_emfTrBaru(trRef,tcRef,['',''].concat(nama.slice(2)));
+  var r3=_emfTrBaru(trRef,tcRef,satuan);
+  var r4=_emfTrBaru(trRef,tcRef,mutu);
+  // Bulan & Well digabung menurun sepanjang empat baris kepala
+  [[r1,true],[r2,false],[r3,false],[r4,false]].forEach(function(pair){
+    var tcs=_emfAnakLangsung(pair[0],'tc');
+    _emfSetVMerge(tcs[0],pair[1]); _emfSetVMerge(tcs[1],pair[1]);
+  });
+  tbl.appendChild(r1);tbl.appendChild(r2);tbl.appendChild(r3);tbl.appendChild(r4);
+  var kosong=[];for(var z=0;z<ncol;z++)kosong.push('');
+  tbl.appendChild(_emfTrBaru(trsBM[1],tcRef,kosong));
+  var pLead=_emfPSalin(pTerakhir,'Berikut hasil pemantauan kegiatan uji hidrostatik untuk pipa selama periode '+label+':');
+  // Y474: nomor tabel hanya dipakai kalau nomor itu memang masih kosong.
+  var _nomor=0, _mNo=/^\s*Tabel\s*(\d+)\b/.exec(String(pTerakhir.textContent||''));
+  if(_mNo)_nomor=parseInt(_mNo[1],10)+1;
+  var _adaNomor=_nomor&&_emfNomorTabelBebas(pTerakhir.ownerDocument,_nomor);
+  var pCap=_emfPSalin(pTerakhir,(_adaNomor?('Tabel '+_nomor+' '):'Tabel ')+'Hasil Pemantauan uji hidrostatik '+label);
+  return {tbl:tbl,pLead:pLead,pCap:pCap};
+}
+window._emfBuatTabelHidro=_emfBuatTabelHidro;
+window._emfPSalin=_emfPSalin;
+window._emfTblKerangka=_emfTblKerangka;
+window._emfTrenchAda=_emfTrenchAda;
+// ==== akhir Y473 ========================================================
+
 
 // ==== Y418: satu pintu muat Data Pack, dengan pilihan per bagian ========
 // Sebelumnya ada dua tombol terpisah (pilih berkas / muat dari web) dan
@@ -41330,6 +41549,12 @@ async function _emfHandleFiles(files){
           +'<b>tidak punya tabel hasil uji hidrostatik</b> untuk diisi. Kalimat "tidak ada air buangan" sengaja '
           +'<b>tidak ditulis</b> supaya dokumen tidak menyatakan hal yang dibantah datanya sendiri — tambahkan tabel '
           +'hasilnya di dokumen dasar, lalu generate ulang.</div>':'')
+        +((res.tabelDibuat&&res.tabelDibuat.length)?'<div style="font-size:10.5px;color:#1b5e20;margin-top:7px;border:1px solid #c8e6c9;background:#f4fbf4;border-radius:7px;padding:7px 9px">'
+          +'\u2713 <b>Tabel yang belum ada di dokumen dasar sudah dibuatkan:</b> '+_ep(res.tabelDibuat.join('; '))+'. '
+          +'Bentuk, wording dan gaya kolomnya disalin dari tabel lain di dokumen yang sama. '
+          +'<b>Periksa penomoran tabelnya</b> (Tabel 1, 2, 3\u2026) sebelum dikirim \u2014 nomor tabel di Word tidak ikut dihitung ulang.</div>':'')
+        +((res.tabelGagal&&res.tabelGagal.length)?'<div style="font-size:10.5px;color:#8a6d00;margin-top:7px;border:1px solid #ffe082;background:#fffdf3;border-radius:7px;padding:7px 9px">'
+          +'\u26a0 <b>Tabel ini sengaja TIDAK dibuat</b> karena akan keluar kosong: '+_ep(res.tabelGagal.join('; '))+'.</div>':'')
         +(res.empty?'<div style="font-size:10px;color:#8a6d00;margin-top:7px">Sel tanpa data ditulis <b>“-”</b> — bukan dibiarkan kosong, dan bukan dibiarkan berisi angka periode lalu. Daftarnya di atas.</div>':'')
         +_emfSisaHtml(res)
         +'</div>';
@@ -43162,6 +43387,9 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   var idx=_emfIndex(), months=(Array.isArray(monthsOverride)&&monthsOverride.length)?monthsOverride.slice():((sem===1)?EMF_MON:EMF_MON2);
   var dredgeGabung=0, trenchAda=0;
   var dredgeGabung=0, trenchAda=0, titikDoc={};
+  // Y473: rujukan ke tabel & judul yang dipakai sebagai cetakan kalau ada
+  // tabel yang harus dibuatkan.
+  var _tblGabung=null,_pGabung=null,_tblHidroBM=null,_pHidroBM=null;
   var report=[],tot=0,totEmpty=0;
   var tc=_emfTablesWithCaptions(doc);
   var baIdx=_emfBaIndex(), hydroDone=0, dredgeRows=0;
@@ -43210,7 +43438,9 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
       continue;
     }
     var dj=_emfDredgeJenis(tc[i].caption);
-    if(dj&&typeof _emfDredgeCaptionGabung==='function'&&_emfDredgeCaptionGabung(tc[i].caption))dredgeGabung++;
+    if(dj&&typeof _emfDredgeCaptionGabung==='function'&&_emfDredgeCaptionGabung(tc[i].caption)){
+      dredgeGabung++; _tblGabung=tc[i].tbl; _pGabung=_emfPSebelum(tc[i].tbl);
+    }
     if(dj){
       var rd=_emfPatchDredge(tc[i].tbl,dj,year,months,siteOverride?[siteOverride]:_emfDocSites(file.name));
       if(rd){tot+=rd.filled;dredgeRows+=rd.rows||0;
@@ -43222,6 +43452,9 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
       if(rb){tot+=rb.filled;totEmpty+=rb.empty;
              report.push({caption:tc[i].caption,filled:rb.filled,empty:rb.empty,log:rb.log});}
       continue;
+    }
+    if(/baku mutu/i.test(String(tc[i].caption||''))&&/hidrostatik/i.test(String(tc[i].caption||''))){
+      _tblHidroBM=tc[i].tbl; _pHidroBM=_emfPSebelum(tc[i].tbl);   // Y473
     }
     if(!_emfIsTargetCaption(tc[i].caption))continue;
     var r=_emfPatchTitikTable(tc[i].tbl,idx,year,months,tc[i].caption);
@@ -43308,6 +43541,68 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   // sentence anyway writes a statement into a compliance document that the
   // app's own data contradicts. Leave the base's wording alone and let the
   // warning ask for the table instead.
+  // Y473: periode punya datanya tapi dokumen dasar tidak punya tabelnya ->
+  // tabelnya dibuatkan, memakai tabel di dokumen ini sendiri sebagai cetakan.
+  // Harus di sini: sesudah `hydro` dihitung, sebelum kalimat "tidak ada
+  // kegiatan" ditulis, dan sebelum dokumennya diserialkan.
+  var dibuat=[], tabelGagal=[];
+  try{
+    var _lbl=(typeof _emfCustomPeriodLabel==='function')?_emfCustomPeriodLabel(year,sem,months):('Semester '+sem+' '+year);
+    var _sitesB=(siteOverride?[siteOverride]:(_emfDocSites(file.name)||[])).map(function(s){return String(s).toUpperCase();});
+    // (a) tabel pengerukan untuk penggelaran pipa, kalau dokumennya cuma
+    // punya satu tabel pengerukan gabungan dan periodenya punya trenching
+    if(dredgeGabung&&!trenchAda&&typeof _emfTrenchAda==='function')trenchAda=_emfTrenchAda(year,months,_sitesB);
+    if(dredgeGabung&&trenchAda&&_tblGabung){
+      var _capBaru=_emfPSalin(_pGabung,'Pengerukan untuk penggelaran pipa');
+      var _tblBaru=_tblGabung.cloneNode(true);
+      _emfSisipSetelah(_tblGabung,[_capBaru,_tblBaru]);
+      var _rt=_emfPatchDredge(_tblBaru,'trenching',year,months,_sitesB);
+      if(_rt&&_rt.filled){
+        tot+=_rt.filled;dredgeRows+=_rt.rows||0;
+        report.push({caption:'Pengerukan untuk penggelaran pipa (tabel dibuat otomatis) \u2014 '+_rt.rows+' baris',filled:_rt.filled,empty:0,log:_rt.log});
+        // sub-judul untuk tabel gabungan yang sudah ada, supaya bentuknya
+        // sama dengan SPU/NPU/HCA
+        var _capLama=_emfPSalin(_pGabung,'Pengerukan penyiapan akses dan pemeliharaan kluster dan kanal');
+        if(_capLama)_tblGabung.parentNode.insertBefore(_capLama,_tblGabung);
+        dibuat.push('tabel pengerukan untuk penggelaran pipa');
+      }else{
+        // Tidak satu sel pun terisi: barisnya ada, tapi tidak membawa TSS
+        // maupun plankton. Tabel kosong di dokumen kepatuhan lebih buruk
+        // daripada tidak ada tabel, jadi dicabut lagi.
+        _emfCabut([_tblBaru,_capBaru]);
+        tabelGagal.push('pengerukan untuk penggelaran pipa: kegiatannya tercatat, tapi tidak ada bacaan TSS maupun plankton di periode ini');
+      }
+    }
+    // (b) tabel hasil uji hidrostatik, kalau periodenya punya data tapi
+    // dokumennya hanya punya tabel baku mutunya
+    if(hydro&&!hydroDone&&_tblHidroBM&&_pHidroBM){
+      var _h=_emfBuatTabelHidro(_tblHidroBM,_pHidroBM,_lbl);
+      if(_h&&_h.tbl){
+        _emfSisipSetelah(_tblHidroBM,[_h.pLead,_h.pCap,_h.tbl]);
+        var _rh2=_emfPatchHydro(_h.tbl,year,months,_sitesB);
+        if(_rh2&&_rh2.filled){
+          tot+=_rh2.filled;hydroDone+=_rh2.rows||0;
+          report.push({caption:'Hasil Pemantauan uji hidrostatik '+_lbl+' (tabel dibuat otomatis) \u2014 '+_rh2.rows+' baris',filled:_rh2.filled,empty:0,log:_rh2.log});
+          // kalimat "tidak ada air buangan" tidak boleh tertinggal begitu
+          // tabelnya ada isinya -- itu dibantah datanya sendiri
+          var _ps=doc.getElementsByTagNameNS(EMF_W,'p');
+          for(var _pi=0;_pi<_ps.length;_pi++){
+            var _tx=String(_ps[_pi].textContent||'');
+            if(!/tidak ada air buangan[^.]*uji hidrostatik/i.test(_tx))continue;
+            _emfParaEdit(_ps[_pi],function(s){
+              var m=/\s*Namun[^.]*tidak ada air buangan[^.]*\./i.exec(s);
+              return m?[[m.index,m.index+m[0].length,'']]:[];
+            });
+          }
+          dibuat.push('tabel hasil uji hidrostatik');
+          hydro=0;   // peringatan merahnya tidak berlaku lagi
+        }else{
+          _emfCabut([_h.tbl,_h.pCap,_h.pLead]);
+          tabelGagal.push('hasil uji hidrostatik: datanya tercatat, tapi tidak ada satu pun bacaan yang cocok dengan kolom tabelnya');
+        }
+      }
+    }
+  }catch(_eBuat){}
   if(!waterOnly&&!hydroDone&&!hydro)_emfPatchNoHydro(doc,year,sem);
   if(!waterOnly&&!dredgeRows)_emfPatchNoDredge(doc,year,sem);
   // Y469: kalimat "kecuali untuk parameter ..." disusun ulang dari data
@@ -43340,29 +43635,13 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   // Y468: kalau dokumen ini hanya punya SATU tabel pengerukan gabungan, tapi
   // periodenya juga membawa kegiatan trenching, dokumennya perlu tabel kedua.
   try{
-    if(dredgeGabung){
-      var sitesT=siteOverride?[String(siteOverride).toUpperCase()]:_emfDocSites(file.name);
-      var rowsT=[].concat(_emfRows('Dredging'),_emfRows('NonRoutine'));
-      var lihatT={};
-      for(var ti=0;ti<rowsT.length;ti++){
-        var rt=rowsT[ti], nt=String(rt.titik||'');
-        if(!/trenching/i.test(nt))continue;
-        if(!/during/i.test(nt))continue;
-        if(sitesT&&sitesT.indexOf(String(rt.site||'').toUpperCase())<0)continue;
-        var tgT=rt.tanggal||[];
-        for(var tj=0;tj<tgT.length;tj++){
-          var mT=/^(\d{4})-(\d{2})/.exec(String(tgT[tj]));
-          if(mT&&mT[1]===String(year)&&months.indexOf(mT[2])>=0){
-            var kegT=nt.split(/\s+[-\u2013]\s+/)[0];
-            if(!lihatT[kegT]){lihatT[kegT]=1;trenchAda++;}
-            break;
-          }
-        }
-      }
+    if(dredgeGabung&&!trenchAda){   // Y473i: jangan dihitung dua kali
+      var sitesT=(siteOverride?[siteOverride]:(_emfDocSites(file.name)||[])).map(function(s){return String(s).toUpperCase();});
+      trenchAda=_emfTrenchAda(year,months,sitesT);
     }
   }catch(_eT){}
   var _ambigu=[];try{if(typeof _EMF_AMBIGU!=='undefined')_ambigu=_EMF_AMBIGU.slice();}catch(_eB){}
-  return {blob:blob,report:report,filled:tot,empty:totEmpty,wording:nWord,charts:charts,chartSkip:chartSkip,hydro:hydro,manual:manual,sisaPeriode:sisaPeriode,ambigu:_ambigu,dredgeGabung:dredgeGabung,trenchTanpaTabel:(dredgeGabung?trenchAda:0),temuan:temuan,temuanDiubah:temuanDiubah,temuanTerlaluBanyak:temuanTerlaluBanyak};
+  return {blob:blob,report:report,filled:tot,empty:totEmpty,wording:nWord,charts:charts,chartSkip:chartSkip,hydro:hydro,manual:manual,sisaPeriode:sisaPeriode,ambigu:_ambigu,dredgeGabung:dredgeGabung,trenchTanpaTabel:(dredgeGabung&&!dibuat.length?trenchAda:0),tabelDibuat:dibuat,tabelGagal:tabelGagal,temuan:temuan,temuanDiubah:temuanDiubah,temuanTerlaluBanyak:temuanTerlaluBanyak};
 }
 </script><script id="emf-water-only-2026-08-26">
 // Y82: the user edits only the water part of an existing EMF document.
@@ -44239,6 +44518,10 @@ function _emfWaterOnlyWording(doc,year,sem,months){
   // Y462: baris periode milik dokumen secara keseluruhan.
   var judulPeriode=/^\s*(subjek|subject|perihal)\s*:/i;
   var kalimatPeriode=/(laporan|hasil)\s+pemantauan\s+lingkungan/i;
+  // Y475: kalimat ruang lingkup laporan. Ia menyebut aspek non-air juga,
+  // jadi penjaga `nonwater` di bawah akan membuangnya kalau tidak disebut
+  // khusus di sini -- padahal periodenya periode seluruh laporan.
+  var ruangLingkup=/^\s*Berikut\s+ini\s+adalah\s+pemantauan\s+(dari\s+)?air\s+limbah/i;
   var reSem=/Semester\s*([12])\s*(20\d{2})/gi;
   var reSem2=/semester\s*ke(satu|dua)\s*(20\d{2})/gi;
   var reRange=/(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)(\s*(?:[-–—]|s\.?\s*d\.?|sampai(?:\s+dengan)?)\s*)(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)(\s+)(20\d{2})/gi;
@@ -44252,14 +44535,16 @@ function _emfWaterOnlyWording(doc,year,sem,months){
   for(var i=0;i<ps.length;i++){
     (function(pEl){
       var joined=String(pEl.textContent||'');
-      var periodeDokumen=judulPeriode.test(joined)||kalimatPeriode.test(joined);
+      var periodeDokumen=judulPeriode.test(joined)||kalimatPeriode.test(joined)||ruangLingkup.test(joined);
       // Y467: dumping LIMBAH PENGEBORAN bukan bagian air; yang bagian air
       // hanya dumping material keruk. Paragraf tentang lumpur/serbuk bor
       // dikeluarkan, kecuali kalau ia juga bicara air/keruk/sedimen.
       var bukanAir=/limbah pengebo|lumpur bor|serbuk bor|fresh mud|cutting/i;
       var airTegas=/air|keruk|pengerukan|dredging|sedimen/i;
       if(bukanAir.test(joined)&&!airTegas.test(joined))return;
-      if((!water.test(joined)&&!periodeDokumen)||nonwater.test(joined))return;
+      // Y475: penjaga nonwater tidak berlaku untuk kalimat ruang lingkup --
+      // kalimat itu memang menyebut semua aspek sekaligus.
+      if((!water.test(joined)&&!periodeDokumen)||(nonwater.test(joined)&&!ruangLingkup.test(joined)))return;
       n+=_emfParaEdit(pEl,function(s){
         var edits=[],m;
         if(isCustom){
