@@ -41330,7 +41330,7 @@ async function _emfHandleFiles(files){
           +'<b>tidak punya tabel hasil uji hidrostatik</b> untuk diisi. Kalimat "tidak ada air buangan" sengaja '
           +'<b>tidak ditulis</b> supaya dokumen tidak menyatakan hal yang dibantah datanya sendiri — tambahkan tabel '
           +'hasilnya di dokumen dasar, lalu generate ulang.</div>':'')
-        +(res.empty?'<div style="font-size:10px;color:#8a6d00;margin-top:7px">Sel tanpa data <b>tidak dikosongkan</b> — isi lama dibiarkan supaya tidak ada angka yang hilang tanpa sengaja. Cek daftar di atas.</div>':'')
+        +(res.empty?'<div style="font-size:10px;color:#8a6d00;margin-top:7px">Sel tanpa data ditulis <b>“-”</b> — bukan dibiarkan kosong, dan bukan dibiarkan berisi angka periode lalu. Daftarnya di atas.</div>':'')
         +_emfSisaHtml(res)
         +'</div>';
     }catch(err){
@@ -41859,7 +41859,9 @@ function _emfPatchTitikTable(tbl,idx,year,months,cap){
     }
     log.push({titik:cur,param:param,vals:vals});
     // no reading for that month: clear the cell instead of leaving the base's
-    for(var k=0;k<vals.length;k++)_emfSetCell(cells[L.col0+k],vals[k]==null?'':vals[k]); for(var kx=mm.length;kx<L.ncol;kx++)_emfSetCell(cells[L.col0+kx],'');
+    // Y472 (aturan pemilik): tidak ada bacaan -> tulis "-", jangan kosong.
+    // Sel kosong tidak bisa dibedakan dari sel yang belum sempat diisi.
+    for(var k=0;k<vals.length;k++)_emfSetCell(cells[L.col0+k],vals[k]==null?EMF_KOSONG:vals[k]); for(var kx=mm.length;kx<L.ncol;kx++)_emfSetCell(cells[L.col0+kx],EMF_KOSONG);
   }
   _emfPatchMonthHeader(rows,L,mm,year,hdrDates);
   return {filled:filled,empty:empty,log:log};
@@ -42295,7 +42297,7 @@ function _emfPatchBadanAir(tbl,cap,baIdx,year,sem,months){
     var lst=baIdx[titik+'\u0000'+_emfBaKey(param)+'\u0000'+year]||[];
     var rec=_emfCustomBadanAirPick(lst,year,months,sem);
     if(!rec){
-      _emfSetCell(cells[2],'');
+      _emfSetCell(cells[2],EMF_KOSONG);   // Y472: aturan pemilik
       empty++;log.push({titik:titik,param:param,vals:[null]});continue;
     }
     var raw=rec.nilai;
@@ -42328,6 +42330,9 @@ function _emfDocSites(fileName){
   var m=/^([A-Z]{3})/.exec(String(fileName||'').toUpperCase());
   return (m&&EMF_DOC_SITES[m[1]])||null;
 }
+// Y472 (aturan pemilik 2026-09-06): satu tanda untuk "tidak ada datanya".
+// Semua jalur pengisian memakai tetapan ini, jangan tulis '-' langsung.
+var EMF_KOSONG='-';
 var EMF_DREDGE_PARAM=['TSS','Plankton Abundance (sel/mL)','Taxa (S)','Diversity (H\u2019)','Equalization (E)','Domination (D)'];
 var EMF_BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 function _emfDredgeWajib(t){
@@ -42561,7 +42566,7 @@ function _emfPatchLokasi(tbl,kind,site){
     _emfSetCell(tcs[0],String(v.nama||''));
     _emfSetCell(tcs[1],_emfDmsPart(v.lat));
     _emfSetCell(tcs[2],_emfDmsPart(v.lng));
-    _emfSetCell(tcs[3],v.izin_nomor?('No. '+v.izin_nomor):'');
+    _emfSetCell(tcs[3],v.izin_nomor?('No. '+v.izin_nomor):EMF_KOSONG);   // Y472
     if(tcs.length>=5)_emfSetCell(tcs[4],ket);
     filled+=4;
   }
@@ -43175,7 +43180,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
         var btcs=[],bk=btrs[br].getElementsByTagNameNS(EMF_W,'tc');
         for(var bc=0;bc<bk.length;bc++)if(bk[bc].parentNode===btrs[br])btcs.push(bk[bc]);
         for(var bc2=1;bc2<btcs.length;bc2++){
-          if(_emfCellText(btcs[bc2])){_emfSetCell(btcs[bc2],'');lokBlank++;}
+          if(_emfCellText(btcs[bc2])){_emfSetCell(btcs[bc2],EMF_KOSONG);lokBlank++;}   // Y472
         }
       }
       if(lokBlank)report.push({caption:tc[i].caption+' \u2014 koordinat dikosongkan (belum ada data izin badan air untuk '+siteOverride+')',filled:0,empty:lokBlank,log:[]});
