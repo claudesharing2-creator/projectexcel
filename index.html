@@ -15108,6 +15108,237 @@ window._emfTblKerangka=_emfTblKerangka;
 window._emfTrenchAda=_emfTrenchAda;
 // ==== akhir Y473 ========================================================
 
+// ==== Y476: grafik sebagai objek grafik Word ============================
+var EMF_C='http://schemas.openxmlformats.org/drawingml/2006/chart';
+var EMF_A='http://schemas.openxmlformats.org/drawingml/2006/main';
+var EMF_REL='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+var EMF_PKGREL='http://schemas.openxmlformats.org/package/2006/relationships';
+var EMF_CTYPES='http://schemas.openxmlformats.org/package/2006/content-types';
+
+function _emfXmlEsc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+         .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// 0 -> A, 1 -> B, ... untuk rujukan sel di lembar data
+function _emfKolomKode(i){
+  var s='';i++;
+  while(i>0){var r=(i-1)%26;s=String.fromCharCode(65+r)+s;i=Math.floor((i-1)/26);}
+  return s;
+}
+// Satu spesifikasi grafik -> daftar deret yang akan masuk lembar data.
+// Garis baku mutu ikut jadi deret supaya angkanya bisa diedit juga.
+function _emfChartDeret(spec){
+  var cats=(spec.labels||[]).map(String);
+  // Y477: angka dipangkas ke 6 angka berarti. Penjumlahan debit harian
+  // menghasilkan ekor biner (955.7400000699998) yang bukan ketelitian, dan di
+  // lembar data yang dibaca orang itu menyesatkan.
+  var _bulat=function(v){
+    if(typeof v!=='number'||!isFinite(v))return null;
+    return parseFloat(v.toPrecision(6));
+  };
+  var deret=[{nama:String(spec.seriesLabel||spec.subtitle||spec.title||'Data'),
+              nilai:(spec.values||[]).map(_bulat),
+              jenis:(spec.type==='bar')?'bar':'line',warna:'4472C4',putus:false}];
+  (spec.lines||[]).forEach(function(ln,i){
+    var w=String(ln.color||'#C00000').replace('#','').toUpperCase();
+    if(!/^[0-9A-F]{6}$/.test(w))w='C00000';
+    deret.push({nama:String(ln.label||('Baku mutu '+(i+1))),
+                nilai:cats.map(function(){return _bulat(ln.value);}),   // Y477
+                jenis:'line',warna:w,putus:true});
+  });
+  return {cats:cats,deret:deret};
+}
+function _emfChartXml(spec){
+  var d=_emfChartDeret(spec), cats=d.cats, ds=d.deret, n=cats.length;
+  var AX1='773311011', AX2='773311012';
+  function catRef(){
+    var s='<c:cat><c:strRef><c:f>Sheet1!$A$2:$A$'+(n+1)+'</c:f>'
+         +'<c:strCache><c:ptCount val="'+n+'"/>';
+    for(var i=0;i<n;i++)s+='<c:pt idx="'+i+'"><c:v>'+_emfXmlEsc(cats[i])+'</c:v></c:pt>';
+    return s+'</c:strCache></c:strRef></c:cat>';
+  }
+  function valRef(ci,vals){
+    var col=_emfKolomKode(ci+1);
+    var s='<c:val><c:numRef><c:f>Sheet1!$'+col+'$2:$'+col+'$'+(n+1)+'</c:f>'
+         +'<c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="'+n+'"/>';
+    for(var i=0;i<vals.length;i++)
+      if(vals[i]!=null)s+='<c:pt idx="'+i+'"><c:v>'+vals[i]+'</c:v></c:pt>';
+    return s+'</c:numCache></c:numRef></c:val>';
+  }
+  function txRef(ci,nama){
+    var col=_emfKolomKode(ci+1);
+    return '<c:tx><c:strRef><c:f>Sheet1!$'+col+'$1</c:f><c:strCache><c:ptCount val="1"/>'
+          +'<c:pt idx="0"><c:v>'+_emfXmlEsc(nama)+'</c:v></c:pt></c:strCache></c:strRef></c:tx>';
+  }
+  var bar=[],line=[];
+  ds.forEach(function(s,i){
+    var sp=(s.jenis==='bar')
+      ?'<c:spPr><a:solidFill><a:srgbClr val="'+s.warna+'"/></a:solidFill>'
+       +'<a:ln><a:noFill/></a:ln></c:spPr>'
+      :'<c:spPr><a:ln w="'+(s.putus?19050:28575)+'" cap="rnd">'
+       +'<a:solidFill><a:srgbClr val="'+s.warna+'"/></a:solidFill>'
+       +(s.putus?'<a:prstDash val="dash"/>':'<a:prstDash val="solid"/>')
+       +'</a:ln><a:effectLst/></c:spPr>';
+    var kepala='<c:ser><c:idx val="'+i+'"/><c:order val="'+i+'"/>'+txRef(i,s.nama)+sp;
+    if(s.jenis==='bar')
+      bar.push(kepala+'<c:invertIfNegative val="0"/>'+catRef()+valRef(i,s.nilai)+'</c:ser>');
+    else
+      line.push(kepala+'<c:marker><c:symbol val="'+(s.putus?'none':'circle')+'"/>'
+               +'<c:size val="5"/></c:marker>'+catRef()+valRef(i,s.nilai)
+               +'<c:smooth val="0"/></c:ser>');
+  });
+  var grup='';
+  if(bar.length)
+    grup+='<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>'
+        +'<c:varyColors val="0"/>'+bar.join('')
+        +'<c:gapWidth val="100"/><c:axId val="'+AX1+'"/><c:axId val="'+AX2+'"/></c:barChart>';
+  if(line.length)
+    grup+='<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>'+line.join('')
+        +'<c:marker val="1"/><c:axId val="'+AX1+'"/><c:axId val="'+AX2+'"/></c:lineChart>';
+  var baris=[spec.title,spec.subtitle].filter(function(x){return x;});
+  var judul=baris.length
+    ?('<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/>'
+      +baris.map(function(t){
+        return '<a:p><a:pPr algn="ctr"><a:defRPr sz="1200" b="1"/></a:pPr>'
+              +'<a:r><a:rPr lang="id-ID" sz="1200" b="1"/><a:t>'+_emfXmlEsc(t)+'</a:t></a:r></a:p>';
+      }).join('')
+      +'</c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>')
+    :'<c:autoTitleDeleted val="1"/>';
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+   +'<c:chartSpace xmlns:c="'+EMF_C+'" xmlns:a="'+EMF_A+'" xmlns:r="'+EMF_REL+'">'
+   +'<c:date1904 val="0"/><c:lang val="id-ID"/><c:roundedCorners val="0"/>'
+   +'<c:chart>'+judul+'<c:plotArea><c:layout/>'+grup
+   +'<c:catAx><c:axId val="'+AX1+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'
+     +'<c:delete val="0"/><c:axPos val="b"/>'
+     +'<c:numFmt formatCode="General" sourceLinked="1"/>'
+     +'<c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
+     +'<c:crossAx val="'+AX2+'"/><c:crosses val="autoZero"/><c:auto val="1"/>'
+     +'<c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>'
+   +'<c:valAx><c:axId val="'+AX2+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'
+     +'<c:delete val="0"/><c:axPos val="l"/><c:majorGridlines/>'
+     +'<c:numFmt formatCode="General" sourceLinked="1"/>'
+     +'<c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
+     +'<c:crossAx val="'+AX1+'"/><c:crosses val="autoZero"/>'
+     +'<c:crossBetween val="between"/></c:valAx>'
+   +'</c:plotArea><c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>'
+   +'<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>'
+   +'<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData>'
+   +'</c:chartSpace>';
+}
+// Lembar kerja yang ditanam di dalam dokumen -- inilah yang dibuka Word waktu
+// pengguna menekan "Edit Data".
+function _emfChartWorkbook(spec){
+  var d=_emfChartDeret(spec);
+  var aoa=[[''].concat(d.deret.map(function(s){return s.nama;}))];
+  for(var i=0;i<d.cats.length;i++){
+    var row=[d.cats[i]];
+    for(var j=0;j<d.deret.length;j++)row.push(d.deret[j].nilai[i]);
+    aoa.push(row);
+  }
+  var ws=XLSX.utils.aoa_to_sheet(aoa), wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+  return new Uint8Array(XLSX.write(wb,{bookType:'xlsx',type:'array'}));
+}
+async function _emfBagianTeks(parts,nama){
+  var p=parts[nama];
+  if(!p)return null;
+  var raw=p.data?p.data:(p.method===8?await _emfInflate(p.raw):p.raw);
+  return new TextDecoder('utf-8').decode(raw);
+}
+// Tukar gambar grafik air dengan objek grafik Word yang sebenarnya.
+async function _emfChartsWordAsli(parts,z,doc,idx,months,year,sem,ctx){
+  var jadi=[], n=0;
+  try{
+    if(typeof XLSX==='undefined'||typeof XLSX.write!=='function')return {n:0,daftar:[]};
+    var relName='word/_rels/document.xml.rels';
+    var relTxt=await _emfBagianTeks(parts,relName);
+    if(!relTxt)return {n:0,daftar:[]};
+    var relDoc=new DOMParser().parseFromString(relTxt,'application/xml');
+    if(relDoc.getElementsByTagName('parsererror').length)return {n:0,daftar:[]};
+    var relRoot=relDoc.documentElement;
+    var slots=_emfChartSlots(doc);
+    var enc=new TextEncoder();
+    for(var si=0;si<slots.length;si++){
+      var s=slots[si];
+      if(!s||!s.blip)continue;
+      var spec=null;
+      try{spec=_emfChartSpec(s.label,ctx,idx,months,year,sem);}catch(_eS){}
+      if(!spec)continue;
+      // Aturan pemilik: kalau tidak ada datanya, jangan dibuat. Gambar lama
+      // dibiarkan apa adanya daripada diganti grafik kosong.
+      var punya=(spec.values||[]).some(function(v){return typeof v==='number'&&isFinite(v);});
+      if(!punya)continue;
+      var gd=s.blip;
+      while(gd&&!(gd.nodeType===1&&gd.localName==='graphicData'))gd=gd.parentNode;
+      if(!gd)continue;
+      var cid=++n;
+      var chartPart='word/charts/chartENV'+cid+'.xml';
+      var relPart='word/charts/_rels/chartENV'+cid+'.xml.rels';
+      var wbPart='word/embeddings/ENVdata'+cid+'.xlsx';
+      var wbBytes;
+      try{wbBytes=_emfChartWorkbook(spec);}catch(_eW){n--;continue;}
+      parts[chartPart]={data:enc.encode(_emfChartXml(spec))};
+      parts[relPart]={data:enc.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        +'<Relationships xmlns="'+EMF_PKGREL+'">'
+        +'<Relationship Id="rId1" Type="'+EMF_REL+'/package" Target="../embeddings/ENVdata'+cid+'.xlsx"/>'
+        +'</Relationships>')};
+      parts[wbPart]={data:wbBytes};
+      z.order.push(chartPart,relPart,wbPart);
+      var rid='rIdEnvChart'+cid;
+      var rel=relDoc.createElementNS(EMF_PKGREL,'Relationship');
+      rel.setAttribute('Id',rid);
+      rel.setAttribute('Type',EMF_REL+'/chart');
+      rel.setAttribute('Target','charts/chartENV'+cid+'.xml');
+      relRoot.appendChild(rel);
+      // Y477: bingkainya masih bernama "Picture N" di panel seleksi Word,
+      // padahal isinya sekarang grafik.
+      try{
+        var _bingkai=gd;
+        while(_bingkai&&!(_bingkai.nodeType===1&&(_bingkai.localName==='inline'||_bingkai.localName==='anchor')))
+          _bingkai=_bingkai.parentNode;
+        if(_bingkai){
+          var _dp=_bingkai.getElementsByTagName('wp:docPr')[0]
+                 ||_bingkai.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing','docPr')[0];
+          if(_dp)_dp.setAttribute('name','Grafik '+cid+' - '+String(spec.title||'').slice(0,60));
+        }
+      }catch(_eN){}
+      while(gd.firstChild)gd.removeChild(gd.firstChild);
+      gd.setAttribute('uri',EMF_C);
+      var cEl=doc.createElementNS(EMF_C,'c:chart');
+      cEl.setAttributeNS(EMF_REL,'r:id',rid);
+      gd.appendChild(cEl);
+      jadi.push(String(spec.title||'')+(spec.subtitle?(' \u2014 '+spec.subtitle):''));
+    }
+    if(n){
+      parts[relName]={data:enc.encode(new XMLSerializer().serializeToString(relDoc))};
+      var ctName='[Content_Types].xml';
+      var ctTxt=await _emfBagianTeks(parts,ctName);
+      if(ctTxt){
+        var ctDoc=new DOMParser().parseFromString(ctTxt,'application/xml');
+        if(!ctDoc.getElementsByTagName('parsererror').length){
+          for(var k=1;k<=n;k++){
+            var o1=ctDoc.createElementNS(EMF_CTYPES,'Override');
+            o1.setAttribute('PartName','/word/charts/chartENV'+k+'.xml');
+            o1.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.drawingml.chart+xml');
+            ctDoc.documentElement.appendChild(o1);
+            var o2=ctDoc.createElementNS(EMF_CTYPES,'Override');
+            o2.setAttribute('PartName','/word/embeddings/ENVdata'+k+'.xlsx');
+            o2.setAttribute('ContentType','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            ctDoc.documentElement.appendChild(o2);
+          }
+          parts[ctName]={data:enc.encode(new XMLSerializer().serializeToString(ctDoc))};
+        }
+      }
+    }
+  }catch(_eC){}
+  return {n:n,daftar:jadi};
+}
+window._emfChartXml=_emfChartXml;
+window._emfChartDeret=_emfChartDeret;
+window._emfChartWorkbook=_emfChartWorkbook;
+window._emfChartsWordAsli=_emfChartsWordAsli;
+// ==== akhir Y476 ========================================================
+
 
 // ==== Y418: satu pintu muat Data Pack, dengan pilihan per bagian ========
 // Sebelumnya ada dua tombol terpisah (pilih berkas / muat dari web) dan
@@ -41549,6 +41780,11 @@ async function _emfHandleFiles(files){
           +'<b>tidak punya tabel hasil uji hidrostatik</b> untuk diisi. Kalimat "tidak ada air buangan" sengaja '
           +'<b>tidak ditulis</b> supaya dokumen tidak menyatakan hal yang dibantah datanya sendiri — tambahkan tabel '
           +'hasilnya di dokumen dasar, lalu generate ulang.</div>':'')
+        +(res.chartWord?'<div style="font-size:10.5px;color:#1b5e20;margin-top:7px;border:1px solid #c8e6c9;background:#f4fbf4;border-radius:7px;padding:7px 9px">'
+          +'\u2713 <b>'+res.chartWord+' grafik air jadi grafik Word asli</b> \u2014 bukan gambar tempelan. '
+          +'Klik kanan grafiknya di Word \u2192 <b>Edit Data</b> untuk membuka angkanya; grafiknya ikut berubah. '
+          +'Garis baku mutu juga jadi deret tersendiri di lembar itu. '
+          +'Grafik yang tidak punya data di periode ini sengaja dibiarkan sebagai gambar lama.</div>':'')
         +((res.tabelDibuat&&res.tabelDibuat.length)?'<div style="font-size:10.5px;color:#1b5e20;margin-top:7px;border:1px solid #c8e6c9;background:#f4fbf4;border-radius:7px;padding:7px 9px">'
           +'\u2713 <b>Tabel yang belum ada di dokumen dasar sudah dibuatkan:</b> '+_ep(res.tabelDibuat.join('; '))+'. '
           +'Bentuk, wording dan gaya kolomnya disalin dari tabel lain di dokumen yang sama. '
@@ -43056,8 +43292,10 @@ function _emfChartSlots(doc){
     for(var b=0;b<blips.length;b++){
       var rid=blips[b].getAttributeNS(RN,'embed');
       if(!rid)continue;
-      if(pending.length){out.push({rid:rid,label:pending.shift()});}
-      else queue.push(rid);
+      // Y476: elemen gambarnya ikut dibawa, supaya pemanggil bisa menukarnya
+      // dengan objek grafik -- bukan cuma tahu id relasinya.
+      if(pending.length){out.push({rid:rid,label:pending.shift(),blip:blips[b]});}
+      else queue.push({rid:rid,blip:blips[b]});
     }
     var txt=(el.textContent||'').trim();
     if(!/^Gambar/i.test(txt))continue;
@@ -43065,7 +43303,7 @@ function _emfChartSlots(doc){
     txt=txt.replace(/SEQ\s+\w+\s*\\\*\s*\w+\s*/gi,'');
     var labels=txt.split(/Gambar\.?\s*\d*\.?\s*/i).map(function(s){return s.trim();}).filter(Boolean);
     if(queue.length){
-      for(var k=0;k<queue.length;k++)out.push({rid:queue[k],label:labels[k]||labels[labels.length-1]||''});
+      for(var k=0;k<queue.length;k++)out.push({rid:queue[k].rid,blip:queue[k].blip,label:labels[k]||labels[labels.length-1]||''});
       queue=[];
     }else{
       // BKP puts its captions ABOVE the pictures, one paragraph each, so the
@@ -43517,6 +43755,14 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
     }
   }catch(e){ chartSkip++; }
   if(waterOnly)charts+=await _emfWaterOnlyNativeCharts(parts,z,idx,months,year,sem,ctx); /* emf-water-only-image-chart-period-2026-08-26 */ if(waterOnly)charts+=await _emfWaterOnlyImageCharts(parts,z,doc,idx,months,year,sem,ctx); if(waterOnly)charts+=await _emfWaterOnlyCaptionedPngCharts(parts,z,doc,idx,months,year,sem,ctx); if(waterOnly)await _emfResizeChartValueCaches(parts,z,months); if(waterOnly)await _emfResizeChartValueCachesFinal(parts,z,months);
+  // Y476: terakhir -- gambar grafik air ditukar objek grafik Word. Harus
+  // sesudah semua fungsi grafik lama, karena mereka membaca daftar relasi
+  // ASLI dari z.parts dan tidak boleh ikut mengurusi grafik buatan sendiri.
+  var chartWord=0, chartWordList=[];
+  try{
+    var _cw=await _emfChartsWordAsli(parts,z,doc,idx,months,year,sem,ctx);
+    chartWord=_cw.n; chartWordList=_cw.daftar;
+  }catch(_eCW){}
   // hydrotest: the templates state there was no discharge and carry no
   // results table, so if the period actually has samplings we can only flag it
   var hydro=0;
@@ -43641,7 +43887,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
     }
   }catch(_eT){}
   var _ambigu=[];try{if(typeof _EMF_AMBIGU!=='undefined')_ambigu=_EMF_AMBIGU.slice();}catch(_eB){}
-  return {blob:blob,report:report,filled:tot,empty:totEmpty,wording:nWord,charts:charts,chartSkip:chartSkip,hydro:hydro,manual:manual,sisaPeriode:sisaPeriode,ambigu:_ambigu,dredgeGabung:dredgeGabung,trenchTanpaTabel:(dredgeGabung&&!dibuat.length?trenchAda:0),tabelDibuat:dibuat,tabelGagal:tabelGagal,temuan:temuan,temuanDiubah:temuanDiubah,temuanTerlaluBanyak:temuanTerlaluBanyak};
+  return {blob:blob,report:report,filled:tot,empty:totEmpty,wording:nWord,charts:charts,chartSkip:chartSkip,chartWord:chartWord,chartWordList:chartWordList,hydro:hydro,manual:manual,sisaPeriode:sisaPeriode,ambigu:_ambigu,dredgeGabung:dredgeGabung,trenchTanpaTabel:(dredgeGabung&&!dibuat.length?trenchAda:0),tabelDibuat:dibuat,tabelGagal:tabelGagal,temuan:temuan,temuanDiubah:temuanDiubah,temuanTerlaluBanyak:temuanTerlaluBanyak};
 }
 </script><script id="emf-water-only-2026-08-26">
 // Y82: the user edits only the water part of an existing EMF document.
