@@ -37987,12 +37987,13 @@ function _drainDoExport(mode,site,startYm,endYm,fillMode){
   const pts=DRAIN_SITES[site];
   const months=_drainMonthsInRange(startYm,endYm);
   const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
+  // Y480: potret. Tabelnya cuma 430pt, di lanskap separuh halaman kosong.
+  const doc=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
   let firstPage=true;
   months.forEach(ym=>{
     const [y,m]=ym.split('-').map(Number);
     const lastDay=new Date(y,m,0).getDate();
-    if(!firstPage)doc.addPage('a4','landscape');
+    if(!firstPage)doc.addPage('a4','portrait');   // Y480
     firstPage=false;
     let yPos=36;
     // Compute the table's own geometry FIRST, so the title above it can be
@@ -38002,18 +38003,31 @@ function _drainDoExport(mode,site,startYm,endYm,fillMode){
     // happens to be exactly as wide as it is tall relative to the margins;
     // anchoring the title to the table's own center guarantees they always
     // line up regardless of column count/width.
-    const colW=[70,...pts.map(()=>90)];
-    const tableW=colW.reduce((a,b)=>a+b,0);
+    // Y480: lebar kolom dihitung dari lebar halaman, tidak lagi dipatok
+    // 90pt. Dibatasi 150pt supaya site bertitik tunggal tidak menghasilkan
+    // satu kolom selebar halaman.
     const pageW=doc.internal.pageSize.getWidth();
-    const startX=Math.max(20,(pageW-tableW)/2);
+    const pageH=doc.internal.pageSize.getHeight();
+    const marginX=36, cetakW=pageW-marginX*2, tglW=70;
+    const kolW=Math.min(150,Math.max(60,(cetakW-tglW)/Math.max(1,pts.length)));
+    const colW=[tglW,...pts.map(()=>kolW)];
+    const tableW=colW.reduce((a,b)=>a+b,0);
+    const startX=Math.max(marginX,(pageW-tableW)/2);
     const titleCenterX=startX+tableW/2;
+    const batasBawah=pageH-40;
     if(mode==='ket-pdf'){
       doc.setFontSize(14);doc.setFont(undefined,'bold');
       doc.text(`DRAINASE ${site} ${DRAIN_BULAN_INDO[m]} ${y}`,titleCenterX,yPos,{align:'center'});
       yPos+=22;
       doc.setFontSize(9);doc.setFont(undefined,'normal');
       const ket='Pada bulan tersebut terdapat beberapa tanggal dengan kondisi cuaca tidak hujan, maka curah hujan adalah 0.\nSehingga debit drainase adalah -1.';
-      ket.split('\n').forEach(line=>{doc.text(line,titleCenterX,yPos,{align:'center'});yPos+=13;});
+      // Y480: dibungkus ke lebar cetak -- di potret kalimatnya lebih
+      // panjang daripada satu baris yang muat.
+      ket.split('\n').forEach(line=>{
+        doc.splitTextToSize(line,cetakW).forEach(sub=>{
+          doc.text(sub,titleCenterX,yPos,{align:'center'});yPos+=13;
+        });
+      });
       yPos+=10;
     } else {
       doc.setFontSize(12);doc.setFont(undefined,'bold');
@@ -38022,9 +38036,14 @@ function _drainDoExport(mode,site,startYm,endYm,fillMode){
     }
     doc.setFontSize(8);doc.setFont(undefined,'normal');
     let x=startX;
-    // Header gets a taller row than data rows so the unit label fits on its
-    // own line under the point name instead of crowding a single 13pt row.
-    const rowH=13,headerRowH=22;
+    const rowH=13;
+    // Y480: tinggi baris kepala mengikuti nama titik yang paling panjang.
+    // Sebelumnya tingginya dipatok 22pt dan satuan digambar pada offset tetap
+    // 18pt, jadi begitu satu nama membungkus jadi dua baris ("Disposal Tube
+    // SOWTU"), baris keduanya menabrak "(m3)".
+    const namaBaris=pts.map(function(pt,i){return doc.splitTextToSize(String(pt),colW[i+1]-6);});
+    const barisMaks=namaBaris.reduce(function(a,b){return Math.max(a,b.length);},1);
+    const headerRowH=Math.max(22,barisMaks*9+13);
     // Header styling matches the workbook's actual Template Auth header —
     // a light grey fill (theme "Background 2", tint ~0.4) with dark bold
     // text, not a bright color band. jsPDF paints fills from a separate
@@ -38032,23 +38051,32 @@ function _drainDoExport(mode,site,startYm,endYm,fillMode){
     // can end up covering that text when the page is flushed — draw every
     // fill+border for a row FIRST, then all of that row's text on top of
     // it, never interleaved, to avoid that.
-    doc.setFillColor(242,242,242);
-    doc.setDrawColor(140,140,140);
-    doc.setFont(undefined,'bold');
-    doc.rect(startX,yPos,tableW,headerRowH,'FD');
-    doc.text('Tanggal',x+3,yPos+headerRowH/2+3);x+=colW[0];
-    pts.forEach((pt,i)=>{doc.rect(x,yPos,colW[i+1],headerRowH,'S');x+=colW[i+1];});
-    x=startX+colW[0];
-    pts.forEach((pt,i)=>{
-      doc.text(pt,x+3,yPos+9,{maxWidth:colW[i+1]-6});
-      doc.setFontSize(7);doc.setFont(undefined,'normal');
-      doc.text('(m3)',x+3,yPos+18);
-      doc.setFontSize(8);doc.setFont(undefined,'bold');
-      x+=colW[i+1];
-    });
-    yPos+=headerRowH;
-    doc.setFont(undefined,'normal');
-    doc.setDrawColor(200,200,200);
+    // Y480: dijadikan fungsi supaya kepala tabel bisa dipasang lagi di
+    // halaman lanjutan. Sebelumnya baris yang tumpah ke halaman berikutnya
+    // muncul tanpa kepala sama sekali.
+    const gambarKepala=function(){
+      doc.setFontSize(8);
+      doc.setFillColor(242,242,242);
+      doc.setDrawColor(140,140,140);
+      doc.setFont(undefined,'bold');
+      doc.rect(startX,yPos,tableW,headerRowH,'FD');
+      doc.text('Tanggal',startX+3,yPos+headerRowH/2+3);
+      var hx=startX+colW[0];
+      pts.forEach(function(pt,i){doc.rect(hx,yPos,colW[i+1],headerRowH,'S');hx+=colW[i+1];});
+      hx=startX+colW[0];
+      pts.forEach(function(pt,i){
+        namaBaris[i].forEach(function(ln,k){doc.text(ln,hx+3,yPos+9+k*9);});
+        doc.setFontSize(7);doc.setFont(undefined,'normal');
+        doc.text('(m3)',hx+3,yPos+9+barisMaks*9);
+        doc.setFontSize(8);doc.setFont(undefined,'bold');
+        hx+=colW[i+1];
+      });
+      yPos+=headerRowH;
+      doc.setFontSize(8);
+      doc.setFont(undefined,'normal');
+      doc.setDrawColor(200,200,200);
+    };
+    gambarKepala();
     const totals=pts.map(()=>0);
     for(let d=1;d<=lastDay;d++){
       x=startX;
@@ -38065,8 +38093,13 @@ function _drainDoExport(mode,site,startYm,endYm,fillMode){
         x+=colW[i+1];
       });
       yPos+=rowH;
-      if(yPos>560){doc.addPage('a4','landscape');yPos=36;}
+      // Y480: ambangnya mengikuti tinggi halaman yang dipakai, bukan angka
+      // tetap 560 yang dulu dihitung untuk lanskap. "+rowH" menjaga baris
+      // TOTAL tidak terpisah sendirian di halaman berikutnya.
+      if(yPos+rowH>batasBawah){doc.addPage('a4','portrait');yPos=36;gambarKepala();}
     }
+    // Y480: baris TOTAL jangan sampai sendirian di halaman berikutnya.
+    if(yPos+rowH>batasBawah){doc.addPage('a4','portrait');yPos=36;gambarKepala();}
     doc.setFillColor(242,242,242);
     doc.setDrawColor(140,140,140);
     doc.setFont(undefined,'bold');
