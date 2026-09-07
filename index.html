@@ -37773,7 +37773,7 @@ function _drainRenderDataTab(host){
 function _drainRenderExportTab(host){
   host.innerHTML=`<div class="et-card" style="max-width:100%">
     <b style="font-size:12px">Export per Site (Auth / Ket)</b>
-    <div style="font-size:9.5px;color:var(--g4);margin:4px 0 8px">Auth = tabel harian per titik + total bulanan (format sama seperti Template Auth Excel). Ket = versi bernarasi (judul + paragraf keterangan baku) dengan tabel yang sama.</div>
+    <div style="font-size:9.5px;color:var(--g4);margin:4px 0 8px">Auth = tabel harian per titik + total bulanan (format sama seperti Template Auth Excel). Ket = versi bernarasi (judul + paragraf keterangan baku) dengan tabel yang sama. <b>Excel</b> = susunan yang sama dengan Auth, satu bulan satu lembar, tapi bisa disunting: angkanya angka Excel, tanggalnya tanggal Excel, dan baris TOTAL memakai rumus SUM. Tebal/arsiran tidak ikut \u2014 pustaka Excel yang dipakai di sini tidak menulis gaya sel.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
       <div><div style="font-size:9px;color:var(--g4)">Site</div>
         <select id="et-drain-site" class="et-in">${Object.keys(DRAIN_SITES).map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
@@ -37783,6 +37783,7 @@ function _drainRenderExportTab(host){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
       <button class="coord-copy" style="border-color:#3EE06A;color:#2e7d32" onclick="_drainExport('auth-pdf')">📄 Export Auth (PDF)</button>
       <button class="coord-copy" style="border-color:#3EE06A;color:#2e7d32" onclick="_drainExport('ket-pdf')">📝 Export Ket (PDF)</button>
+      <button class="coord-copy" style="border-color:#3EE06A;color:#2e7d32" onclick="_drainExport('xlsx')">📊 Export Excel (.xlsx)</button>
     </div>
     <div id="et-drain-export-status" style="font-size:10.5px;color:var(--g4);margin-top:8px"></div>
     <div style="border-top:1px dashed var(--g2);margin-top:16px;padding-top:12px">
@@ -37982,7 +37983,73 @@ function _drainValueForExport(catchment,pt,key,fillMode){
   return null;
 }
 const DRAIN_BULAN_INDO=['','JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI','JULI','AGUSTUS','SEPTEMBER','OKTOBER','NOVEMBER','DESEMBER'];
+// Y481: susunan lembar Excel menirukan tabel PDF-nya, tapi isinya angka dan
+// rumus supaya benar-benar bisa disunting.
+function _drainDoExportXlsx(site,startYm,endYm,fillMode){
+  const statusEl=document.getElementById('et-drain-export-status');
+  if(typeof XLSX==='undefined'||!XLSX.utils||!XLSX.write){
+    if(statusEl)statusEl.textContent='\u26a0 Pustaka Excel belum siap \u2014 muat ulang halaman lalu coba lagi.';
+    return;
+  }
+  const pts=DRAIN_SITES[site];
+  const months=_drainMonthsInRange(startYm,endYm);
+  const wb=XLSX.utils.book_new();
+  const lebarKolom=[{wch:12}].concat(pts.map(function(pt){return {wch:Math.max(14,Math.min(28,String(pt).length+4))};}));
+  // Nomor seri Excel: hari sejak 1899-12-30, sama seperti yang dipakai
+  // pembaruan grafik EMF.
+  const seri=function(y,m,d){return Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000);};
+  months.forEach(function(ym){
+    const bagi=ym.split('-'), y=Number(bagi[0]), m=Number(bagi[1]);
+    const lastDay=new Date(y,m,0).getDate();
+    const ws={}, rng={s:{r:0,c:0},e:{r:0,c:pts.length}};
+    const set=function(r,c,cell){
+      ws[XLSX.utils.encode_cell({r:r,c:c})]=cell;
+      if(r>rng.e.r)rng.e.r=r;
+      if(c>rng.e.c)rng.e.c=c;
+    };
+    set(0,0,{t:'s',v:'Debit Harian Air Limbah Drainase Lapangan '+site});
+    set(2,0,{t:'s',v:'Tanggal'});
+    pts.forEach(function(pt,i){
+      set(2,i+1,{t:'s',v:pt});
+      set(3,i+1,{t:'s',v:'(m3)'});
+    });
+    const totals=pts.map(function(){return 0;});
+    let r=4;
+    for(let d=1;d<=lastDay;d++){
+      const key=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      set(r,0,{t:'n',v:seri(y,m,d),z:'yyyy-mm-dd'});
+      pts.forEach(function(pt,i){
+        const v=_drainValueForExport(_drainPointCatchment(pt),pt,key,fillMode);
+        if(v==null){set(r,i+1,{t:'s',v:'-'});}
+        else{set(r,i+1,{t:'n',v:Number(v.toFixed(3)),z:'0.000'});totals[i]+=v;}
+      });
+      r++;
+    }
+    set(r,0,{t:'s',v:'TOTAL'});
+    pts.forEach(function(pt,i){
+      const kol=XLSX.utils.encode_col(i+1);
+      set(r,i+1,{t:'n',v:Number(totals[i].toFixed(3)),z:'0.000',
+        f:'SUM('+kol+'5:'+kol+(4+lastDay)+')'});
+    });
+    ws['!ref']=XLSX.utils.encode_range(rng);
+    ws['!cols']=lebarKolom;
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:pts.length}},{s:{r:2,c:0},e:{r:3,c:0}}];
+    XLSX.utils.book_append_sheet(wb,ws,String(DRAIN_BULAN_INDO[m]+' '+y).slice(0,31));
+  });
+  const out=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+  const outName=startYm.replace('-','')+'_'+site+'_Drainage_Authority.xlsx';
+  const url=URL.createObjectURL(new Blob([out],{type:'application/octet-stream'}));
+  const a=document.createElement('a');
+  a.href=url;a.download=outName;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);},4000);
+  if(statusEl)statusEl.textContent='\u2713 '+outName+' diunduh \u2014 '+months.length
+    +' lembar, angkanya angka Excel dan baris TOTAL memakai rumus SUM, jadi ikut berubah kalau selnya diedit.';
+}
 function _drainDoExport(mode,site,startYm,endYm,fillMode){
+  // Y481: Excel lewat jalur yang sama, supaya pilihan site, periode dan
+  // "isi tanggal yang kosong?" tidak bisa berbeda dari ekspor PDF-nya.
+  if(mode==='xlsx')return _drainDoExportXlsx(site,startYm,endYm,fillMode);
   const statusEl=document.getElementById('et-drain-export-status');
   const pts=DRAIN_SITES[site];
   const months=_drainMonthsInRange(startYm,endYm);
