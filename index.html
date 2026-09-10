@@ -18034,10 +18034,15 @@ function renderEnvProgram(){
       <div id="ep-map-col" style="flex:1;min-width:0;position:relative">
         <div id="ep-map" style="width:100%;height:100%;border-radius:8px;border:1px solid #ddd"></div>
         <button id="ep-sidebar-toggle" onclick="_epToggleSidebar()" title="Sembunyikan/tampilkan panel filter" style="position:absolute;top:8px;right:8px;z-index:1000;border:1px solid #ddd;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.18)">☰</button>
+        <button id="ep-fs-toggle" onclick="_epToggleFullscreen()" title="Peta layar penuh" style="position:absolute;top:8px;right:44px;z-index:1000;border:1px solid #ddd;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.18)">⛶</button>
       </div>
       <div id="ep-map-sidebar" style="width:270px;flex-shrink:0;background:#fff;border:1px solid #ddd;border-radius:8px;overflow-y:auto;padding:12px;font-family:inherit"></div>
     </div>`:`<div>${tbl}</div>`}`;
+  // Y482: pindah sub-tab saat masih layar penuh harus keluar dulu. Tanpa ini
+  // .ep-map-row ikut terhapus waktu render ulang sementara body.ep-map-fs-on
+  // tertinggal, dan seluruh halaman jadi tidak bisa digulir.
   if(_epSub==='map') _epRenderMap(SP);
+  else if(window._epFsOn&&typeof _epKeluarFullscreen==='function')_epKeluarFullscreen();
   // Restore search input focus & cursor position after re-render
   if(window._epSearchCaret!=null){
     const _si=document.getElementById('ep-search');
@@ -18279,10 +18284,88 @@ function _epApplySidebarState(){
   if(btn)btn.textContent=window._epSidebarOpen?'✕':'☰';
 }
 window._epToggleSidebar=function(){
+  window._epFsSbAuto=false;   // Y484: pilihan pengguna menang atas penutupan otomatis
   window._epSidebarOpen=!window._epSidebarOpen;
   try{localStorage.setItem('env26_epmap_sidebar',window._epSidebarOpen?'1':'0');}catch(e){}
   _epApplySidebarState();
 };
+// ==== Y482: peta layar penuh =============================================
+// Tulang punggungnya kelas CSS, bukan Fullscreen API: Safari di iPhone tidak
+// punya Element.requestFullscreen sama sekali, jadi kalau hanya bersandar pada
+// API itu tombolnya diam saja persis di perangkat yang paling membutuhkannya.
+// API-nya tetap dicoba di atasnya karena di desktop ia juga menyembunyikan
+// bilah alamat.
+window._epFsOn=window._epFsOn||false;
+function _epApplyFsState(){
+  var row=document.querySelector('.ep-map-row');
+  if(row){
+    if(window._epFsOn)row.classList.add('ep-map-fs');
+    else row.classList.remove('ep-map-fs');
+  }
+  if(document.body){
+    if(window._epFsOn)document.body.classList.add('ep-map-fs-on');
+    else document.body.classList.remove('ep-map-fs-on');
+  }
+  var btn=document.getElementById('ep-fs-toggle');
+  if(btn){
+    btn.textContent=window._epFsOn?'\u2715':'\u26F6';
+    btn.title=window._epFsOn?'Keluar dari layar penuh (Esc)':'Peta layar penuh';
+  }
+  // ResizeObserver pada #ep-map sudah memanggil invalidateSize, tapi asinkron;
+  // sekali lagi di sini supaya ubinnya tidak sempat terlihat kosong.
+  var m=window._epMapInst;
+  if(m)setTimeout(function(){
+    try{m.invalidateSize({animate:false,pan:false});}catch(e){}
+  },60);
+}
+function _epKeluarFullscreen(){
+  window._epFsOn=false;
+  if(window._epFsSbAuto){                                      // Y484
+    window._epFsSbAuto=false;window._epSidebarOpen=true;
+    if(typeof _epApplySidebarState==='function')_epApplySidebarState();
+  }
+  try{
+    if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen();
+    else if(document.webkitFullscreenElement&&document.webkitExitFullscreen)document.webkitExitFullscreen();
+  }catch(e){}
+  _epApplyFsState();
+}
+window._epToggleFullscreen=function(){
+  var row=document.querySelector('.ep-map-row');
+  if(!row)return;
+  if(window._epFsOn){_epKeluarFullscreen();return;}
+  window._epFsOn=true;
+  if(innerWidth<=768&&window._epSidebarOpen){
+    window._epFsSbAuto=true;window._epSidebarOpen=false;      // Y484
+    if(typeof _epApplySidebarState==='function')_epApplySidebarState();
+  }
+  _epApplyFsState();
+  try{
+    var minta=row.requestFullscreen||row.webkitRequestFullscreen;
+    if(minta){
+      var hasil=minta.call(row);
+      if(hasil&&hasil.catch)hasil.catch(function(){});   // ditolak: CSS-nya sudah cukup
+    }
+  }catch(e){}
+};
+window._epKeluarFullscreen=_epKeluarFullscreen;
+window._epApplyFsState=_epApplyFsState;
+if(!window._epFsWired){
+  window._epFsWired=true;
+  // Keluar lewat Esc/F11/tombol browser harus ikut melepas kelas CSS-nya,
+  // kalau tidak halaman tertinggal terkunci dengan body overflow:hidden.
+  ['fullscreenchange','webkitfullscreenchange'].forEach(function(ev){
+    document.addEventListener(ev,function(){
+      var aktif=document.fullscreenElement||document.webkitFullscreenElement;
+      if(!aktif&&window._epFsOn){window._epFsOn=false;_epApplyFsState();}
+    });
+  });
+  // Esc juga harus bekerja waktu Fullscreen API TIDAK dipakai -- di jalur itu
+  // Esc tidak memicu fullscreenchange sama sekali.
+  document.addEventListener('keydown',function(e){
+    if((e.key==='Escape'||e.keyCode===27)&&window._epFsOn)_epKeluarFullscreen();
+  });
+}
 if(!document.getElementById('ep-map-style')){
   const _epSt=document.createElement('style');_epSt.id='ep-map-style';
   _epSt.textContent='.ep-map-label{background:transparent!important;border:none!important;box-shadow:none!important;padding:0!important;margin:0!important;font-size:10px;font-weight:700;color:#1a1a1a;text-shadow:-1px -1px 1.5px #fff,1px -1px 1.5px #fff,-1px 1px 1.5px #fff,1px 1px 1.5px #fff,0 0 3px #fff;white-space:nowrap;pointer-events:none}.ep-map-label::before{display:none}.ep-map-label-active{color:#bf360c;font-size:10.5px}.ep-map-label-line{letter-spacing:.2px}';
@@ -19659,6 +19742,7 @@ function _epRenderMap(SP){
   const mapEl=document.getElementById('ep-map');
   if(!mapEl)return;
   _epApplySidebarState();
+  if(typeof _epApplyFsState==='function')_epApplyFsState();   // Y482: render ulang saat layar penuh
   if(!window.L){
     if(!_epLeafletReady){
       _epLeafletReady=true;
@@ -39024,10 +39108,24 @@ function _hoverBg(light){
   },true);
   document.addEventListener('mousemove',function(e){
     if(tipEl&&tipEl.style.opacity==='1')place(e);
+    // Y483: kalau kodenya mengganti title selagi kursor masih di atas elemen
+    // (mis. tombol yang berganti label sesudah diklik), gelembungnya ikut
+    // berubah, bukan tetap menampilkan teks lama.
+    if(active&&active.native&&active.el&&active.el.getAttribute('title')&&
+       active.el.getAttribute('title')!==active.text){
+      active.text=active.el.getAttribute('title');
+      if(tipEl&&tipEl.style.opacity==='1')tipEl.textContent=active.text;
+      active.el.removeAttribute('title');
+      active.diklaim=true;
+    }
   });
   document.addEventListener('mouseout',function(e){
     if(!active)return;
-    if(active.native){active.el.setAttribute('title',active.text);}
+    // Y483: hanya pasang lagi teks simpanan kalau atributnya masih kosong.
+    // Kalau ada kode lain yang sudah mengisinya, nilai barunya yang benar.
+    if(active.native){
+      if(active.diklaim||!active.el.hasAttribute('title'))active.el.setAttribute('title',active.text);
+    }
     else if(active.svgTitleEl&&active.el){
       var t=document.createElementNS('http://www.w3.org/2000/svg','title');
       t.textContent=active.text;active.el.insertBefore(t,active.el.firstChild);
@@ -39739,6 +39837,35 @@ html[data-theme="anjungan"] body [style*="color:#0F5C8C" i]{color:#7FB6D6!import
     height:60vh!important;min-height:280px!important}
   .ep-map-row>#ep-map-sidebar{width:100%!important;flex-shrink:1!important;
     max-height:none!important;overflow-y:visible!important}
+}
+
+/* ===== Y482: peta ENV Program layar penuh ============================== */
+/* Pemilih dibuat lebih spesifik (.ep-map-row.ep-map-fs) supaya menang atas
+   aturan Y436 di atas tanpa bergantung pada urutan berkas. */
+.ep-map-row.ep-map-fs{
+  position:fixed!important;inset:0!important;z-index:99999!important;
+  margin:0!important;padding:8px!important;gap:8px!important;
+  width:100vw!important;height:100vh!important;height:100dvh!important;
+  max-width:none!important;max-height:none!important;
+  background:var(--white,#fff)!important;
+  flex-direction:row!important;
+}
+.ep-map-row.ep-map-fs>#ep-map-col{
+  flex:1 1 auto!important;width:auto!important;
+  height:100%!important;min-height:0!important;max-height:none!important}
+.ep-map-row.ep-map-fs>#ep-map-sidebar{
+  max-height:100%!important;overflow-y:auto!important}
+body.ep-map-fs-on{overflow:hidden!important}
+body.ep-map-fs-on .app{z-index:99998!important}
+@media(max-width:768px){
+  /* Di HP panelnya ditumpuk di bawah peta, dan peta memakai sisa ruangnya --
+     bukan dipatok 60vh seperti aturan Y436, yang di layar penuh justru
+     menyisakan ruang kosong. */
+  .ep-map-row.ep-map-fs{flex-direction:column!important}
+  .ep-map-row.ep-map-fs>#ep-map-col{
+    flex:1 1 auto!important;height:auto!important;min-height:0!important}
+  .ep-map-row.ep-map-fs>#ep-map-sidebar{
+    flex:0 0 auto!important;max-height:38vh!important;overflow-y:auto!important}
 }
 
 /* ===== Y439: kartu Review Report rapi & simetris ======================= */
