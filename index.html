@@ -18308,7 +18308,9 @@ function _epApplyFsState(){
   }
   var btn=document.getElementById('ep-fs-toggle');
   if(btn){
-    btn.textContent=window._epFsOn?'\u2715':'\u26F6';
+    btn.textContent='\u26F6';                                   // Y486
+    if(window._epFsOn)btn.classList.add('ep-fs-aktif');
+    else btn.classList.remove('ep-fs-aktif');
     btn.title=window._epFsOn?'Keluar dari layar penuh (Esc)':'Peta layar penuh';
   }
   // ResizeObserver pada #ep-map sudah memanggil invalidateSize, tapi asinkron;
@@ -39857,6 +39859,8 @@ html[data-theme="anjungan"] body [style*="color:#0F5C8C" i]{color:#7FB6D6!import
   max-height:100%!important;overflow-y:auto!important}
 body.ep-map-fs-on{overflow:hidden!important}
 body.ep-map-fs-on .app{z-index:99998!important}
+#ep-fs-toggle.ep-fs-aktif{background:#1a1a1a!important;color:#fff!important;
+  border-color:#1a1a1a!important}
 @media(max-width:768px){
   /* Di HP panelnya ditumpuk di bawah peta, dan peta memakai sisa ruangnya --
      bukan dipatok 60vh seperti aturan Y436, yang di layar penuh justru
