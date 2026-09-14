@@ -18934,13 +18934,14 @@ function _tpBuildPoints(){
       const downBrg=(a.coordDownBearing!=null&&isFinite(a.coordDownBearing))?a.coordDownBearing:brg;
       const up=_coordOffset(main.lat,main.lng,500,upBrg);
       const down=_coordOffset(main.lat,main.lng,500,downBrg);
-      if(up)pts.push({lat:up.lat,lng:up.lng,label:'Upstream 500 m',a});
-      if(down)pts.push({lat:down.lat,lng:down.lng,label:'Downstream 500 m',a});
-      if(a.type==='Trenching'){
-        const up35=_coordOffset(main.lat,main.lng,3500,upBrg);
-        const down35=_coordOffset(main.lat,main.lng,3500,downBrg);
-        if(up35)pts.push({lat:up35.lat,lng:up35.lng,label:'Upstream 3500 m',a});
-        if(down35)pts.push({lat:down35.lat,lng:down35.lng,label:'Downstream 3500 m',a});
+      const _adaRadius=!['Drilling','CSD','Airlift','Flushing'].includes(a.type);   // Y492
+      if(up&&_adaRadius)pts.push({lat:up.lat,lng:up.lng,label:'Upstream 500 m',a});
+      if(down&&_adaRadius)pts.push({lat:down.lat,lng:down.lng,label:'Downstream 500 m',a});
+      if(a.type==='Trenching'&&_adaRadius){
+        // Y493: satu titik saja di 3500 m, arah downstream kecuali diatur.
+        const _b35=(a.farBearing!=null&&isFinite(a.farBearing))?a.farBearing:downBrg;
+        const far35=_coordOffset(main.lat,main.lng,3500,_b35);
+        if(far35)pts.push({lat:far35.lat,lng:far35.lng,label:'Titik 3500 m',a});
       }
     }
     (Array.isArray(a.coordTP)?a.coordTP:[]).forEach((tp,i)=>{
@@ -24223,8 +24224,11 @@ function _coordRenderLiveMap(actId){
   var brg=(a.coordBearing!=null&&isFinite(a.coordBearing))?a.coordBearing:0;
   var upBrg=(a.coordUpBearing!=null&&isFinite(a.coordUpBearing))?a.coordUpBearing:(brg+180)%360;
   var downBrg=(a.coordDownBearing!=null&&isFinite(a.coordDownBearing))?a.coordDownBearing:brg;
-  var up=_coordOffset(main.lat,main.lng,500,upBrg);
-  var down=_coordOffset(main.lat,main.lng,500,downBrg);
+  var _adaRadius=!['Drilling','CSD','Airlift','Flushing'].includes(a.type);   // Y492
+  var up=_adaRadius?_coordOffset(main.lat,main.lng,500,upBrg):null;
+  var down=_adaRadius?_coordOffset(main.lat,main.lng,500,downBrg):null;
+  var _b35=(a.farBearing!=null&&isFinite(a.farBearing))?a.farBearing:downBrg;
+  var far35=(a.type==='Trenching'&&_adaRadius)?_coordOffset(main.lat,main.lng,3500,_b35):null;   // Y493
   var tps=Array.isArray(a.coordTP)?a.coordTP:[];
   var divId='coord-leaflet-map';
   var tipMarkers=[];
@@ -24255,8 +24259,9 @@ function _coordRenderLiveMap(actId){
         _coordSaveGuidePoint(actId,field,cur.lat,cur.lng);
       });
     }
-    addDraggable(up,'up','↑ Upstream 500m');
-    addDraggable(down,'down','↓ Downstream 500m');
+    if(up)addDraggable(up,'up','↑ Upstream 500m');          // Y492
+    if(down)addDraggable(down,'down','↓ Downstream 500m');
+    if(far35)addDraggable(far35,'far35','Titik 3500m');     // Y493
     tps.forEach(function(t,i){
       var pp=(t.lat!=null&&t.lng!=null)?{lat:t.lat,lng:t.lng}:_coordParse(t.coord,datum);
       if(!pp)return;
@@ -24341,10 +24346,12 @@ function _coordInjectAct(actId){
   }
   var upBrg=(a.coordUpBearing!=null&&isFinite(a.coordUpBearing))?a.coordUpBearing:(brg+180)%360;
   var downBrg=(a.coordDownBearing!=null&&isFinite(a.coordDownBearing))?a.coordDownBearing:brg;
-  var up=main?_coordOffset(main.lat,main.lng,500,upBrg):null;
-  var down=main?_coordOffset(main.lat,main.lng,500,downBrg):null;
-  var up35=isTrench&&main?_coordOffset(main.lat,main.lng,3500,upBrg):null;
-  var down35=isTrench&&main?_coordOffset(main.lat,main.lng,3500,downBrg):null;
+  var hasRadius=!['Drilling','CSD','Airlift','Flushing'].includes(a.type);   // Y492
+  var up=(main&&hasRadius)?_coordOffset(main.lat,main.lng,500,upBrg):null;
+  var down=(main&&hasRadius)?_coordOffset(main.lat,main.lng,500,downBrg):null;
+  // Y493: radius kedua Trenching hanya SATU titik, bukan sepasang.
+  var far35Brg=(a.farBearing!=null&&isFinite(a.farBearing))?a.farBearing:downBrg;
+  var far35=(isTrench&&main&&hasRadius)?_coordOffset(main.lat,main.lng,3500,far35Brg):null;
   var tps=Array.isArray(a.coordTP)?a.coordTP:[];
   var pts=[];
   if(isTrench){
@@ -24354,8 +24361,7 @@ function _coordInjectAct(actId){
   } else if(main)pts.push({lat:main.lat,lng:main.lng,label:'Utama',color:'#27ae60',tag:'main'});
   if(up)pts.push({lat:up.lat,lng:up.lng,label:'Up 500m',color:'#2563eb',tag:'up'});
   if(down)pts.push({lat:down.lat,lng:down.lng,label:'Down 500m',color:'#e65100',tag:'down'});
-  if(up35)pts.push({lat:up35.lat,lng:up35.lng,label:'Up 3500m',color:'#7c3aed',tag:'up35'});
-  if(down35)pts.push({lat:down35.lat,lng:down35.lng,label:'Down 3500m',color:'#b9530c',tag:'down35'});
+  if(far35)pts.push({lat:far35.lat,lng:far35.lng,label:'3500m',color:'#7c3aed',tag:'far35'});   // Y493
   tps.forEach(function(t,i){var pp=(t.lat!=null&&t.lng!=null)?{lat:t.lat,lng:t.lng}:_coordParse(t.coord,datum);if(pp)pts.push({lat:pp.lat,lng:pp.lng,label:t.label||('TP'+(i+1)),color:'#9333ea',tag:'tp'+i});});
   var ptRow=function(dotColor,name,coord,extra){return '<div class="coord-pt" style="background:rgba(255,255,255,.55)"><span class="coord-dot" style="background:'+dotColor+'"></span><b style="min-width:74px">'+name+'</b><span style="flex:1;color:var(--g4);font-family:monospace;font-size:9.5px">'+(coord||'—')+'</span>'+(coord?'<button class="coord-copy" onclick="_coordCopy(\''+coord+'\')">salin</button>':'')+(extra||'')+'</div>';};
   var tpRows=tps.map(function(t,i){
@@ -24399,10 +24405,10 @@ function _coordInjectAct(actId){
     '<div style="font-size:9px;color:var(--g3);margin-bottom:6px">Ketik UTM (easting, northing — tanpa titik pemisah ribuan; zona diasumsikan <b>'+UTM_DEFAULT_ZONE+UTM_DEFAULT_HEMI+'</b>) atau lat/lng. Semua output (titik penaatan, peta, PDF) selalu ditampilkan dalam <b>WGS 1984 / UTM 50S</b>. Isi <b>arah downstream</b> = arah menjauhi daratan terdekat (menuju laut/perairan terbuka), 0=Utara, 90=Timur, 180=Selatan, 270=Barat. <b>Upstream</b> otomatis dihitung berlawanan arah, 500 m dan 3500 m dari titik '+(isTrench?'tengah':'utama')+'.</div>'+
     '<div id="coord-live">'+
     (isTrench?((start?ptRow('#0d9488','Start',_coordFmt(start)):'')+(end?ptRow('#be185d','End',_coordFmt(end)):'')+(main&&start&&end?ptRow('#27ae60','Titik Tengah',_coordFmt(main)):'')):ptRow('#27ae60','Utama',_coordFmt(main)))+
-    (main?ptRow('#2563eb','↑ Upstream 500m',_coordFmt(up)):'')+
-    (main?ptRow('#e65100','↓ Downstream 500m',_coordFmt(down)):'')+
-    (up35?ptRow('#7c3aed','↑ Upstream 3500m',_coordFmt(up35)):'')+
-    (down35?ptRow('#b9530c','↓ Downstream 3500m',_coordFmt(down35)):'')+
+    (up?ptRow('#2563eb','↑ Upstream 500m',_coordFmt(up)):'')+
+    (down?ptRow('#e65100','↓ Downstream 500m',_coordFmt(down)):'')+
+    (far35?ptRow('#7c3aed','Titik 3500m',_coordFmt(far35)):'')+
+    (!hasRadius?'<div style="font-size:9px;color:var(--g3);padding:4px 2px">Jenis kegiatan ini tidak punya radius kepatuhan upstream/downstream — hanya titik utama.</div>':'')+
     '</div>'+
     '<div style="display:flex;align-items:center;margin:8px 0 4px"><b style="font-size:10px">Titik Penaatan Tambahan (manual)</b>'+
       '<button class="coord-copy" style="margin-left:auto;border-color:#c4b5e8;color:#7c3aed" onclick="_coordAddTP(\''+actId+'\')">+ Tambah TP</button></div>'+
@@ -24640,8 +24646,11 @@ async function _coordGenPdf(actId){
   var brg=(a.coordBearing!=null&&isFinite(a.coordBearing))?a.coordBearing:0;
   var upBrg=(a.coordUpBearing!=null&&isFinite(a.coordUpBearing))?a.coordUpBearing:(brg+180)%360;
   var downBrg=(a.coordDownBearing!=null&&isFinite(a.coordDownBearing))?a.coordDownBearing:brg;
-  var up=_coordOffset(main.lat,main.lng,500,upBrg);
-  var down=_coordOffset(main.lat,main.lng,500,downBrg);
+  var _adaRadius=!['Drilling','CSD','Airlift','Flushing'].includes(a.type);   // Y492
+  var up=_adaRadius?_coordOffset(main.lat,main.lng,500,upBrg):null;
+  var down=_adaRadius?_coordOffset(main.lat,main.lng,500,downBrg):null;
+  var _b35=(a.farBearing!=null&&isFinite(a.farBearing))?a.farBearing:downBrg;
+  var far35=(a.type==='Trenching'&&_adaRadius)?_coordOffset(main.lat,main.lng,3500,_b35):null;   // Y493
   var tps=(Array.isArray(a.coordTP)?a.coordTP:[]).map(function(t,i){
     var pp=(t.lat!=null&&t.lng!=null)?{lat:t.lat,lng:t.lng}:_coordParse(t.coord,datum);
     return pp?{lat:pp.lat,lng:pp.lng,label:t.label||('TP'+(i+1))}:null;
@@ -24668,9 +24677,19 @@ async function _coordGenPdf(actId){
   doc.text('SRA Societal Risk Level : '+sraLabel,cx,y,{align:'center'});
   doc.setTextColor(0,0,0);y+=24;
   doc.setFontSize(10.5);doc.setFont(undefined,'normal');
-  doc.text('Pemantauan dilakukan di titik berikut ini untuk kegiatan :',m,y);y+=16;
-  doc.text('1.  500 m upstream ('+_coordFmt(up)+')',m+14,y);y+=15;
-  doc.text('2.  500 m downstream ('+_coordFmt(down)+')',m+14,y);y+=20;
+  if(up&&down){
+    doc.text('Pemantauan dilakukan di titik berikut ini untuk kegiatan :',m,y);y+=16;
+    doc.text('1.  500 m upstream ('+_coordFmt(up)+')',m+14,y);y+=15;
+    doc.text('2.  500 m downstream ('+_coordFmt(down)+')',m+14,y);y+=15;
+    if(far35){doc.text('3.  3500 m ('+_coordFmt(far35)+')',m+14,y);y+=15;}   // Y493
+    y+=5;
+  } else {
+    // Y492: jenis tanpa radius penaatan -- katakan apa adanya, jangan
+    // menuliskan dua titik yang menurut ENV Mon Program tidak ada.
+    var _lTanpa=doc.splitTextToSize('Pemantauan dilakukan pada titik kegiatan sesuai ENV Mon Program (lihat peta di bawah) — tidak ada radius kepatuhan upstream/downstream untuk jenis kegiatan ini.',pageW-2*m);
+    _lTanpa.forEach(function(l){doc.text(l,m,y);y+=15;});
+    y+=5;
+  }
   doc.setTextColor(200,20,20);
   wrapLeft('Mohon jika ada perubahan arah arus, untuk lokasi upstream dan downstream disesuaikan dengan kondisi aktual di lapangan.',10.5);
   doc.setTextColor(0,0,0);y+=6;
@@ -24681,18 +24700,20 @@ async function _coordGenPdf(actId){
   y+=24;
   doc.setFont(undefined,'normal');
   doc.text('Berikut lokasi sampling dan koordinat (red dot point):',m,y);y+=16;
-  var mapImg=await _coordCaptureMap([
-    {lat:main.lat,lng:main.lng,label:typeLabel+' Area '+areaName},
-    {lat:up.lat,lng:up.lng,label:'Sampling point 1 — 500 m upstream'},
-    {lat:down.lat,lng:down.lng,label:'Sampling point 2 — 500 m downstream'}
-  ]).catch(function(){return null;});
+  var _ttkPeta=[{lat:main.lat,lng:main.lng,label:typeLabel+' Area '+areaName}];   // Y492
+  if(up)_ttkPeta.push({lat:up.lat,lng:up.lng,label:'Sampling point 1 — 500 m upstream'});
+  if(down)_ttkPeta.push({lat:down.lat,lng:down.lng,label:'Sampling point 2 — 500 m downstream'});
+  if(far35)_ttkPeta.push({lat:far35.lat,lng:far35.lng,label:'Sampling point 3 — 3500 m'});
+  var mapImg=await _coordCaptureMap(_ttkPeta).catch(function(){return null;});
   var mapW=pageW-2*m,mapH=mapW*0.72;
   if(mapImg){doc.addImage(mapImg,'JPEG',m,y,mapW,mapH);}
   else{
     var svg=_coordMapSvg([
       {lat:main.lat,lng:main.lng,label:'Utama',color:'#c62828',tag:'main'},
-      {lat:up.lat,lng:up.lng,label:'Up 500m',color:'#c62828',tag:'up'},
-      {lat:down.lat,lng:down.lng,label:'Down 500m',color:'#c62828',tag:'down'}
+      /* Y495: jalur cadangan ini ikut menyesuaikan titik yang memang ada */
+      ...(up?[{lat:up.lat,lng:up.lng,label:'Up 500m',color:'#c62828',tag:'up'}]:[]),
+      ...(down?[{lat:down.lat,lng:down.lng,label:'Down 500m',color:'#c62828',tag:'down'}]:[]),
+      ...(far35?[{lat:far35.lat,lng:far35.lng,label:'3500m',color:'#7c3aed',tag:'far35'}]:[])
     ]);
     var svgDiv=document.createElement('div');svgDiv.style.cssText='position:fixed;left:-9999px;top:0;width:'+mapW+'px';svgDiv.innerHTML=svg;
     document.body.appendChild(svgDiv);
@@ -24803,18 +24824,18 @@ function _coordMainUntukDokumen(a,datum){
   return _coordParse(a?a.coordMain:'',datum);
 }
 window._coordMainUntukDokumen=_coordMainUntukDokumen;
-function _coordSection3500(main,up,down,sraLabel,typeLabel,areaName,mapId){
+function _coordSection3500(main,far,sraLabel,typeLabel,areaName,mapId){
+  // Y491: SATU titik di 3500 m, bukan sepasang upstream/downstream.
   var pts=[{lat:main.lat,lng:main.lng,label:typeLabel+' Area '+areaName+'<br>('+_coordFmt(main)+')',cls:'pt-main',layer:'main'}];
-  pts.push({lat:up.lat,lng:up.lng,labelPrefix:'Sampling point 3<br>3500 m upstream<br>',label:'Sampling point 3<br>3500 m upstream<br>('+_coordFmt(up)+')',cls:'pt-up',draggable:true,field:'up35',liId:mapId+'-li-up',radius:3500,layer:'up'});
-  pts.push({lat:down.lat,lng:down.lng,labelPrefix:'Sampling point 4<br>3500 m downstream<br>',label:'Sampling point 4<br>3500 m downstream<br>('+_coordFmt(down)+')',cls:'pt-down',draggable:true,field:'down35',liId:mapId+'-li-down',radius:3500,layer:'down'});
+  pts.push({lat:far.lat,lng:far.lng,labelPrefix:'Sampling point 3<br>3500 m<br>',label:'Sampling point 3<br>3500 m<br>('+_coordFmt(far)+')',cls:'pt-up',draggable:true,field:'far',liId:mapId+'-li-far',radius:3500,layer:'far'});
   return {
     html:'<div class="page-frame"><div class="guide-page">'+
       '<h1 class="editable">PEMANTAUAN LINGKUNGAN</h1>'+
       '<h2 class="editable">UNTUK KEGIATAN '+typeLabel.toUpperCase()+' '+String(areaName).toUpperCase()+'</h2>'+
       '<div class="sra editable">SRA Societal Risk Level : '+sraLabel+'</div>'+
-      '<p class="editable">Radius penaatan kedua untuk kegiatan ini adalah <b>3500 m (3,5 km)</b> dari titik tengah kegiatan. Pemantauan dilakukan di titik berikut ini :</p>'+
-      '<ol class="editable"><li id="'+mapId+'-li-up">3500 m upstream ('+_coordFmt(up)+')</li><li id="'+mapId+'-li-down">3500 m downstream ('+_coordFmt(down)+')</li></ol>'+
-      '<p class="warn editable">Mohon jika ada perubahan arah arus, untuk lokasi upstream dan downstream disesuaikan dengan kondisi aktual di lapangan.</p>'+
+      '<p class="editable">Radius penaatan kedua untuk kegiatan ini adalah <b>3500 m (3,5 km)</b> dari titik tengah kegiatan, di area perairan pesisir yang mengarah ke kawasan sensitif. Pemantauan dilakukan di titik berikut ini :</p>'+
+      '<ol class="editable"><li id="'+mapId+'-li-far">3500 m ('+_coordFmt(far)+')</li></ol>'+
+      '<p class="warn editable">Mohon jika ada perubahan arah arus/kondisi lapangan, titik ini disesuaikan dengan kondisi aktual. Titiknya bisa digeser langsung di peta.</p>'+
       '<p class="editable">Berikut lokasi sampling dan koordinat (red dot point):</p>'+
       '<div class="guide-map" id="'+mapId+'"></div>'+
     '</div></div>',
@@ -24846,7 +24867,9 @@ function _coordPrintGuide(actId,customRec){
   // the custom ENV Tools guide (customRec); the activity-card/ACTS path is
   // untouched, so Dredging/Leveling/Trenching's existing 500m default there
   // never changes.
-  var hasRadius=customRec?!['Drilling','CSD','Airlift','Flushing'].includes(customRec.type):true;
+  // Y492: dibaca dari a.type, jadi berlaku untuk panduan custom MAUPUN
+  // kegiatan dari Daftar Kegiatan -- sebelumnya jalur kegiatan dilewatkan.
+  var hasRadius=!['Drilling','CSD','Airlift','Flushing'].includes(a.type);
   var up=hasRadius?_coordOffset(main.lat,main.lng,500,upBrg):null;
   var down=hasRadius?_coordOffset(main.lat,main.lng,500,downBrg):null;
   var tps=(Array.isArray(a.coordTP)?a.coordTP:[]).map(function(t,i){
@@ -24861,11 +24884,15 @@ function _coordPrintGuide(actId,customRec){
   var sec1=_coordPrintSection(null,main,up,down,null,groups,sraLabel,typeLabel,areaName,'guide-map-1',extraNote);
   var pagesHtml=sec1.html;
   var allPts=[{pts:sec1.pts,id:'guide-map-1'}];
-  // Y488: radius penaatan kedua milik Trenching (3500 m), satu halaman sendiri.
-  if(a.type==='Trenching'&&hasRadius&&up&&down){
-    var _up35=_coordOffset(main.lat,main.lng,3500,upBrg);
-    var _down35=_coordOffset(main.lat,main.lng,3500,downBrg);
-    var _sec35=_coordSection3500(main,_up35,_down35,sraLabel,typeLabel,areaName,'guide-map-3500');
+  // Y488/Y491: radius penaatan kedua milik Trenching (3500 m), satu halaman
+  // sendiri, dan hanya SATU titik. Arahnya memakai farBearing kalau diisi;
+  // kalau tidak, arah downstream -- yaitu menjauhi daratan, ke perairan.
+  // Halaman ini tidak dibuat dua kali kalau panduan custom sudah memintanya
+  // lewat hasFarPoint.
+  if(a.type==='Trenching'&&hasRadius&&up&&down&&!(customRec&&customRec.hasFarPoint)){
+    var _brg35=(a.farBearing!=null&&isFinite(a.farBearing))?a.farBearing:downBrg;
+    var _far35=_coordOffset(main.lat,main.lng,3500,_brg35);
+    var _sec35=_coordSection3500(main,_far35,sraLabel,typeLabel,areaName,'guide-map-3500');
     pagesHtml+='<div class="page-break"></div>'+_sec35.html;
     allPts.push({pts:_sec35.pts,id:'guide-map-3500'});
   }
@@ -25308,21 +25335,26 @@ function _rfaFormRerender(rfaId){
 function _rfaFormFromCoords(rfaId){
   var r=(typeof rfaById==='function')?rfaById(rfaId):null;if(!r)return;
   var a=(r.actId&&typeof ACTS!=='undefined')?ACTS.find(function(x){return x.id===r.actId;}):null;
-  if(!a||!a.coordMain||typeof _coordParse!=='function'){if(typeof toast==='function')toast('⚠ Kegiatan terkait belum punya koordinat. Isi di detail Kegiatan → Koordinat & Peta dulu.');return;}
+  if(!a||typeof _coordParse!=='function'){if(typeof toast==='function')toast('⚠ Kegiatan terkait belum punya koordinat. Isi di detail Kegiatan → Koordinat & Peta dulu.');return;}
   var datum=a.coordDatum||'wgs84';
-  var main=_coordParse(a.coordMain,datum);
+  // Y487 di tempat ketiga: Trenching diukur dari titik tengah Start-End, jadi
+  // kegiatan yang diisi begitu tidak boleh ditolak hanya karena coordMain kosong.
+  var main=(typeof window._coordMainUntukDokumen==='function')
+    ?window._coordMainUntukDokumen(a,datum):_coordParse(a.coordMain,datum);
   if(!main){if(typeof toast==='function')toast('⚠ Koordinat utama tidak valid.');return;}
   var brg=(a.coordBearing!=null&&isFinite(a.coordBearing))?a.coordBearing:0;
   var upBrg=(a.coordUpBearing!=null&&isFinite(a.coordUpBearing))?a.coordUpBearing:(brg+180)%360;
   var downBrg=(a.coordDownBearing!=null&&isFinite(a.coordDownBearing))?a.coordDownBearing:brg;
-  var up=_coordOffset(main.lat,main.lng,500,upBrg);
-  var down=_coordOffset(main.lat,main.lng,500,downBrg);
+  var _adaRadius=!['Drilling','CSD','Airlift','Flushing'].includes(a.type);   // Y492
+  var up=_adaRadius?_coordOffset(main.lat,main.lng,500,upBrg):null;
+  var down=_adaRadius?_coordOffset(main.lat,main.lng,500,downBrg):null;
+  var _b35=(a.farBearing!=null&&isFinite(a.farBearing))?a.farBearing:downBrg;
+  var far35=(a.type==='Trenching'&&_adaRadius)?_coordOffset(main.lat,main.lng,3500,_b35):null;   // Y493
   var site=a.site||r.site||'';
-  var pts=[
-    {no:0,penulisan:'Titik Utama — '+_coordFmt(main),site:site,qty:'1 sample',parameter:''},
-    {no:0,penulisan:'Upstream 500m — '+_coordFmt(up),site:site,qty:'1 sample',parameter:''},
-    {no:0,penulisan:'Downstream 500m — '+_coordFmt(down),site:site,qty:'1 sample',parameter:''}
-  ];
+  var pts=[{no:0,penulisan:'Titik Utama — '+_coordFmt(main),site:site,qty:'1 sample',parameter:''}];
+  if(up)pts.push({no:0,penulisan:'Upstream 500m — '+_coordFmt(up),site:site,qty:'1 sample',parameter:''});
+  if(down)pts.push({no:0,penulisan:'Downstream 500m — '+_coordFmt(down),site:site,qty:'1 sample',parameter:''});
+  if(far35)pts.push({no:0,penulisan:'Titik 3500m — '+_coordFmt(far35),site:site,qty:'1 sample',parameter:''});
   (Array.isArray(a.coordTP)?a.coordTP:[]).forEach(function(t){
     var pp=(t.lat!=null&&t.lng!=null)?{lat:t.lat,lng:t.lng}:_coordParse(t.coord,datum);
     if(pp)pts.push({no:0,penulisan:(t.label||'TP')+' — '+_coordFmt(pp),site:site,qty:'1 sample',parameter:''});
@@ -25450,12 +25482,13 @@ function _coordLivePreview(actId,mainStr,brgStr){
   var brg=parseFloat(brgStr);brg=isFinite(brg)?((brg%360)+360)%360:0;
   var upBrg=(a&&a.coordUpBearing!=null&&isFinite(a.coordUpBearing))?a.coordUpBearing:(brg+180)%360;
   var downBrg=(a&&a.coordDownBearing!=null&&isFinite(a.coordDownBearing))?a.coordDownBearing:brg;
-  var up=main?_coordOffset(main.lat,main.lng,500,upBrg):null;
-  var down=main?_coordOffset(main.lat,main.lng,500,downBrg):null;
+  var _adaRadius=!(a&&['Drilling','CSD','Airlift','Flushing'].includes(a.type));   // Y495
+  var up=(main&&_adaRadius)?_coordOffset(main.lat,main.lng,500,upBrg):null;
+  var down=(main&&_adaRadius)?_coordOffset(main.lat,main.lng,500,downBrg):null;
   var ptRow=function(dotColor,name,coord){return '<div class="coord-pt" style="background:rgba(255,255,255,.55)"><span class="coord-dot" style="background:'+dotColor+'"></span><b style="min-width:74px">'+name+'</b><span style="flex:1;color:var(--g4);font-family:monospace;font-size:9.5px">'+(coord||'—')+'</span>'+(coord?'<button class="coord-copy" onclick="_coordCopy(\''+coord+'\')">salin</button>':'')+'</div>';};
   wrap.innerHTML=ptRow('#27ae60','Utama',_coordFmt(main))+
-    (main?ptRow('#2563eb','↑ Upstream 500m',_coordFmt(up)):'')+
-    (main?ptRow('#e65100','↓ Downstream 500m',_coordFmt(down)):'');
+    (up?ptRow('#2563eb','↑ Upstream 500m',_coordFmt(up)):'')+
+    (down?ptRow('#e65100','↓ Downstream 500m',_coordFmt(down)):'');
   var tps=(a&&Array.isArray(a.coordTP))?a.coordTP:[];
   var pts=[];
   if(main)pts.push({lat:main.lat,lng:main.lng,label:'Utama',color:'#27ae60',tag:'main'});
@@ -36131,10 +36164,11 @@ function _gtActPts(a){
   const off=(typeof _coordOffset==='function')?_coordOffset:null;
   const upBrg=(a.coordUpBearing!=null&&isFinite(a.coordUpBearing))?a.coordUpBearing:(brg+180)%360;
   const downBrg=(a.coordDownBearing!=null&&isFinite(a.coordDownBearing))?a.coordDownBearing:brg;
-  const up=main&&off?off(main.lat,main.lng,500,upBrg):null;
-  const down=main&&off?off(main.lat,main.lng,500,downBrg):null;
-  const up35=isTrench&&main&&off?off(main.lat,main.lng,3500,upBrg):null;
-  const down35=isTrench&&main&&off?off(main.lat,main.lng,3500,downBrg):null;
+  const _adaRadius=!['Drilling','CSD','Airlift','Flushing'].includes(a.type);   // Y492
+  const up=main&&off&&_adaRadius?off(main.lat,main.lng,500,upBrg):null;
+  const down=main&&off&&_adaRadius?off(main.lat,main.lng,500,downBrg):null;
+  const _b35=(a.farBearing!=null&&isFinite(a.farBearing))?a.farBearing:downBrg;
+  const far35=isTrench&&main&&off&&_adaRadius?off(main.lat,main.lng,3500,_b35):null;   // Y493
   const tps=Array.isArray(a.coordTP)?a.coordTP:[];
   const pts=[];
   if(isTrench){
@@ -36144,8 +36178,7 @@ function _gtActPts(a){
   }else if(main)pts.push({lat:main.lat,lng:main.lng,label:'Utama'});
   if(up)pts.push({lat:up.lat,lng:up.lng,label:'Up 500m'});
   if(down)pts.push({lat:down.lat,lng:down.lng,label:'Down 500m'});
-  if(up35)pts.push({lat:up35.lat,lng:up35.lng,label:'Up 3500m'});
-  if(down35)pts.push({lat:down35.lat,lng:down35.lng,label:'Down 3500m'});
+  if(far35)pts.push({lat:far35.lat,lng:far35.lng,label:'3500m'});   // Y493
   tps.forEach(function(t,i){const pp=(t.lat!=null&&t.lng!=null)?{lat:t.lat,lng:t.lng}:_coordParse(t.coord,datum);if(pp)pts.push({lat:pp.lat,lng:pp.lng,label:t.label||('TP'+(i+1))});});
   return pts;
 }
@@ -39915,6 +39948,16 @@ html[data-theme="anjungan"] body [style*="color:#0F5C8C" i]{color:#7FB6D6!import
 .ep-map-row.ep-map-fs>#ep-map-sidebar{
   max-height:100%!important;overflow-y:auto!important}
 body.ep-map-fs-on{overflow:hidden!important}
+/* Y490: ikon kontrol layer Leaflet. Aslinya url(images/layers.png) -- berkas
+   itu tidak ada di aplikasi satu-berkas ini, sehingga tombolnya tampil sebagai
+   kotak putih kosong. Digambar sebaris supaya tetap bekerja tanpa internet. */
+.leaflet-control-layers-toggle{
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 3 8l9 5 9-5-9-5z'/%3E%3Cpath d='M3 13l9 5 9-5'/%3E%3C/svg%3E")!important;
+  background-size:22px 22px!important;background-position:50% 50%!important;
+  background-repeat:no-repeat!important}
+/* Y490: kontrol Leaflet di pojok kanan atas peta ENV Program digeser turun
+   supaya tidak bertumpuk dengan tombol layar penuh dan tombol panel. */
+#ep-map .leaflet-top.leaflet-right{margin-top:34px}
 body.ep-map-fs-on .app{z-index:99998!important}
 #ep-fs-toggle.ep-fs-aktif{background:#1a1a1a!important;color:#fff!important;
   border-color:#1a1a1a!important}
