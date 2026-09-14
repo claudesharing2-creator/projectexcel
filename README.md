@@ -1,8 +1,7 @@
 # ENV Monitoring Dashboard 2026
 
-Aplikasi dashboard pemantauan lingkungan berbentuk **satu berkas HTML** yang
-berjalan sepenuhnya di browser. Tidak ada server, tidak ada basis data, tidak
-ada pengiriman data ke mana pun.
+Aplikasi dashboard pemantauan lingkungan yang berjalan sepenuhnya di browser.
+Tidak ada server, tidak ada basis data, tidak ada pengiriman data ke mana pun.
 
 **Buka di sini:** https://claudesharing2-creator.github.io/projectexcel/
 
@@ -11,8 +10,16 @@ ada pengiriman data ke mana pun.
 | Berkas | Keterangan |
 |---|---|
 | `index.html` | Aplikasinya, sudah jadi |
+| `ocr-model.json` | Mesin pembaca teks dari gambar (OCR), diambil hanya saat fitur OCR dipakai |
 | `.nojekyll` | Menonaktifkan pemrosesan Jekyll di GitHub Pages |
 | `README.md` | Berkas ini |
+
+Seluruh aplikasi ada di dalam `index.html`. Satu-satunya bagian yang dipisah
+adalah mesin OCR: ukurannya 9,5 MB dan dulu ikut terunduh setiap kali halaman
+dibuka, padahal hanya terpakai kalau pengguna membaca teks dari PDF hasil
+pindaian. Sekarang berkas itu baru diambil saat OCR pertama kali dijalankan,
+lalu tersimpan di browser sehingga pemakaian berikutnya tidak mengunduh apa pun
+lagi — termasuk saat sedang luring.
 
 ## Datanya tidak ada di sini
 
