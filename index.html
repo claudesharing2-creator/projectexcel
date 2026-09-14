@@ -24233,7 +24233,7 @@ function _coordRenderLiveMap(actId){
   var divId='coord-leaflet-map';
   var tipMarkers=[];
   wrap.innerHTML='<div id="'+divId+'" style="width:100%;height:260px;border:1px solid var(--g2);border-radius:12px"></div>'+
-    '<div style="font-size:8.5px;color:var(--g3);margin-top:3px">Geser titik ↑/↓ merah untuk menyesuaikan (tetap terkunci di radius 500 m).</div>';
+    '<div style="font-size:8.5px;color:var(--g3);margin-top:3px">Geser titik merah untuk menyesuaikan arahnya — jaraknya tetap terkunci di radius masing-masing'+(far35?' (500 m dan 3500 m)':' (500 m)')+'.</div>';
   _coordEnsureLeaflet().then(function(){
     var el=document.getElementById(divId);
     if(!el||!document.body.contains(el))return; // card closed/re-rendered before Leaflet finished loading
@@ -24242,9 +24242,9 @@ function _coordRenderLiveMap(actId){
     var bounds=[[main.lat,main.lng]];
     var _mMain=L.circleMarker([main.lat,main.lng],{radius:7,color:'#0f5132',weight:2,fillColor:'#27ae60',fillOpacity:1}).addTo(map);
     _addPointBubble(map,_mMain,'Utama','pt-main');
-    function addDraggable(pt,field,label){
+    function addDraggable(pt,field,label,radiusM){
       bounds.push([pt.lat,pt.lng]);
-      var radius0=500;
+      var radius0=radiusM||500;   // Y496: 3500 m tidak boleh dikunci ke 500 m
       var mk=L.marker([pt.lat,pt.lng],{draggable:true,icon:L.divIcon({className:'guide-drag-dot',html:'',iconSize:[14,14],iconAnchor:[7,7]})}).addTo(map);
       var bub=_addPointBubble(map,mk,label+' ('+_coordFmt(pt)+')','');
       mk.on('drag',function(){
@@ -24259,9 +24259,9 @@ function _coordRenderLiveMap(actId){
         _coordSaveGuidePoint(actId,field,cur.lat,cur.lng);
       });
     }
-    if(up)addDraggable(up,'up','↑ Upstream 500m');          // Y492
-    if(down)addDraggable(down,'down','↓ Downstream 500m');
-    if(far35)addDraggable(far35,'far35','Titik 3500m');     // Y493
+    if(up)addDraggable(up,'up','↑ Upstream 500m',500);      // Y492
+    if(down)addDraggable(down,'down','↓ Downstream 500m',500);
+    if(far35)addDraggable(far35,'far35','Titik 3500m',3500);   // Y496
     tps.forEach(function(t,i){
       var pp=(t.lat!=null&&t.lng!=null)?{lat:t.lat,lng:t.lng}:_coordParse(t.coord,datum);
       if(!pp)return;
@@ -24404,7 +24404,8 @@ function _coordInjectAct(actId){
     '</div>'+
     '<div style="font-size:9px;color:var(--g3);margin-bottom:6px">Ketik UTM (easting, northing — tanpa titik pemisah ribuan; zona diasumsikan <b>'+UTM_DEFAULT_ZONE+UTM_DEFAULT_HEMI+'</b>) atau lat/lng. Semua output (titik penaatan, peta, PDF) selalu ditampilkan dalam <b>WGS 1984 / UTM 50S</b>. Isi <b>arah downstream</b> = arah menjauhi daratan terdekat (menuju laut/perairan terbuka), 0=Utara, 90=Timur, 180=Selatan, 270=Barat. <b>Upstream</b> otomatis dihitung berlawanan arah, 500 m dan 3500 m dari titik '+(isTrench?'tengah':'utama')+'.</div>'+
     '<div id="coord-live">'+
-    (isTrench?((start?ptRow('#0d9488','Start',_coordFmt(start)):'')+(end?ptRow('#be185d','End',_coordFmt(end)):'')+(main&&start&&end?ptRow('#27ae60','Titik Tengah',_coordFmt(main)):'')):ptRow('#27ae60','Utama',_coordFmt(main)))+
+    (isTrench?((start?ptRow('#0d9488','Start',_coordFmt(start)):'')+(end?ptRow('#be185d','End',_coordFmt(end)):'')+(main&&start&&end?ptRow('#27ae60','Titik Tengah',_coordFmt(main)):'')+
+      ((start&&end)?'':'<div style="font-size:9.5px;color:#c81414;padding:4px 2px;font-weight:600">⚠ Trenching diukur dari titik tengah pipa — isi <b>Titik Awal</b> dan <b>Titik Akhir</b> dulu'+((start||end)?' (baru satu yang terisi)':'')+'. Radius 500 m dan 3500 m baru bisa dihitung setelah keduanya ada.</div>')):ptRow('#27ae60','Utama',_coordFmt(main)))+
     (up?ptRow('#2563eb','↑ Upstream 500m',_coordFmt(up)):'')+
     (down?ptRow('#e65100','↓ Downstream 500m',_coordFmt(down)):'')+
     (far35?ptRow('#7c3aed','Titik 3500m',_coordFmt(far35)):'')+
@@ -24770,8 +24771,8 @@ function _coordPrintSection(title, main, up, down, tps, groups, sraLabel, typeLa
   var pts=[{lat:main.lat,lng:main.lng,label:typeLabel+' Area '+areaName+'<br>('+_coordFmt(main)+')',cls:'pt-main',layer:'main'}];
   var listHtml='';
   if(up&&down){
-    pts.push({lat:up.lat,lng:up.lng,labelPrefix:'Sampling point 1<br>500 m upstream<br>',label:'Sampling point 1<br>500 m upstream<br>('+_coordFmt(up)+')',cls:'pt-up',draggable:true,field:'up',liId:mapId+'-li-up',radius:500,layer:'up'});
-    pts.push({lat:down.lat,lng:down.lng,labelPrefix:'Sampling point 2<br>500 m downstream<br>',label:'Sampling point 2<br>500 m downstream<br>('+_coordFmt(down)+')',cls:'pt-down',draggable:true,field:'down',liId:mapId+'-li-down',radius:500,layer:'down'});
+    pts.push({lat:up.lat,lng:up.lng,labelPrefix:'Sampling point 1<br>500 m upstream<br>',label:'Sampling point 1<br>500 m upstream<br>('+_coordFmt(up)+')',cls:'pt-up',draggable:true,field:'up',liId:mapId+'-li-up',liPrefix:'500 m upstream ',radius:500,layer:'up'});
+    pts.push({lat:down.lat,lng:down.lng,labelPrefix:'Sampling point 2<br>500 m downstream<br>',label:'Sampling point 2<br>500 m downstream<br>('+_coordFmt(down)+')',cls:'pt-down',draggable:true,field:'down',liId:mapId+'-li-down',liPrefix:'500 m downstream ',radius:500,layer:'down'});
     listHtml='<ol class="editable"><li id="'+mapId+'-li-up">500 m upstream ('+_coordFmt(up)+')</li><li id="'+mapId+'-li-down">500 m downstream ('+_coordFmt(down)+')</li></ol>';
   }
   (tps||[]).forEach(function(t,i){pts.push({lat:t.lat,lng:t.lng,label:(t.label||('TP'+(i+1)))+'<br>('+_coordFmt(t)+')',cls:'pt-tp',layer:'tp'});});
@@ -24793,7 +24794,7 @@ function _coordPrintSection(title, main, up, down, tps, groups, sraLabel, typeLa
 }
 function _coordFarPointSection(main,far,sraLabel,typeLabel,areaName,mapId){
   var pts=[{lat:main.lat,lng:main.lng,label:typeLabel+' Area '+areaName+'<br>('+_coordFmt(main)+')',cls:'pt-main',layer:'main'}];
-  pts.push({lat:far.lat,lng:far.lng,labelPrefix:'Sampling point<br>3500 m<br>',label:'Sampling point<br>3500 m<br>('+_coordFmt(far)+')',cls:'pt-up',draggable:true,field:'far',liId:mapId+'-li-far',radius:3500,layer:'far'});
+  pts.push({lat:far.lat,lng:far.lng,labelPrefix:'Sampling point<br>3500 m<br>',label:'Sampling point<br>3500 m<br>('+_coordFmt(far)+')',cls:'pt-up',draggable:true,field:'far',liId:mapId+'-li-far',liPrefix:'3500 m ',radius:3500,layer:'far'});
   return {
     html:'<div class="page-frame"><div class="guide-page">'+
       '<h1 class="editable">PEMANTAUAN LINGKUNGAN</h1>'+
@@ -24819,7 +24820,9 @@ function _coordMainUntukDokumen(a,datum){
     };
     var s=_ttk(a.coordStart), e=_ttk(a.coordEnd);
     if(s&&e)return {lat:(s.lat+e.lat)/2,lng:(s.lng+e.lng)/2};
-    if(s||e)return s||e;
+    // Y497: satu ujung saja TIDAK cukup. Titik tengah dari satu ujung bukan
+    // titik tengah pipa, dan seluruh radius penaatannya ikut meleset.
+    return null;
   }
   return _coordParse(a?a.coordMain:'',datum);
 }
@@ -24827,7 +24830,7 @@ window._coordMainUntukDokumen=_coordMainUntukDokumen;
 function _coordSection3500(main,far,sraLabel,typeLabel,areaName,mapId){
   // Y491: SATU titik di 3500 m, bukan sepasang upstream/downstream.
   var pts=[{lat:main.lat,lng:main.lng,label:typeLabel+' Area '+areaName+'<br>('+_coordFmt(main)+')',cls:'pt-main',layer:'main'}];
-  pts.push({lat:far.lat,lng:far.lng,labelPrefix:'Sampling point 3<br>3500 m<br>',label:'Sampling point 3<br>3500 m<br>('+_coordFmt(far)+')',cls:'pt-up',draggable:true,field:'far',liId:mapId+'-li-far',radius:3500,layer:'far'});
+  pts.push({lat:far.lat,lng:far.lng,labelPrefix:'Sampling point 3<br>3500 m<br>',label:'Sampling point 3<br>3500 m<br>('+_coordFmt(far)+')',cls:'pt-up',draggable:true,field:'far',liId:mapId+'-li-far',liPrefix:'3500 m ',radius:3500,layer:'far'});
   return {
     html:'<div class="page-frame"><div class="guide-page">'+
       '<h1 class="editable">PEMANTAUAN LINGKUNGAN</h1>'+
@@ -24846,7 +24849,9 @@ function _coordPrintGuide(actId,customRec){
   var a=customRec||ACTS.find(function(x){return x.id===actId;});if(!a)return;
   var datum=a.coordDatum||'wgs84';
   var main=_coordMainUntukDokumen(a,datum);   // Y487
-  if(!main){toast('⚠ Isi koordinat utama dulu (Trenching: isi Titik Awal & Titik Akhir).');return;}
+  if(!main){toast(a.type==='Trenching'
+    ?'⚠ Trenching diukur dari titik tengah pipa — isi Titik Awal DAN Titik Akhir dulu.'
+    :'⚠ Isi koordinat utama dulu.');return;}
   if(typeof navigator!=='undefined'&&navigator.onLine===false){
     toast('⚠ Tidak ada koneksi internet — pakai tombol PDF offline di bawah.');
     return;
@@ -25077,7 +25082,7 @@ function _coordPrintGuide(actId,customRec){
     '        m.setLatLng([snap.lat,snap.lng]);'+
     '        bub.setContent(p.labelPrefix+"("+_gFmt(snap)+")");'+
     '        var li=document.getElementById(p.liId);'+
-    '        if(li)li.textContent=(p.field==="up"?"500 m upstream (":"500 m downstream (")+_gFmt(snap)+")";'+
+    '        if(li)li.textContent=(p.liPrefix||(p.field==="up"?"500 m upstream ":"500 m downstream "))+"("+_gFmt(snap)+")";'+
     '      });'+
     '      m.on("dragend",function(){'+
     '        var cur=m.getLatLng();'+
