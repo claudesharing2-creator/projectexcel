@@ -15641,6 +15641,56 @@ function _emfChartDeret(spec){
   });
   return {cats:cats,deret:deret};
 }
+// Y510: skala sumbu nilai yang bulat, meniru grafik asli. Selalu mulai dari
+// 0 (keempat grafik acuan begitu), langkahnya 1/2/2,5/5 x pangkat sepuluh,
+// disetel supaya keluar sekitar enam label. Kalau nilai tertinggi jatuh PERSIS
+// di batas atas, batasnya dinaikkan satu langkah -- di acuan "Minyak dan
+// Lemak", garis baku mutu 40 digambar di dalam sumbu 0-50, bukan menempel di
+// tepi atas.
+function _emfSkalaNilai(ds){
+  var v=[];
+  (ds||[]).forEach(function(s){
+    (s.nilai||[]).forEach(function(x){if(typeof x==='number'&&isFinite(x))v.push(x);});
+  });
+  if(!v.length)return null;
+  var lo=Math.min.apply(null,v), hi=Math.max.apply(null,v);
+  if(lo>0)lo=0;
+  if(hi<=lo)hi=lo+1;
+  var kasar=(hi-lo)/6;
+  if(!(kasar>0))return null;
+  var pangkat=Math.pow(10,Math.floor(Math.log(kasar)/Math.LN10));
+  var sisa=kasar/pangkat, unit;
+  if(sisa<=1)unit=pangkat;
+  else if(sisa<=2)unit=2*pangkat;
+  else if(sisa<=2.5)unit=2.5*pangkat;
+  else if(sisa<=5)unit=5*pangkat;
+  else unit=10*pangkat;
+  var min=Math.floor(lo/unit)*unit, max=Math.ceil(hi/unit)*unit;
+  if(max<=hi)max+=unit;
+  if(max<=min)max=min+unit;
+  // buang ekor biner dari pembagian (0.30000000000000004)
+  var rapi=function(x){return parseFloat(x.toPrecision(12));};
+  return {min:rapi(min),max:rapi(max),unit:rapi(unit)};
+}
+// Y510: tata letak area plot dihitung dari TINGGI BINGKAI yang sebenarnya.
+// Bingkai diwarisi dari gambar yang digantikan dan berbeda-beda per dokumen,
+// jadi pecahan tetap akan menggepengkan plot di bingkai yang pendek.
+function _emfTataLetakPlot(tinggiInci,adaJudulSumbu){
+  var H=parseFloat(tinggiInci);
+  var x=adaJudulSumbu?0.175:0.125, w=adaJudulSumbu?0.795:0.845;
+  if(!(H>0.5)){
+    // tidak tahu ukurannya: pakai angka grafik yang ditulis Word sendiri di
+    // dokumen dasar BKP, bukan angka karangan
+    return {x:0.17959161424662312,y:0.20646473721652264,
+            w:0.78994843393984326,h:0.52437316846054827};
+  }
+  var JUDUL=0.46, LEGENDA=0.24, LABEL=0.24;   // inci, diukur dari gambar acuan
+  var y=JUDUL/H, h=(H-JUDUL-LEGENDA-LABEL)/H;
+  if(h<0.30)h=0.30;
+  if(h>0.72)h=0.72;
+  if(y+h>0.95)y=Math.max(0.08,0.95-h);
+  return {x:x,y:y,w:w,h:h};
+}
 function _emfChartXml(spec){
   var d=_emfChartDeret(spec), cats=d.cats, ds=d.deret, n=cats.length;
   var AX1='773311011', AX2='773311012';
@@ -15664,21 +15714,32 @@ function _emfChartXml(spec){
           +'<c:pt idx="0"><c:v>'+_emfXmlEsc(nama)+'</c:v></c:pt></c:strCache></c:strRef></c:tx>';
   }
   var bar=[],line=[];
+  // Y510: apakah deret UTAMA berbentuk batang? Itu yang menentukan gaya
+  // marker garis baku mutu -- lihat tabel acuan di catatan Y510.
+  var utamaBatang=ds.length&&ds[0].jenis==='bar';
   ds.forEach(function(s,i){
     var sp=(s.jenis==='bar')
       ?'<c:spPr><a:solidFill><a:srgbClr val="'+s.warna+'"/></a:solidFill>'
        +'<a:ln><a:noFill/></a:ln></c:spPr>'
-      :'<c:spPr><a:ln w="'+(s.putus?19050:28575)+'" cap="rnd">'
+      // Y510: garis baku mutu di dokumen asli PENUH, bukan putus-putus.
+      :'<c:spPr><a:ln w="28575" cap="rnd">'
        +'<a:solidFill><a:srgbClr val="'+s.warna+'"/></a:solidFill>'
-       +(s.putus?'<a:prstDash val="dash"/>':'<a:prstDash val="solid"/>')
-       +'</a:ln><a:effectLst/></c:spPr>';
+       +'<a:prstDash val="solid"/></a:ln><a:effectLst/></c:spPr>';
     var kepala='<c:ser><c:idx val="'+i+'"/><c:order val="'+i+'"/>'+txRef(i,s.nama)+sp;
     if(s.jenis==='bar')
       bar.push(kepala+'<c:invertIfNegative val="0"/>'+catRef()+valRef(i,s.nilai)+'</c:ser>');
-    else
-      line.push(kepala+'<c:marker><c:symbol val="'+(s.putus?'none':'circle')+'"/>'
-               +'<c:size val="5"/></c:marker>'+catRef()+valRef(i,s.nilai)
-               +'<c:smooth val="0"/></c:ser>');
+    else{
+      // s.putus menandai garis baku mutu; namanya tetap dipakai apa adanya
+      // supaya arti datanya tidak berubah, hanya bentuknya yang disamakan.
+      var sym=s.putus?(utamaBatang?'square':'none'):'diamond';
+      var mk=(sym==='none')
+        ?'<c:marker><c:symbol val="none"/></c:marker>'
+        :'<c:marker><c:symbol val="'+sym+'"/><c:size val="5"/>'
+         +'<c:spPr><a:solidFill><a:srgbClr val="'+s.warna+'"/></a:solidFill>'
+         +'<a:ln><a:solidFill><a:srgbClr val="'+s.warna+'"/></a:solidFill></a:ln>'
+         +'</c:spPr></c:marker>';
+      line.push(kepala+mk+catRef()+valRef(i,s.nilai)+'<c:smooth val="0"/></c:ser>');
+    }
   });
   var grup='';
   if(bar.length)
@@ -15697,23 +15758,52 @@ function _emfChartXml(spec){
       }).join('')
       +'</c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>')
     :'<c:autoTitleDeleted val="1"/>';
+  // Y510: skala sumbu ditulis sendiri. Tanpa ini Word memilih sendiri dan,
+  // untuk pH 6-7,5 dengan baku mutu 6 dan 9, hanya menaruh label 0 dan 10.
+  var sk=_emfSkalaNilai(ds);
+  var skalaNilai='<c:scaling><c:orientation val="minMax"/>'
+    +(sk?'<c:max val="'+sk.max+'"/><c:min val="'+sk.min+'"/>':'')+'</c:scaling>';
+  var satuanNilai=sk?'<c:majorUnit val="'+sk.unit+'"/>':'';
+  var fmtNilai=spec.numFmt?('<c:numFmt formatCode="'+_emfXmlEsc(spec.numFmt)+'" sourceLinked="0"/>')
+                          :'<c:numFmt formatCode="General" sourceLinked="1"/>';
+  // Y510: judul sumbu nilai, seperti "pH" dan "Debit (BWPD)" di gambar acuan.
+  var judulSumbu=spec.axisTitle
+    ?('<c:title><c:tx><c:rich><a:bodyPr rot="-5400000" vert="horz"/><a:lstStyle/>'
+      +'<a:p><a:pPr><a:defRPr sz="900" b="1"/></a:pPr>'
+      +'<a:r><a:rPr lang="id-ID" sz="900" b="1"/><a:t>'+_emfXmlEsc(spec.axisTitle)+'</a:t></a:r>'
+      +'</a:p></c:rich></c:tx><c:overlay val="0"/></c:title>')
+    :'';
+  var L=_emfTataLetakPlot(spec.tinggiInci,!!spec.axisTitle);
+  var tataLetak='<c:layout><c:manualLayout><c:layoutTarget val="inner"/>'
+    +'<c:xMode val="edge"/><c:yMode val="edge"/>'
+    +'<c:x val="'+L.x+'"/><c:y val="'+L.y+'"/>'
+    +'<c:w val="'+L.w+'"/><c:h val="'+L.h+'"/></c:manualLayout></c:layout>';
+  // Y510: huruf legenda dikecilkan supaya tiga entri ("pH", "baku mutu batas
+  // bawah", "baku mutu batas atas") muat dalam SATU baris di bingkai selebar
+  // 3,62 inci. Legenda tiga baris itulah yang memakan area plot.
+  var hurufKecil=function(sz){
+    return '<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="'+sz+'"/></a:pPr>'
+          +'<a:endParaRPr lang="id-ID"/></a:p></c:txPr>';
+  };
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
    +'<c:chartSpace xmlns:c="'+EMF_C+'" xmlns:a="'+EMF_A+'" xmlns:r="'+EMF_REL+'">'
    +'<c:date1904 val="0"/><c:lang val="id-ID"/><c:roundedCorners val="0"/>'
-   +'<c:chart>'+judul+'<c:plotArea><c:layout/>'+grup
+   +'<c:chart>'+judul+'<c:plotArea>'+tataLetak+grup
    +'<c:catAx><c:axId val="'+AX1+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'
      +'<c:delete val="0"/><c:axPos val="b"/>'
      +'<c:numFmt formatCode="General" sourceLinked="1"/>'
      +'<c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
+     +hurufKecil(900)
      +'<c:crossAx val="'+AX2+'"/><c:crosses val="autoZero"/><c:auto val="1"/>'
      +'<c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>'
-   +'<c:valAx><c:axId val="'+AX2+'"/><c:scaling><c:orientation val="minMax"/></c:scaling>'
-     +'<c:delete val="0"/><c:axPos val="l"/><c:majorGridlines/>'
-     +'<c:numFmt formatCode="General" sourceLinked="1"/>'
+   +'<c:valAx><c:axId val="'+AX2+'"/>'+skalaNilai
+     +'<c:delete val="0"/><c:axPos val="l"/><c:majorGridlines/>'+judulSumbu
+     +fmtNilai
      +'<c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>'
+     +hurufKecil(900)
      +'<c:crossAx val="'+AX1+'"/><c:crosses val="autoZero"/>'
-     +'<c:crossBetween val="between"/></c:valAx>'
-   +'</c:plotArea><c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>'
+     +'<c:crossBetween val="between"/>'+satuanNilai+'</c:valAx>'
+   +'</c:plotArea><c:legend><c:legendPos val="b"/><c:overlay val="0"/>'+hurufKecil(800)+'</c:legend>'
    +'<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>'
    +'<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData>'
    +'</c:chartSpace>';
@@ -15757,6 +15847,13 @@ async function _emfChartsWordAsli(parts,z,doc,idx,months,year,sem,ctx){
       var spec=null;
       try{spec=_emfChartSpec(s.label,ctx,idx,months,year,sem);}catch(_eS){}
       if(!spec)continue;
+      // Y510: tinggi bingkai (inci) diambil dari gambar yang akan digantikan.
+      // Bingkainya diwarisi, jadi berbeda antar-dokumen -- CPU 2,10 inci,
+      // BKP 2,85 -- dan pecahan tetap akan menggepengkan plot di yang pendek.
+      try{
+        var _uk=_emfUkuranBingkai(s.blip);
+        if(_uk){spec.tinggiInci=_uk.tinggi;spec.lebarInci=_uk.lebar;}
+      }catch(_eU){}
       // Aturan pemilik: kalau tidak ada datanya, jangan dibuat. Gambar lama
       // dibiarkan apa adanya daripada diganti grafik kosong.
       var punya=(spec.values||[]).some(function(v){return typeof v==='number'&&isFinite(v);});
@@ -44494,6 +44591,30 @@ function _emfChartRef(){
 // Pair every picture with the caption that follows it. One caption line can
 // carry two charts ("Gambar. 5 Debit CPU Restaurant   Gambar. 6 CPU Laundry"),
 // so a caption is split and handed out to the images queued before it.
+// Y510: seberapa besar kotak gambar ini, dalam inci? Ditelusuri ke ATAS dari
+// elemen <a:blip> sampai ketemu wp:inline / wp:anchor, karena di situlah
+// wp:extent berada. 914400 EMU = 1 inci.
+function _emfUkuranBingkai(blip){
+  var n=blip;
+  while(n&&n.nodeType===1){
+    if(n.localName==='inline'||n.localName==='anchor'){
+      var ex=n.getElementsByTagName('wp:extent')[0];
+      if(!ex){
+        var semua=n.getElementsByTagName('*');
+        for(var i=0;i<semua.length;i++)
+          if(semua[i].localName==='extent'){ex=semua[i];break;}
+      }
+      if(!ex)return null;
+      var cx=parseInt(ex.getAttribute('cx')||'0',10);
+      var cy=parseInt(ex.getAttribute('cy')||'0',10);
+      if(!(cx>0&&cy>0))return null;
+      return {lebar:cx/914400,tinggi:cy/914400};
+    }
+    n=n.parentNode;
+  }
+  return null;
+}
+window._emfUkuranBingkai=_emfUkuranBingkai;
 function _emfChartSlots(doc){
   var body=doc.getElementsByTagNameNS(EMF_W,'body')[0], out=[], queue=[], pending=[];
   if(!body)return out;
@@ -44640,18 +44761,18 @@ function _emfChartSpec(label, ctx, idx, months, year, sem){
       ['belum ada angka debit tertinggi 2019 (IPLC)',
        'grafik digambar tanpa garis pembanding']);}catch(_eR){}}
     return {type:'bar',title:'Debit Air Limbah Domestik',subtitle:mD[1],values:vals,labels:mlab,
-      seriesLabel:mD[1],yfmt:function(v){return v.toFixed(2);},
+      seriesLabel:mD[1],yfmt:function(v){return v.toFixed(2);},numFmt:'#,##0.00',
       lines:iplc!=null?[{value:iplc,color:'#c0504d',label:'Debit Tertinggi 2019 (IPLC)',marker:true}]:[]};
   }
   // "pH" / "Minyak dan Lemak" / "Sulfida Terlarut" / "Debit" -> line chart for
   // the produced-water outlet named in the document's own terproduksi table
   if(!ctx.pwTitik)return null;
-  var P={'ph':{p:'pH',t:'pH',lo:6,hi:9,fmt:function(v){return String(parseFloat(v.toFixed(2)));}},
-         'minyak dan lemak':{p:'Minyak dan Lemak',t:'Minyak dan Lemak',hi:null,fmt:function(v){return String(parseFloat(v.toFixed(2)));}},
+  var P={'ph':{p:'pH',t:'pH',lo:6,hi:9,axis:'pH',fmt:function(v){return String(parseFloat(v.toFixed(2)));}},
+         'minyak dan lemak':{p:'Minyak dan Lemak',t:'Minyak dan Lemak',hi:null,bmLabel:'Baku Mutu Konsentrasi',fmt:function(v){return String(parseFloat(v.toFixed(2)));}},
          'minyak & lemak':{p:'Minyak dan Lemak',t:'Minyak dan Lemak',hi:null,fmt:function(v){return String(parseFloat(v.toFixed(2)));}},
          'minyak dan lemak (m&l)':{p:'Minyak dan Lemak',t:'Minyak dan Lemak',hi:null,fmt:function(v){return String(parseFloat(v.toFixed(2)));}},
          'sulfida terlarut':{p:'Sulfida terlarut (H2S)',t:'Sulfida Terlarut',fmt:function(v){return String(parseFloat(v.toFixed(3)));}},
-         'debit':{p:'Debit',t:'Debit',fmt:function(v){return v.toFixed(2);}}};
+         'debit':{p:'Debit',t:'Debit',axis:'Debit (BWPD)',nf:'#,##0.00',fmt:function(v){return v.toFixed(2);}}};
   var key=lab.toLowerCase();
   var def=P[key];
   if(!def){
@@ -44671,10 +44792,35 @@ function _emfChartSpec(label, ctx, idx, months, year, sem){
   var s2=_emfSeries(idx,ctx.pwTitik,def.p,year,months,'PW',null);
   var vv=s2.map(function(x){return x?parseFloat(String(x.nilai).replace(/[^0-9.\-]/g,'')):null;});
   var lines=[];
-  if(def.lo!=null)lines.push({value:def.lo,color:'#c0504d',label:'baku mutu batas bawah'});
-  if(def.hi!=null)lines.push({value:def.hi,color:'#9bbb59',label:'baku mutu batas atas'});
+  // Y511: baku mutu dibaca dari registry, bukan dipatok. Bentuknya bisa
+  // rentang ("6-9") atau satu ambang ("40"); keduanya ada di dokumen asli.
+  var _bm=null;
+  try{
+    var _rows=(typeof _eaBmRows==='function')?_eaBmRows('Monthly','PW'):[];
+    var _k=function(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');};
+    for(var _i=0;_i<_rows.length;_i++)
+      if(_k(_rows[_i].param)===_k(def.p)){_bm=String(_rows[_i].bakuMutu||'').trim();break;}
+  }catch(_eB){}
+  var _lo=def.lo, _hi=def.hi, _tunggal=null;
+  if(_bm){
+    // tanda pisah panjang disamakan dulu -- pelajaran Y509
+    var _b=_bm.replace(/[‐-―−]/g,'-');
+    var _mr=/^(-?\d+(?:[.,]\d+)?)\s*-\s*(-?\d+(?:[.,]\d+)?)$/.exec(_b);
+    if(_mr){_lo=parseFloat(_mr[1].replace(',','.'));_hi=parseFloat(_mr[2].replace(',','.'));}
+    else{
+      var _mn=/^[<>]?\s*(-?\d+(?:[.,]\d+)?)/.exec(_b);
+      if(_mn){_tunggal=parseFloat(_mn[1].replace(',','.'));_lo=null;_hi=null;}
+    }
+  }
+  if(_tunggal!=null)
+    lines.push({value:_tunggal,color:'#c0504d',label:def.bmLabel||'Baku mutu'});
+  else{
+    if(_lo!=null)lines.push({value:_lo,color:'#c0504d',label:'baku mutu batas bawah'});
+    if(_hi!=null)lines.push({value:_hi,color:'#9bbb59',label:'baku mutu batas atas'});
+  }
   return {type:'line',title:def.t+' Air Limbah Terproduksi '+(ctx.site||''),subtitle:per,
-    values:vv,labels:mlab,seriesLabel:def.t,yfmt:def.fmt,lines:lines};
+    values:vv,labels:mlab,seriesLabel:def.t,yfmt:def.fmt,lines:lines,
+    axisTitle:def.axis||null,numFmt:def.nf||null};   /* Y510 */
 }
 // Which site was this base document written for? Its own table captions say
 // so ("Tabel 2 Lokasi titik penaatan air limbah domestik di SPU"). Read with
