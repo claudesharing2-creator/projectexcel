@@ -15760,7 +15760,14 @@ async function _emfChartsWordAsli(parts,z,doc,idx,months,year,sem,ctx){
       // Aturan pemilik: kalau tidak ada datanya, jangan dibuat. Gambar lama
       // dibiarkan apa adanya daripada diganti grafik kosong.
       var punya=(spec.values||[]).some(function(v){return typeof v==='number'&&isFinite(v);});
-      if(!punya)continue;
+      if(!punya){
+        // Y506b: jangan diam. Gambar periode lalu memang dibiarkan (aturan
+        // pemilik), tapi pembacanya harus tahu grafik mana yang tidak
+        // diperbarui, supaya salah eja nama titik ketahuan hari itu juga.
+        try{_emfAmbigu('grafik',_emfSq(s.label),
+          ['tidak ada data debit pada periode ini','gambar periode lalu dibiarkan']);}catch(_eG){}
+        continue;
+      }
       var gd=s.blip;
       while(gd&&!(gd.nodeType===1&&gd.localName==='graphicData'))gd=gd.parentNode;
       if(!gd)continue;
@@ -21533,6 +21540,8 @@ function _hsEvalCompliance(nilai,baku){
   const ns=nilai==null?'':String(nilai).trim();
   const nilaiOp=ns.startsWith('>')?'>':(ns.startsWith('<')?'<':null);
   let bs=String(baku).trim();
+  // Y509: samakan semua varian tanda pisah menjadi "-" SEBELUM dicocokkan.
+  bs=bs.replace(/[\u2010-\u2015\u2212]/g,'-');
   const lbl=bs.match(/^[A-Za-z /]+:\s*(.*)$/);
   if(lbl)bs=lbl[1].trim();
   if(!bs||bs==='-')return {status:'no_standard',nilaiNum:nv};
@@ -42528,6 +42537,11 @@ function _etRenderEmf(host){
    +'<div style="font-size:10.5px;color:var(--g4);margin:7px 0 9px;line-height:1.55">Bagian ini hanya dipakai untuk alternatif <b>tambal dokumen EMF utuh</b>. Tombol <b>Generate Bagian Air</b> tidak membaca isian ini: emisi, udara ambien, kebisingan, kebauan, getaran, dan bagian non-air lainnya tetap memakai wording serta tanggal asli template.</div>'
    +'<div id="emf-manual-fields" style="display:flex;gap:11px;flex-wrap:wrap"></div>'
    +'</details>'
+   +'<details id="emf-iplc" style="margin:0 0 14px;border:1px solid var(--g2);border-radius:9px;padding:9px 13px">'
+   +'<summary style="font-size:11.5px;font-weight:700;cursor:pointer">\ud83d\udcc8 Debit tertinggi 2019 (IPLC) \u2014 garis pembanding di grafik debit</summary>'
+   +'<div style="font-size:10.5px;color:var(--g4);margin:7px 0 9px;line-height:1.55">Naskah EMF menyebut debit dibandingkan dengan <b>debit tertinggi tahun 2019</b> menurut dokumen IPLC. Angkanya tidak ada di data sampling, jadi harus diisi di sini sekali saja \u2014 tersimpan di peramban dan ikut terbawa saat Data Pack diekspor. Titik yang dibiarkan kosong tetap digambar, tetapi <b>tanpa garis pembanding</b>, dan akan disebut di laporan hasil generate.</div>'
+   +'<div id="emf-iplc-fields" style="display:flex;gap:11px;flex-wrap:wrap"></div>'
+   +'</details>'
    +'<div class="et-sec" style="margin:0 0 14px;padding:12px 14px">'
    +'<div style="font-weight:700;font-size:12px;margin-bottom:3px">📄 Bangun Bagian Air dari Data</div>'
    +'<div style="font-size:10.5px;color:var(--g4);margin-bottom:9px;line-height:1.55">Mengisi <b>dokumen dasar bagian air</b> (Format EMF) dengan data periode yang dipilih — tanpa mengunggah apa pun, dokumen dasarnya diambil sendiri dari Cloudflare. Karena yang ditambal adalah dokumen Word aslinya, <b>font, ukuran, warna, border, dan margin persis sama</b> dengan format EMF-mu. Tinggal disalin ke dokumen EMF gabungan.</div>'
@@ -42782,6 +42796,13 @@ var EMF_LABEL={
  'CPU Camp "A, B, C, D, E, F, I"':'CPU Camp','CPU laundry':'CPU Laundry','CPU restaurant':'CPU Restaurant',
  'CPU Camp "G, K"':'DWW 2 Camp G & K','CPU Camp J':'DWW 1 Camp J',
  'CPU Office, Workshop':'DWW 6 Office & Workshop','CPU PJC Camp':'DWW 7 PJC Camp',
+ /* Y506: ejaan yang dipakai di baris keterangan GAMBAR, bukan di tabel. */
+ 'CPU Camp G, K':'DWW 2 Camp G & K','CPU Camp G,K':'DWW 2 Camp G & K',
+ 'CPU Camp G & K':'DWW 2 Camp G & K','DWW2 (Camp G,K)':'DWW 2 Camp G & K',
+ 'CPU Office & Workshop':'DWW 6 Office & Workshop',
+ 'CPU Office and Workshop':'DWW 6 Office & Workshop',
+ 'DWW 6 (Office, Workshop)':'DWW 6 Office & Workshop',
+ 'DWW1 (Camp J)':'DWW 1 Camp J','DWW7 (PJC Camp)':'DWW 7 PJC Camp',
  'NPU Accom 3 (New Accommodation)':'NPU New Accommodation','NPU New Accomodation':'NPU New Accommodation',
  'Disposal Tube NCP 1':'Disposal Tube NCP','Disposal Tube NCP 2':'Disposal Tube NCP2',
  'Disposal Tube NMP 3':'Disposal Tube NMP3','Disposal Tube CPU1':'Disposal Tube CPU 1',
@@ -43095,8 +43116,33 @@ function _emfSetCell(tc,val){
   ts[0].textContent=val;
   ts[0].setAttribute('xml:space','preserve');
   for(var i=1;i<ts.length;i++)ts[i].textContent='';
+  _emfBuangParagrafKosong(tc);   // Y508
   return true;
 }
+// Y508: buang paragraf yang tidak lagi memuat apa pun yang terlihat. Paragraf
+// yang masih membawa gambar, objek, atau pemutus halaman TIDAK disentuh --
+// isinya tidak berupa teks, jadi tidak boleh dinilai dari w:t saja.
+function _emfBuangParagrafKosong(tc){
+  var ps=[], kids=tc.childNodes;
+  for(var i=0;i<kids.length;i++)
+    if(kids[i].nodeType===1&&kids[i].localName==='p')ps.push(kids[i]);
+  if(ps.length<2)return 0;
+  var n=0;
+  for(var j=ps.length-1;j>=0&&ps.length-n>1;j--){
+    var p=ps[j];
+    if(p.getElementsByTagNameNS(EMF_W,'drawing').length)continue;
+    if(p.getElementsByTagNameNS(EMF_W,'pict').length)continue;
+    if(p.getElementsByTagNameNS(EMF_W,'object').length)continue;
+    if(p.getElementsByTagNameNS(EMF_W,'br').length)continue;
+    var ts2=p.getElementsByTagNameNS(EMF_W,'t'), isi=false;
+    for(var k=0;k<ts2.length;k++)if(String(ts2[k].textContent||'').trim()){isi=true;break;}
+    if(isi)continue;
+    p.parentNode.removeChild(p);
+    n++;
+  }
+  return n;
+}
+window._emfBuangParagrafKosong=_emfBuangParagrafKosong;
 // Kosongkan setiap sel yang merupakan LANJUTAN penggabungan menurun.
 // Aturannya mutlak di Word: yang tampil adalah isi sel paling atas dalam satu
 // gabungan; sel di bawahnya tidak pernah menampilkan isinya sendiri. Jadi
@@ -43272,6 +43318,78 @@ function _emfMergeSubHeadRows(tbl,labelCol){
 }
 // A cell that continues a vertical merge holds no text of its own; the value
 // that applies to it is the one that opened the merge.
+// Y504: setel warna SELURUH run di satu sel. Word menyimpan warna di
+// w:rPr/w:color pada tiap run, jadi mengganti teksnya saja tidak pernah
+// mengubah warnanya. Urutan anak di dalam w:rPr diatur skema Word: w:color
+// harus SEBELUM w:spacing/w:sz/w:u/w:lang. Menyisipkan di sembarang tempat
+// membuat Word menolak berkasnya.
+var _EMF_RPR_SESUDAH_WARNA={spacing:1,w:1,kern:1,position:1,sz:1,szCs:1,
+  highlight:1,u:1,effect:1,bdr:1,shd:1,fitText:1,vertAlign:1,rtl:1,cs:1,
+  em:1,lang:1,eastAsianLayout:1,specVanish:1,oMath:1};
+function _emfSetWarnaSel(tc,merah){
+  if(!tc)return 0;
+  var d=tc.ownerDocument, rs=tc.getElementsByTagNameNS(EMF_W,'r'), n=0;
+  var val=merah?'FF0000':'000000';
+  for(var i=0;i<rs.length;i++){
+    var r=rs[i];
+    if(!r.getElementsByTagNameNS(EMF_W,'t').length)continue;  // run tanpa teks
+    var pr=null, kids=r.childNodes;
+    for(var k=0;k<kids.length;k++)
+      if(kids[k].nodeType===1&&kids[k].localName==='rPr'){pr=kids[k];break;}
+    if(!pr){
+      pr=d.createElementNS(EMF_W,'w:rPr');
+      r.insertBefore(pr,r.firstChild);   // w:rPr WAJIB anak pertama w:r
+    }
+    var c=null, pk=pr.childNodes;
+    for(var j=0;j<pk.length;j++)
+      if(pk[j].nodeType===1&&pk[j].localName==='color'){c=pk[j];break;}
+    if(!c){
+      c=d.createElementNS(EMF_W,'w:color');
+      var sebelum=null;
+      for(var q=0;q<pr.childNodes.length;q++){
+        var el=pr.childNodes[q];
+        if(el.nodeType===1&&_EMF_RPR_SESUDAH_WARNA[el.localName]){sebelum=el;break;}
+      }
+      if(sebelum)pr.insertBefore(c,sebelum); else pr.appendChild(c);
+    }
+    c.setAttribute('w:val',val);
+    n++;
+  }
+  // Y504c: tanda paragraf punya rPr-nya sendiri (w:pPr/w:rPr). Tidak tampil
+  // di layar, tetapi menentukan warna teks yang diketik berikutnya di sel
+  // itu. Kalau dibiarkan, merah periode lalu hidup lagi saat disunting.
+  var ps=tc.getElementsByTagNameNS(EMF_W,'p');
+  for(var pi=0;pi<ps.length;pi++){
+    var pPr=null, pc=ps[pi].childNodes;
+    for(var y=0;y<pc.length;y++)
+      if(pc[y].nodeType===1&&pc[y].localName==='pPr'){pPr=pc[y];break;}
+    if(!pPr)continue;
+    var rPr=null, qc=pPr.childNodes;
+    for(var z=0;z<qc.length;z++)
+      if(qc[z].nodeType===1&&qc[z].localName==='rPr'){rPr=qc[z];break;}
+    if(!rPr)continue;
+    var cc=rPr.getElementsByTagNameNS(EMF_W,'color');
+    for(var w=0;w<cc.length;w++)cc[w].setAttribute('w:val',val);
+  }
+  return n;
+}
+window._emfSetWarnaSel=_emfSetWarnaSel;
+// Y504: apakah nilai ini melebihi baku mutu yang tertulis di barisnya sendiri?
+// true / false / null. null berarti tidak bisa dinilai (baku mutunya "Nihil",
+// nilainya kualitatif seperti "Negatif"). null pun tetap diwarnai HITAM:
+// sebuah nilai kualitatif tidak boleh mewarisi merah dari periode lalu.
+function _emfLebihBM(nilai,baku){
+  if(nilai==null||nilai===''||nilai===EMF_KOSONG)return null;
+  if(baku==null||!String(baku).trim())return null;
+  try{
+    if(typeof _hsEvalCompliance!=='function')return null;
+    var e=_hsEvalCompliance(nilai,baku);
+    if(!e)return null;
+    if(e.status==='exceed')return true;
+    if(e.status==='ok')return false;
+  }catch(_){}
+  return null;
+}
 function _emfIsVMergeCont(tc){
   if(!tc)return false;
   var pr=tc.getElementsByTagNameNS(EMF_W,'tcPr')[0];
@@ -43286,7 +43404,11 @@ function _emfPatchTitikTable(tbl,idx,year,months,cap){
   var sheet=_emfSheetForCaption(cap);
   var mm=months.slice(0,L.ncol);
   var cur=_emfTitikFromCaption(cap)||'';
-  var filled=0,empty=0,log=[],hdrDates=[],curParam='';
+  var filled=0,empty=0,log=[],hdrDates=[],curParam='',campur=[],warna=0;
+  // Baris mana saja yang berisi data, dan dengan titik/parameter apa. Dikumpul
+  // dulu karena tanggal kolom harus ditentukan dari SELURUH tabel sebelum satu
+  // sel pun diisi.
+  var daftar=[];
   for(var ri=L.hdrRi+1;ri<rows.length;ri++){
     var cells=rows[ri];
     if(cells.length<L.col0+L.ncol)continue;
@@ -43298,21 +43420,68 @@ function _emfPatchTitikTable(tbl,idx,year,months,cap){
     if(/^(parameter|no\.?\b)/i.test(param))continue;
     // the unit column tells Debit BWPD (terproduksi) from m3/bulan (domestik)
     var sat=cells.length>L.col0+L.ncol?_emfCellText(cells[cells.length-1]):'';
-    var ser=_emfSeries(idx,cur,param,year,mm,sheet,sat), vals=[];
+    // kolom "Baku Mutu Berlaku" ada tepat sesudah kolom-kolom bulan
+    var bm=cells.length>L.col0+L.ncol?_emfCellText(cells[L.col0+L.ncol]):'';
+    daftar.push({cells:cells,titik:cur,param:param,sat:sat,bm:bm});
+  }
+  // Y505b: satu kolom bulan = satu kali pengambilan. Tanggal kolom dipilih
+  // dari tanggal yang dipakai PALING BANYAK parameter di bulan itu; kalau
+  // seri, yang paling awal, supaya hasilnya tidak berubah antar-jalan.
+  var hitung={};
+  for(var a=0;a<daftar.length;a++){
+    var kump={};
+    _emfSeries(idx,daftar[a].titik,daftar[a].param,year,mm,sheet,daftar[a].sat,{kumpul:kump});
+    for(var m1 in kump){
+      var seen={};
+      for(var c1=0;c1<kump[m1].length;c1++){
+        var tg=String(kump[m1][c1].tgl||'').slice(0,10);
+        if(!tg||seen[tg])continue;       // satu parameter = satu suara per tanggal
+        seen[tg]=1;
+        (hitung[m1]=hitung[m1]||{})[tg]=(hitung[m1][tg]||0)+1;
+      }
+    }
+  }
+  var pilihTgl={};
+  for(var m2 in hitung){
+    var best=null,bn=-1;
+    var tgs=Object.keys(hitung[m2]).sort();
+    for(var q=0;q<tgs.length;q++)if(hitung[m2][tgs[q]]>bn){bn=hitung[m2][tgs[q]];best=tgs[q];}
+    if(best)pilihTgl[m2]=best;
+  }
+  for(var b=0;b<daftar.length;b++){
+    var d=daftar[b], cells=d.cells, vals=[];
+    var ser=_emfSeries(idx,d.titik,d.param,year,mm,sheet,d.sat,
+                       {tanggal:pilihTgl,campur:campur});
     for(var i=0;i<ser.length;i++){
-      var v=ser[i]?_emfFmt(ser[i].nilai,param):null;
+      var v=ser[i]?_emfFmt(ser[i].nilai,d.param):null;
       if(v==null)empty++; else filled++;
       if(ser[i]&&ser[i].tgl&&!hdrDates[i])hdrDates[i]=ser[i].tgl;
       vals.push(v);
     }
-    log.push({titik:cur,param:param,vals:vals});
+    log.push({titik:d.titik,param:d.param,vals:vals});
     // no reading for that month: clear the cell instead of leaving the base's
     // Y472 (aturan pemilik): tidak ada bacaan -> tulis "-", jangan kosong.
     // Sel kosong tidak bisa dibedakan dari sel yang belum sempat diisi.
-    for(var k=0;k<vals.length;k++)_emfSetCell(cells[L.col0+k],vals[k]==null?EMF_KOSONG:vals[k]); for(var kx=mm.length;kx<L.ncol;kx++)_emfSetCell(cells[L.col0+kx],EMF_KOSONG);
+    for(var k=0;k<vals.length;k++){
+      var isi=vals[k]==null?EMF_KOSONG:vals[k];
+      _emfSetCell(cells[L.col0+k],isi);
+      // Y504b: warnanya ditulis ulang SETIAP kali, termasuk saat memenuhi
+      // baku mutu. Kalau hanya yang melebihi yang diwarnai, merah periode
+      // lalu akan tetap menempel di angka yang sebenarnya patuh.
+      var lb=_emfLebihBM(vals[k],d.bm);
+      warna+=_emfSetWarnaSel(cells[L.col0+k],lb===true);
+    }
+    for(var kx=mm.length;kx<L.ncol;kx++){
+      _emfSetCell(cells[L.col0+kx],EMF_KOSONG);
+      _emfSetWarnaSel(cells[L.col0+kx],false);
+    }
   }
+  // tanggal kolom diambil dari pilihan di atas, bukan dari parameter pertama
+  // yang kebetulan punya bacaan
+  for(var k2=0;k2<mm.length;k2++)if(pilihTgl[mm[k2]])hdrDates[k2]=pilihTgl[mm[k2]];
   _emfPatchMonthHeader(rows,L,mm,year,hdrDates);
-  return {filled:filled,empty:empty,log:log};
+  return {filled:filled,empty:empty,log:log,campur:campur,warna:warna,
+          titik:_emfTitikFromCaption(cap)||'',cap:cap};
 }
 var EMF_TABLE_KEYS=['kualitas air limbah domestik','kualitas air limbah saniter',
  'kualitas air limbah drainase','kualitas air drainase','kualitas air terproduksi',
@@ -43341,7 +43510,65 @@ var EMF_MANUAL=[
  {k:'kebauan',    label:'Pemantauan kebauan',      re:/kebauan/i},
  {k:'getaran',    label:'Pemantauan getaran',      re:/getaran/i}
 ];
+function _emfChartRefAll(){
+  try{var r=JSON.parse(localStorage.getItem('env26_emf_chartref')||'null');
+      if(r&&typeof r==='object')return r;}catch(e){}
+  return {};
+}
+function _emfChartRefSet(titik,nilai){
+  var all=_emfChartRefAll();
+  if(!all.iplcDebitTertinggi||typeof all.iplcDebitTertinggi!=='object')all.iplcDebitTertinggi={};
+  var v=parseFloat(String(nilai==null?'':nilai).replace(',','.'));
+  if(isFinite(v)&&v>0)all.iplcDebitTertinggi[titik]=v;
+  else delete all.iplcDebitTertinggi[titik];
+  try{localStorage.setItem('env26_emf_chartref',JSON.stringify(all));}catch(e){}
+  return all.iplcDebitTertinggi;
+}
+window._emfChartRefSet=_emfChartRefSet;
+// Titik mana saja yang punya bacaan Debit bulanan di tahun yang dipilih --
+// itulah titik yang grafiknya akan digambar, jadi itu pula daftar yang perlu
+// angka pembandingnya.
+function _emfTitikDebit(year){
+  var out=[];
+  try{
+    var idx=_emfIndex(), y=String(year), seen={};
+    for(var k in idx){
+      var q=k.split('\u0000');
+      if(q.length!==3||q[2]!==y)continue;
+      if(_emfPKey(q[1])!=='debit')continue;
+      var t=_emfCanonTitik(q[0]);
+      if(t&&!seen[t]){seen[t]=1;out.push(t);}
+    }
+    out.sort();
+  }catch(_){}
+  return out;
+}
+function _emfRenderIplc(){
+  var box=document.getElementById('emf-iplc-fields');
+  if(!box)return;
+  var y=parseInt((document.getElementById('emf-year')||{}).value,10);
+  if(!y)return;
+  var ref=_emfChartRef(), list=_emfTitikDebit(y), h='';
+  if(!list.length){
+    box.innerHTML='<div style="font-size:10.5px;color:var(--g4)">Belum ada data debit bulanan '
+      +y+' di aplikasi, jadi belum ada titik yang perlu diisi.</div>';
+    return;
+  }
+  for(var i=0;i<list.length;i++){
+    var t=list[i], v=ref[t];
+    h+='<label style="font-size:10.5px;color:var(--g4)">'+_ep(t)+'<br>'
+      +'<input type="number" step="any" min="0" class="et-in" placeholder="m3/bulan" '
+      +'style="font-size:11.5px;min-width:140px" value="'+(v==null?'':_ep(String(v)))+'" '
+      +'onchange="_emfChartRefSet('+JSON.stringify(t).replace(/"/g,'&quot;')+',this.value)"></label>';
+  }
+  var belum=list.filter(function(t){return ref[t]==null;}).length;
+  if(belum)h+='<div style="flex:1 1 100%;font-size:10.5px;color:#8a6d00;margin-top:4px">⚠ '
+    +belum+' titik belum punya angka debit tertinggi 2019; grafiknya akan digambar tanpa garis pembanding.</div>';
+  box.innerHTML=h;
+}
+window._emfRenderIplc=_emfRenderIplc;
 function _emfRenderManual(){
+  try{_emfRenderIplc();}catch(_eI){}
   var box=document.getElementById('emf-manual-fields');
   if(!box)return;
   var y=parseInt((document.getElementById('emf-year')||{}).value,10);
@@ -44409,6 +44636,9 @@ function _emfChartSpec(label, ctx, idx, months, year, sem){
     var vals=ser.map(function(x){return x?parseFloat(String(x.nilai).replace(/[^0-9.\-]/g,'')):null;});
     // no readings: still draw this period's frame rather than keep the base's
     var iplc=ref[titik];
+    if(iplc==null){try{_emfAmbigu('debit2019',_emfSq(titik),
+      ['belum ada angka debit tertinggi 2019 (IPLC)',
+       'grafik digambar tanpa garis pembanding']);}catch(_eR){}}
     return {type:'bar',title:'Debit Air Limbah Domestik',subtitle:mD[1],values:vals,labels:mlab,
       seriesLabel:mD[1],yfmt:function(v){return v.toFixed(2);},
       lines:iplc!=null?[{value:iplc,color:'#c0504d',label:'Debit Tertinggi 2019 (IPLC)',marker:true}]:[]};
@@ -46547,7 +46777,7 @@ function _emfAmbigu(jenis,apa,pilihan){
     _EMF_AMBIGU.push({kunci:kunci,jenis:jenis,apa:String(apa),pilihan:(pilihan||[]).slice(0,6)});
   }catch(_e){}
 }
-function _emfSeries(idx,titik,param,year,months,sheet,satuan){
+function _emfSeries(idx,titik,param,year,months,sheet,satuan,opsi){
   var tahun=String(year), gabung=null;
   var cp=_emfSq(_emfCanonTitik(titik)).toLowerCase();
   var wanted=_emfSq(_emfCanonParam(param)).toLowerCase();
@@ -46638,6 +46868,22 @@ function _emfSeries(idx,titik,param,year,months,sheet,satuan){
                    gabung.concat(['nilai berbeda: '+String(c[0].nilai)+' vs '+String(c[i2].nilai)]));
         return null;
       }
+    }
+    // Y505: laporkan seluruh calon bulan ini, supaya pemanggil bisa memilih
+    // SATU tanggal untuk seluruh tabel alih-alih tiap parameter sendiri.
+    if(opsi&&opsi.kumpul)opsi.kumpul[m]=c.slice();
+    if(opsi&&opsi.tanggal&&opsi.tanggal[m]){
+      var _pas=c.filter(function(x){return String(x.tgl||'').slice(0,10)===opsi.tanggal[m];});
+      if(_pas.length)return _pas[0];
+      // parameter ini tidak diperiksa pada tanggal itu. Nilainya TETAP
+      // dipakai -- membuangnya berarti menghapus pembacaan yang nyata --
+      // tetapi percampurannya dicatat supaya terlihat di layar.
+      if(opsi.campur)opsi.campur.push({bulan:m,tanggal:String(c[0].tgl||'').slice(0,10),
+                                       header:opsi.tanggal[m]});
+      try{_emfAmbigu('tanggal',_emfSq(titik)+' \u2014 '+_emfSq(param)+' bulan '+m,
+        ['diambil dari '+String(c[0].tgl||'').slice(0,10),
+         'tanggal kolom '+opsi.tanggal[m],
+         'titik ini disampel lebih dari sekali pada bulan itu']);}catch(_eC){}
     }
     return c[0];
   });
