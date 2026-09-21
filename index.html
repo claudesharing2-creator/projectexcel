@@ -5165,6 +5165,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
+window.__BUILD__={v:'2026-09-21',h:'c7a1c99f'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -5190,6 +5191,8 @@ function showLanding(){var l=document.getElementById('landing');if(l){_ldStats()
       '<div class="ld-logo">🌊</div>'+
       '<div class="ld-title">ENV Monitoring Dashboard <span style="background:linear-gradient(135deg,#3EE06A,#5EEAD4);-webkit-background-clip:text;background-clip:text;color:transparent">2026</span></div>'+
       '<div class="ld-sub">PERTAMINA HULU MAHAKAM · ENV DATA ENGINEER</div>'+
+      '<div class="ld-ver" id="ld-build" style="font-size:10px;opacity:.55;margin-top:3px;letter-spacing:.3px">Versi '+
+        ((window.__BUILD__||{}).v||'-')+' \u00b7 '+((window.__BUILD__||{}).h||'-')+'</div>'+
       '<div class="ld-envi"><span class="ava">🌱</span><span><b>ENVI:</b> '+sapa+'! Semua datamu siap. Pilih tujuanmu di bawah — atau klik aku kapan saja di pojok kanan bawah kalau butuh panduan.</span></div>'+
       '<div class="ld-stats">'+
         '<div class="ld-stat"><b id="ld-n-act">–</b><span>Kegiatan Aktif</span></div>'+
@@ -32670,13 +32673,29 @@ function _ctTransform(){
 function _ctOutRow(label,val){
   return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(21,101,192,.07);border-radius:8px;margin-bottom:5px"><b style="min-width:80px;font-size:10.5px">'+label+'</b><span style="flex:1;font-family:monospace;font-size:11px">'+val+'</span><button class="coord-copy" data-val="'+val.replace(/"/g,'&quot;')+'" onclick="_coordCopy(this.dataset.val)">salin</button></div>';
 }
+/* Y516: cari elemen panel debit/pH pada salinan yang BENAR -- lihat catatan
+   patch Y516d. Dipakai menggantikan document.getElementById untuk semua id
+   #edp-*, karena id-nya bisa kembar di dua host sekaligus. */
+function _edpEl(id){
+  const semua=document.querySelectorAll('[id="'+id+'"]');
+  if(semua.length<2)return semua[0]||null;
+  for(let i=0;i<semua.length;i++){
+    const p=semua[i].closest('.edp-panel');
+    if(p&&p.getClientRects().length&&getComputedStyle(p).display!=='none')return semua[i];
+  }
+  const h=window._edpHostAktif;
+  if(h&&h.isConnected){const e=h.querySelector('[id="'+id+'"]');if(e)return e;}
+  return semua[0];
+}
+window._edpEl=_edpEl;
 function _etRenderDebitPh(host){
   window._edpQueue=window._edpQueue||[];
-  host.innerHTML=`<div style="padding:14px 16px">
+  window._edpHostAktif=host;   /* Y516 */
+  host.innerHTML=`<div class="edp-panel" style="padding:14px 16px">
     <div class="et-sec">
       <div class="et-sec-title">Recording Debit &amp; pH</div>
       <div class="et-sec-desc">Upload banyak file Excel debit/pH sekaligus di sini — sistem otomatis mendeteksi jenis data (debit atau pH) dan mencocokkan ke titik yang sesuai, mirip alur Review Draft Report. Review hasil pencocokan di bawah, ubah kalau perlu, lalu Terapkan — hasilnya langsung sinkron dengan kartu titik di tab Hasil Sampling.</div>
-      <div class="et-drop" id="edp-drop" style="padding:16px" onclick="document.getElementById('edp-file').click()">
+      <div class="et-drop" id="edp-drop" style="padding:16px" onclick="_edpEl('edp-file').click()">
         <div style="font-size:11.5px;font-weight:700">Klik atau drop file .xls/.xlsx di sini (bisa banyak sekaligus)</div>
         <input type="file" id="edp-file" accept=".xls,.xlsx" multiple style="display:none" onchange="_edpHandleFiles(this.files)">
       </div>
@@ -32688,7 +32707,7 @@ function _etRenderDebitPh(host){
       <div id="edp-gabung"></div>
     </div>
   </div>`;
-  const drop=document.getElementById('edp-drop');
+  const drop=_edpEl('edp-drop');   /* Y516 */
   drop.ondragover=(ev)=>{ev.preventDefault();drop.classList.add('dragover');};
   drop.ondragleave=()=>{drop.classList.remove('dragover');};
   drop.ondrop=(ev)=>{ev.preventDefault();drop.classList.remove('dragover');_edpHandleFiles(ev.dataTransfer.files);};
@@ -37598,7 +37617,7 @@ window._pcClearCoa=_pcClearCoa;
 
 async function _edpHandleFiles(files){
   for(const file of Array.from(files||[]))await _edpProcessFile(file);
-  document.getElementById('edp-file').value='';
+  _edpEl('edp-file').value='';   /* Y516 */
   _edpRenderList();
 }
 async function _edpProcessFile(file){
@@ -37814,7 +37833,7 @@ window._edpRemove=_edpRemove;
 window._edpApply=_edpApply;
 window._edpApplyAll=_edpApplyAll;
 function _edpRenderList(){
-  const host=document.getElementById('edp-list');if(!host)return;
+  const host=_edpEl('edp-list');if(!host)return;   /* Y516 */
   const q=window._edpQueue||[];
   if(!q.length){host.innerHTML='<div style="text-align:center;color:#bbb;font-size:11px;padding:20px">Belum ada file diupload.</div>';return;}
   const cands=_edpTitikCandidates();
@@ -46924,7 +46943,18 @@ function _coordDetailMainInput(actId,q){
   window._edpSetGabung = _edpSetGabung;
 
   function _edpRenderGabung() {
-    var host = document.getElementById('edp-gabung');
+    /* Y516: panel ini bisa hidup DUA KALI sekaligus -- satu dirakit di tab
+       ENV Tools, satu lagi di tab Laporan, dan view yang ditinggalkan hanya
+       disembunyikan, tidak dihapus. document.getElementById selalu memberi
+       salinan PERTAMA dalam urutan dokumen, tanpa peduli mana yang terlihat,
+       sehingga tabelnya bisa tergambar ke panel yang tersembunyi sementara
+       panel yang dilihat orang tinggal judulnya. _edpEl memilih salinan yang
+       benar. Penjagaan typeof-nya bukan hiasan: berkas ini disegarkan tiap
+       build (aturan 6r) dan bisa saja termuat di artefak yang belum punya
+       Y516d. */
+    var host = (typeof window._edpEl === 'function')
+      ? window._edpEl('edp-gabung')
+      : document.getElementById('edp-gabung');
     if (!host) return;
     var st = window._edpGabungState;
     var titikList = _edpTitikList(st.jenis);
