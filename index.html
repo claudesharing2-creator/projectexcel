@@ -2297,8 +2297,11 @@ html[data-theme="neraca"] ::-webkit-scrollbar-thumb:hover{background:#3a3d42;bor
 </style>
 
 
-<style id="zoom-ctl-style">
-#zoom-ctl{position:fixed;left:16px;bottom:16px;z-index:498;display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.14);font-family:inherit}
+<style id="zoom-ctl-style">/* Y512: hanya kendalinya yang menerima klik; latar dan bantalan bilah
+   ini dibuat tembus supaya tidak mematikan tombol tabel di bawahnya. */
+#zoom-ctl>*{pointer-events:auto}
+
+#zoom-ctl{pointer-events:none;position:fixed;left:16px;bottom:16px;z-index:498;display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.14);font-family:inherit}
 #zoom-ctl button{border:none;background:transparent;width:26px;height:26px;border-radius:12px;cursor:pointer;font-size:14px;font-weight:700;color:#444;display:flex;align-items:center;justify-content:center;transition:background .15s}
 #zoom-ctl button:hover{background:rgba(0,0,0,.06)}
 #zoom-ctl #zoom-pct{font-size:10px;font-weight:700;color:#666;min-width:34px;text-align:center;cursor:pointer;user-select:none}
@@ -21800,6 +21803,10 @@ window._hsNormalizeRfaLists=_hsNormalizeRfaLists;
 // panjang RFA_DATA saat dibangun: versi lama tidak, jadi sesudah impor RFA baru
 // penandanya diam-diam memakai data lama.
 let _hsRfaDupIdxCache=null,_hsRfaDupIdxLen=-1;
+/* Y512: _hsRfaGuessIndex() membaca variabel ini di baris pertamanya. Tanpa
+   deklarasi, pembacaan itu melempar ReferenceError dan sub-tab "Tabel" gagal
+   dirender -- layarnya tidak berganti, persis seperti tombol yang mati. */
+let _hsRfaGuessIdxCache=null;
 function _hsRfaDupIndex(){
   const len=(typeof RFA_DATA!=='undefined')?RFA_DATA.length:0;
   if(_hsRfaDupIdxCache&&_hsRfaDupIdxLen===len)return _hsRfaDupIdxCache;
@@ -30833,6 +30840,7 @@ function _lapBuildDocHtml(){
     _lapScanAssignments().forEach(function(a){asgMap[a.slot.key]=a.hits;});
   }
   const pushScans=function(key){
+    if(typeof _lapBagianOn==='function'&&!_lapBagianOn('scan'))return;   /* Y514 */
     const used=new Set();
     (asgMap[key]||[]).forEach(function(h){
       const id=h.file+'|'+h.page;if(used.has(id))return;used.add(id);
@@ -30841,15 +30849,18 @@ function _lapBuildDocHtml(){
       if(pg&&pg.img)pages.push('<div class="pg scanpg"><img src="'+pg.img+'" alt="CoA lab scan"></div>');
     });
   };
-  pages.push(_lapCoverHtml(def,period,(dc.addr||['dlhprov'])[addrIdx]||'dlhprov',tr));
+  if(typeof _lapBagianOn!=='function'||_lapBagianOn('cover'))
+    pages.push(_lapCoverHtml(def,period,(dc.addr||['dlhprov'])[addrIdx]||'dlhprov',tr));
   if(def.hsGroup){
     const seen=new Set();
     def.sites.forEach(function(site){
       const sn=_hsSiteN(site);if(seen.has(sn))return;seen.add(sn);
       const tbl=_lapSwTableHtml(def,period,sn);
       if(!tbl)return;
-      pages.push(_lapTitleHtml([dc.swTitle||'STREAM WATER','LAPANGAN '+sn,_lapPeriodTitleLine(def,period)]));
-      pages.push('<div class="pg"><h3 class="tt">'+_ep(dc.table||'PEMANTAUAN BADAN AIR')+'</h3>'+tbl+'</div>');
+      if(typeof _lapBagianOn!=='function'||_lapBagianOn('pembatas'))
+        pages.push(_lapTitleHtml([dc.swTitle||'STREAM WATER','LAPANGAN '+sn,_lapPeriodTitleLine(def,period)]));
+      if(typeof _lapBagianOn!=='function'||_lapBagianOn('sa'))
+        pages.push('<div class="pg"><h3 class="tt">'+_ep(dc.table||'PEMANTAUAN BADAN AIR')+'</h3>'+tbl+'</div>');
       pushScans('sw|'+sn);
     });
   } else {
@@ -30859,10 +30870,13 @@ function _lapBuildDocHtml(){
         const matrix=_lapSiteMatrix(def,period,site,sec.sheets);
         if(!_lapMatrixHasParams(matrix))return;
         const siteLabel=(dc.siteLabels&&dc.siteLabels[site])||('LAPANGAN '+site);
-        pages.push(_lapTitleHtml([sec.title,siteLabel,_lapPeriodTitleLine(def,period)]));
-        pages.push('<div class="pg"><h3 class="tt">'+_ep(sec.table)+'</h3>'+_lapPemantauanTableHtml(def,period,site,matrix,sec)+'</div>');
+        if(typeof _lapBagianOn!=='function'||_lapBagianOn('pembatas'))
+          pages.push(_lapTitleHtml([sec.title,siteLabel,_lapPeriodTitleLine(def,period)]));
+        if(typeof _lapBagianOn!=='function'||_lapBagianOn('sa'))
+          pages.push('<div class="pg"><h3 class="tt">'+_ep(sec.table)+'</h3>'+_lapPemantauanTableHtml(def,period,site,matrix,sec)+'</div>');
         monsAll.forEach(function(mon){pushScans('m|'+sec.sheets[0]+'|'+_hsSiteN(site)+'|'+mon);});
-        _lapDailyPages(def,period,site,matrix,sec).forEach(function(p){pages.push(p);});
+        if(typeof _lapBagianOn!=='function'||_lapBagianOn('debit'))
+          _lapDailyPages(def,period,site,matrix,sec).forEach(function(p){pages.push(p);});
       });
     });
   }
@@ -30886,12 +30900,14 @@ function _lapGenerate(defKey,periodId){
    +'<div id="lap-check-panel" style="flex-shrink:0;max-height:170px;overflow:auto;border:1px solid #eee;border-radius:8px;padding:8px 10px;margin-bottom:8px;background:#fafafa"></div>'
    +'<input type="file" id="lap-coa-pdf" accept=".pdf" multiple style="display:none" onchange="_lapCoaPdfIntake(this.files);this.value=&quot;&quot;">'
    +'<iframe id="lap-doc-frame" style="flex:1;border:1px solid #ddd;border-radius:8px;width:100%;background:#9aa0a6"></iframe>'
+   +'<div id="lap-bagian-bar" style="flex-shrink:0;border:1px solid #eee;border-radius:8px;padding:7px 10px;margin-bottom:8px;background:#fff"></div>'
    +'<div style="display:flex;gap:8px;justify-content:flex-end;padding:10px 4px 0;flex-shrink:0;align-items:center;flex-wrap:wrap">'
    +'<span id="lap-coa-scan-status" style="font-size:9.5px;color:#888;margin-right:auto"></span>'
    +'<button onclick="document.getElementById(&quot;lap-gen-ov&quot;).remove()" style="background:#fff;border:1px solid #ddd;border-radius:7px;padding:7px 16px;cursor:pointer;font-family:inherit;font-size:12px">Tutup</button>'
    +'<button onclick="document.getElementById(&quot;lap-coa-pdf&quot;).click()" title="Upload PDF CoA yang sudah dirilis lab — di-OCR lalu dicocokkan otomatis ke laporan berdasarkan nama titik, site, RFA, tanggal sampel & no. lab" style="background:#6a1b9a;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">📎 Input CoA PDF Lab</button>'
    +'<button onclick="_lapCoaExport()" title="Workbook CoA Authority pra-isi (format sama seperti file lab) untuk dikirim ke lab — hasil scan bertanda tangannya yang jadi lampiran laporan" style="background:#2e7d32;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">📥 Export CoA Auth (XLSX)</button>'
    +'<button id="lap-zip-btn" onclick="_lapExportZip()" title="Dokumen + manifest: dari mana angkanya dan aturan mana yang dipakai" style="background:#00695c;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">\U0001F4E6 Paket ZIP + manifest</button>'
+   +'<button id="lap-excel-btn" onclick="_lapExcelBagian()" title="Hanya untuk bagian yang berkas mentahnya Excel (Form SA, Debit harian)" style="background:#2e7d32;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">\U0001F4CA Simpan Excel (.xlsx)</button>'
    +'<button id="lap-word-btn" onclick="_lapWordDoc()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">📄 Simpan Word (.doc)</button>'
    +'<button id="lap-print-btn" onclick="_lapPrintDoc()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:7px 18px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">🖨 Cetak / Simpan PDF</button></div></div>';
   const sel=document.getElementById('lap-addr-sel');
@@ -30900,6 +30916,7 @@ function _lapGenerate(defKey,periodId){
     _lapRefreshGenModal();
   };
   _lapRefreshGenModal();
+  if(typeof _lapBagianBarRender==='function')_lapBagianBarRender();   /* Y514 */
 }
 function _lapRefreshGenModal(){
   if(!document.getElementById('lap-gen-ov'))return;
@@ -32665,12 +32682,18 @@ function _etRenderDebitPh(host){
       </div>
       <div id="edp-list" style="margin-top:14px"></div>
     </div>
+    <div class="et-sec" style="margin-top:14px">
+      <div class="et-sec-title">Data Tergabung per Titik</div>
+      <div class="et-sec-desc">Seluruh riwayat satu titik dalam satu tabel, lintas tahun \u2014 bukan sebulan-sebulan. Pilih jenis data dan titiknya, lalu tabelnya tampil di bawah dan bisa diekspor ke Excel.</div>
+      <div id="edp-gabung"></div>
+    </div>
   </div>`;
   const drop=document.getElementById('edp-drop');
   drop.ondragover=(ev)=>{ev.preventDefault();drop.classList.add('dragover');};
   drop.ondragleave=()=>{drop.classList.remove('dragover');};
   drop.ondrop=(ev)=>{ev.preventDefault();drop.classList.remove('dragover');_edpHandleFiles(ev.dataTransfer.files);};
   _edpRenderList();
+  if(typeof _edpRenderGabung==='function')_edpRenderGabung();   /* Y513 */
 }
 function _edpTitikCandidates(){
   const out=[];const seen=new Set();
@@ -38576,7 +38599,7 @@ function _drainRenderExportTab(host){
     <div style="font-size:9.5px;color:var(--g4);margin:4px 0 8px">Auth = tabel harian per titik + total bulanan (format sama seperti Template Auth Excel). Ket = versi bernarasi (judul + paragraf keterangan baku) dengan tabel yang sama. <b>Excel</b> = susunan yang sama dengan Auth, satu bulan satu lembar, tapi bisa disunting: angkanya angka Excel, tanggalnya tanggal Excel, dan baris TOTAL memakai rumus SUM. Tebal/arsiran tidak ikut \u2014 pustaka Excel yang dipakai di sini tidak menulis gaya sel.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
       <div><div style="font-size:9px;color:var(--g4)">Site</div>
-        <select id="et-drain-site" class="et-in">${Object.keys(DRAIN_SITES).map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+        <select id="et-drain-site" class="et-in"><option value="__SEMUA__">Semua site</option>${Object.keys(DRAIN_SITES).map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
       <div><div style="font-size:9px;color:var(--g4)">Bulan Mulai</div><select id="et-drain-start" class="et-in"></select></div>
       <div><div style="font-size:9px;color:var(--g4)">Bulan Akhir</div><select id="et-drain-end" class="et-in"></select></div>
     </div>
@@ -38701,12 +38724,22 @@ function _drainExport(mode){
   const endYm=document.getElementById('et-drain-end').value;
   const statusEl=document.getElementById('et-drain-export-status');
   if(!startYm||!endYm){if(statusEl)statusEl.textContent='⚠ Belum ada data untuk periode manapun — impor CSV dulu.';return;}
-  const missing=_drainCheckMissing(DRAIN_SITES[site],startYm,endYm);
-  if(missing.length){
-    _drainAskFillMissing(missing.length,(fillMode)=>_drainDoExport(mode,site,startYm,endYm,fillMode));
-  } else {
-    _drainDoExport(mode,site,startYm,endYm,null);
-  }
+  /* Y515: "Semua site" = jalankan ekspor yang sama untuk tiap site, satu
+     berkas per site (formatnya memang per site, judulnya menyebut sitenya).
+     Kelengkapan datanya diperiksa GABUNGAN dulu supaya pertanyaan "isi hari
+     yang kosong?" ditanyakan sekali, bukan sekali per site. */
+  const daftar=(site==='__SEMUA__')?Object.keys(DRAIN_SITES):[site];
+  const jalan=function(fillMode){
+    daftar.forEach(function(s,i){
+      setTimeout(function(){_drainDoExport(mode,s,startYm,endYm,fillMode);},i*400);
+    });
+    if(daftar.length>1&&statusEl)
+      statusEl.textContent='✓ Mengunduh '+daftar.length+' berkas (satu per site): '+daftar.join(', ');
+  };
+  let missing=[];
+  daftar.forEach(function(s){missing=missing.concat(_drainCheckMissing(DRAIN_SITES[s],startYm,endYm));});
+  if(missing.length)_drainAskFillMissing(missing.length,jalan);
+  else jalan(null);
 }
 function _drainExportByPoints(){
   const pts=[...document.querySelectorAll('.et-drain-pt-cb:checked')].map(cb=>cb.value);
@@ -38731,7 +38764,7 @@ function _drainDoExportRawByPoints(pts,startYm,endYm,fillMode,statusEl){
         const lastDay=new Date(y,m,0).getDate();
         for(let d=1;d<=lastDay;d++){
           const key=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-          const v=_drainValueForExport(catchment,pt,key,fillMode);
+          const v=_drainNilaiKet(_drainValueForExport(catchment,pt,key,fillMode));   /* Y515 */
           aoa.push([d, v==null?null:Number(v.toFixed(4))]);
         }
       });
@@ -38770,6 +38803,16 @@ function _drainFillChoice(choice){
   if(choice==='cancel'||!cb)return;
   cb(choice);
 }
+/* Y515: hari tanpa hujan dilaporkan sebagai -1, bukan 0. Itu bukan
+   keputusan gaya: kalimat keterangan di PDF Ket berbunyi "maka curah hujan
+   adalah 0. Sehingga debit drainase adalah -1", jadi menulis 0.000 di
+   tabelnya membuat dokumen itu membantah dirinya sendiri. Aman karena tidak
+   ambigu -- _drainDebit mengembalikan null saat datanya tidak ada, sehingga
+   nilai 0 hanya bisa berasal dari curah hujan yang memang nol.
+   Dipakai HANYA untuk angka yang ditulis; penjumlahan TOTAL tetap memakai
+   nilai aslinya, karena -1 itu penanda, bukan besaran yang boleh dijumlahkan. */
+function _drainNilaiKet(v){return (v===0)?-1:v;}
+window._drainNilaiKet=_drainNilaiKet;
 function _drainValueForExport(catchment,pt,key,fillMode){
   let v=_drainDebit(catchment,pt,key);
   if(v!=null)return v;
@@ -38955,8 +38998,12 @@ function _drainDoExport(mode,site,startYm,endYm,fillMode){
         const catchment=_drainPointCatchment(pt);
         const v=_drainValueForExport(catchment,pt,key,fillMode);
         doc.rect(x,yPos,colW[i+1],rowH,'S');
-        doc.text(v==null?'-':v.toFixed(3),x+3,yPos+9);
-        if(v!=null)totals[i]+=v;
+        /* Y515: hanya di mode Ket, karena hanya PDF itu yang memuat kalimat
+           penjelas "-1"-nya. Menulis -1 di PDF Auth tanpa kalimat itu justru
+           membingungkan pembacanya. */
+        const vT=(mode==='ket-pdf')?_drainNilaiKet(v):v;
+        doc.text(vT==null?'-':(vT===-1?'-1':vT.toFixed(3)),x+3,yPos+9);
+        if(v!=null)totals[i]+=v;   /* TOTAL memakai nilai asli, bukan -1 */
         x+=colW[i+1];
       });
       yPos+=rowH;
@@ -46766,7 +46813,511 @@ function _coordDetailMainInput(actId,q){
   else setTimeout(_uiPasang, 300);
 })();
 </script>
-<script id="coordinate-legacy-field-normalization-2026-08-27">
+<script id="debitph-gabung-y513">
+/* ===== Y513: Recording Debit & pH — tabel gabungan per titik =====
+   Permintaan pemilik (2026-09-21): *"selain aku bisa lihat di hasil sampling,
+   aku jg ingin bisa lihat hasil yg di compile jadi 1 ... tampilannya seperti
+   tabel full data per titik. misal titik A jika ada data dari Januari 2024 -
+   Juli 2026 maka yang terlihat disitu adalah 1 baris data full dengan kolom A
+   adalah tanggal dan kolom B adalah debit. kalo bisa aku jg ingin itu di
+   export as excel."*
+
+   Datanya sudah ada di HASIL_DEBIT_DAILY / HASIL_PH_DAILY, tetapi selama ini
+   hanya bisa dilihat sebulan-sebulan. Di sini seluruh riwayat satu titik
+   ditampilkan sebagai satu deret lintas tahun.
+
+   Blok ini dimuat ulang dari scripts/data/laporan/debitph_gabung.js setiap
+   kali dibangun (aturan 6r), jadi perbaikan berikutnya cukup di berkas ini. */
+(function () {
+  'use strict';
+
+  function _edpStore(jenis) {
+    if (jenis === 'ph') return (typeof HASIL_PH_DAILY !== 'undefined') ? HASIL_PH_DAILY : {};
+    return (typeof HASIL_DEBIT_DAILY !== 'undefined') ? HASIL_DEBIT_DAILY : {};
+  }
+
+  /* Titik yang punya minimal satu bacaan, urut abjad. Titik tanpa bacaan
+     sengaja tidak ditawarkan: memilihnya hanya menghasilkan tabel kosong yang
+     tidak bisa dibedakan dari kegagalan. */
+  function _edpTitikList(jenis) {
+    var s = _edpStore(jenis), out = [];
+    for (var t in s) {
+      var d = s[t] || {}, ada = false;
+      for (var k in d) { if (_edpAngka(d[k]) != null) { ada = true; break; } }
+      if (ada) out.push(t);
+    }
+    return out.sort(function (a, b) { return String(a).localeCompare(String(b), 'id'); });
+  }
+
+  /* Nilai NEGATIF diperlakukan sebagai "tidak ada data", bukan angka.
+     Alasannya bukan selera: aplikasi ini sendiri menulis -1 untuk hari kosong
+     (lihat _lapSimpelMonthRows, yang mengubah null/''/0 menjadi -1 saat
+     membuat lampiran debit bulanan), dan berkas seperti itu bisa terbaca
+     kembali ke penyimpanan. Terukur di Data Pack: 98 entri bernilai -1 di dua
+     titik. Debit maupun pH tidak bisa negatif secara fisik, jadi menampilkannya
+     sebagai angka berarti menyajikan "belum ada data" seolah-olah data sahih.
+
+     Nilai 0 DIBIARKAN apa adanya. Nol bisa berarti tidak ada aliran yang
+     memang terjadi ("No Flow" muncul sebagai keadaan sah di dokumen EMF), dan
+     mengubah nol sungguhan menjadi "-" sama saja menghapus bacaan. */
+  function _edpAngka(v) {
+    if (v == null || v === '') return null;
+    var n = parseFloat(String(v).replace(',', '.'));
+    if (!isFinite(n)) return null;
+    if (n < 0) return null;
+    return n;
+  }
+
+  function _edpTglSah(k) { return /^\d{4}-\d{2}-\d{2}$/.test(String(k)); }
+
+  /* Seluruh bacaan satu titik, urut tanggal. isiKosong=true menambahkan hari
+     kalender yang tidak punya bacaan sebagai "-" (aturan tampilan 3), supaya
+     bentuknya sama dengan lampiran debit harian di laporan bulanan. */
+  function _edpSeri(jenis, titik, isiKosong) {
+    var data = _edpStore(jenis)[titik] || {};
+    var tgl = Object.keys(data).filter(_edpTglSah).sort();
+    var isi = [];
+    for (var i = 0; i < tgl.length; i++) {
+      var n = _edpAngka(data[tgl[i]]);
+      if (n != null) isi.push({ tgl: tgl[i], nilai: n });
+    }
+    if (!isi.length) return { baris: [], berisi: 0, hariKalender: 0, dari: '', sampai: '' };
+    var dari = isi[0].tgl, sampai = isi[isi.length - 1].tgl;
+    var hariKalender = Math.round(
+      (Date.UTC(+sampai.slice(0, 4), +sampai.slice(5, 7) - 1, +sampai.slice(8, 10)) -
+       Date.UTC(+dari.slice(0, 4), +dari.slice(5, 7) - 1, +dari.slice(8, 10))) / 86400000) + 1;
+    var baris = isi;
+    if (isiKosong) {
+      var punya = {};
+      isi.forEach(function (r) { punya[r.tgl] = r.nilai; });
+      baris = [];
+      var d0 = new Date(Date.UTC(+dari.slice(0, 4), +dari.slice(5, 7) - 1, +dari.slice(8, 10)));
+      for (var h = 0; h < hariKalender; h++) {
+        var iso = d0.toISOString().slice(0, 10);
+        baris.push({ tgl: iso, nilai: (iso in punya) ? punya[iso] : null });
+        d0.setUTCDate(d0.getUTCDate() + 1);
+      }
+    }
+    return { baris: baris, berisi: isi.length, hariKalender: hariKalender, dari: dari, sampai: sampai };
+  }
+  window._edpSeri = _edpSeri;
+  window._edpTitikList = _edpTitikList;
+
+  function _edpEsc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function _edpNilaiTeks(n) {
+    if (n == null) return '-';                    /* aturan tampilan 3 */
+    return String(parseFloat(n.toFixed(3)));
+  }
+
+  window._edpGabungState = window._edpGabungState || { jenis: 'debit', titik: '', isiKosong: false };
+
+  function _edpSetGabung(k, v) {
+    window._edpGabungState[k] = (k === 'isiKosong') ? !!v : v;
+    if (k === 'jenis') window._edpGabungState.titik = '';
+    _edpRenderGabung();
+  }
+  window._edpSetGabung = _edpSetGabung;
+
+  function _edpRenderGabung() {
+    var host = document.getElementById('edp-gabung');
+    if (!host) return;
+    var st = window._edpGabungState;
+    var titikList = _edpTitikList(st.jenis);
+    if (!st.titik || titikList.indexOf(st.titik) < 0) st.titik = titikList[0] || '';
+
+    var satuan = st.jenis === 'ph' ? '' : ' (m3/hari)';
+    var h = '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">'
+      + '<label style="font-size:10.5px;color:var(--g4)">Jenis data<br>'
+      + '<select class="et-in" style="font-size:11.5px;min-width:130px" onchange="_edpSetGabung(\'jenis\',this.value)">'
+      + '<option value="debit"' + (st.jenis === 'debit' ? ' selected' : '') + '>Debit</option>'
+      + '<option value="ph"' + (st.jenis === 'ph' ? ' selected' : '') + '>pH</option>'
+      + '</select></label>'
+      + '<label style="font-size:10.5px;color:var(--g4)">Titik<br>'
+      + '<select class="et-in" style="font-size:11.5px;min-width:250px" onchange="_edpSetGabung(\'titik\',this.value)">'
+      + (titikList.length
+          ? titikList.map(function (t) {
+              return '<option value="' + _edpEsc(t) + '"' + (t === st.titik ? ' selected' : '') + '>' + _edpEsc(t) + '</option>';
+            }).join('')
+          : '<option value="">(belum ada data)</option>')
+      + '</select></label>'
+      + '<label style="font-size:10.5px;color:var(--g4);display:flex;align-items:center;gap:5px;padding-bottom:6px">'
+      + '<input type="checkbox"' + (st.isiKosong ? ' checked' : '')
+      + ' onchange="_edpSetGabung(\'isiKosong\',this.checked)"> tampilkan hari tanpa data</label>';
+
+    if (!st.titik) {
+      host.innerHTML = h + '</div><div style="font-size:11px;color:var(--g3);padding:10px 0">'
+        + 'Belum ada data ' + (st.jenis === 'ph' ? 'pH' : 'debit') + ' di aplikasi. '
+        + 'Unggah berkas Excel-nya di kotak di atas dulu.</div>';
+      return;
+    }
+
+    var s = _edpSeri(st.jenis, st.titik, st.isiKosong);
+    h += '<button class="et-btn" style="font-size:11px;padding:6px 12px" '
+      + 'onclick="_edpExportGabung()">Export Excel (.xlsx)</button></div>';
+    h += '<div style="font-size:10.5px;color:var(--g3);margin-bottom:8px">'
+      + '<b>' + s.berisi + '</b> hari berisi data, dari <b>' + _edpEsc(s.dari) + '</b> sampai <b>'
+      + _edpEsc(s.sampai) + '</b> (' + s.hariKalender + ' hari kalender)'
+      + (st.isiKosong ? ' — hari tanpa bacaan ditulis "-"' : '')
+      + '. Nilai <b>tidak</b> dihitung ulang di sini; ini menampilkan apa adanya yang tersimpan, '
+      + 'kecuali angka negatif (penanda "tidak ada data" milik aplikasi, mis. −1) yang ditulis "-" '
+      + 'karena debit maupun pH tidak bisa negatif. Angka nol dibiarkan nol — bisa jadi memang tidak ada aliran.</div>';
+    h += '<div style="max-height:460px;overflow:auto;border:1px solid var(--g2);border-radius:8px">'
+      + '<table style="border-collapse:collapse;width:100%;font-size:11px">'
+      + '<thead><tr>'
+      + '<th style="position:sticky;top:0;background:var(--card,#fff);text-align:left;padding:6px 10px;border-bottom:2px solid var(--g2)">Tanggal</th>'
+      + '<th style="position:sticky;top:0;background:var(--card,#fff);text-align:left;padding:6px 10px;border-bottom:2px solid var(--g2)">'
+      + (st.jenis === 'ph' ? 'pH' : 'Debit') + _edpEsc(satuan) + '</th>'
+      + '</tr></thead><tbody>';
+    h += s.baris.map(function (r) {
+      return '<tr><td style="padding:4px 10px;border-bottom:1px solid var(--g1)">' + _edpEsc(r.tgl) + '</td>'
+        + '<td style="padding:4px 10px;border-bottom:1px solid var(--g1)">' + _edpEsc(_edpNilaiTeks(r.nilai)) + '</td></tr>';
+    }).join('');
+    h += '</tbody></table></div>';
+    host.innerHTML = h;
+  }
+  window._edpRenderGabung = _edpRenderGabung;
+
+  /* Hari sejak 1899-12-30 — itulah angka yang dipakai Excel untuk tanggal.
+     Dipakai supaya kolom Tanggal benar-benar tanggal Excel yang bisa
+     diurutkan dan diformat, bukan teks yang kebetulan mirip tanggal
+     (aturan 6k). */
+  function _edpSerialExcel(iso) {
+    var y = +iso.slice(0, 4), m = +iso.slice(5, 7), d = +iso.slice(8, 10);
+    return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000);
+  }
+
+  function _edpExportGabung() {
+    if (typeof XLSX === 'undefined' || !XLSX.utils) {
+      if (typeof toast === 'function') toast('⚠ Library Excel belum siap.');
+      return;
+    }
+    var st = window._edpGabungState;
+    if (!st.titik) { if (typeof toast === 'function') toast('⚠ Pilih titiknya dulu.'); return; }
+    var s = _edpSeri(st.jenis, st.titik, st.isiKosong);
+    if (!s.baris.length) { if (typeof toast === 'function') toast('⚠ Titik ini belum punya data.'); return; }
+
+    var judul = st.jenis === 'ph' ? 'pH' : 'Debit (m3/hari)';
+    var ws = XLSX.utils.aoa_to_sheet([['Tanggal', judul]]);
+    /* aoa_to_sheet menetapkan !ref hanya untuk baris yang diberikan; sel yang
+       ditulis di luar rentang itu akan hilang saat disimpan kalau !ref tidak
+       dilebarkan dulu (aturan 6v). */
+    var n = s.baris.length;
+    for (var i = 0; i < n; i++) {
+      var r = s.baris[i], baris = i + 1;
+      XLSX.utils.sheet_add_aoa(ws, [[null, null]], { origin: baris });
+      ws['A' + (baris + 1)] = { t: 'n', v: _edpSerialExcel(r.tgl), z: 'yyyy-mm-dd' };
+      ws['B' + (baris + 1)] = (r.nilai == null)
+        ? { t: 's', v: '-' }                       /* aturan tampilan 3 */
+        : { t: 'n', v: r.nilai, z: '0.000' };
+    }
+    ws['!ref'] = 'A1:B' + (n + 1);
+    ws['!cols'] = [{ wch: 12 }, { wch: 16 }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    var aman = String(st.titik).replace(/[\\/:*?"<>|]/g, '-');
+    XLSX.writeFile(wb, (st.jenis === 'ph' ? 'pH' : 'Debit') + ' ' + aman + ' ' + s.dari + '_' + s.sampai + '.xlsx');
+    if (typeof toast === 'function')
+      toast('✅ ' + s.baris.length + ' baris tersimpan ke Excel.');
+  }
+  window._edpExportGabung = _edpExportGabung;
+})();
+
+</script><script id="bagian-laporan-y514">
+/* ===== Y514: laporan bulanan/semester digenerate PER BAGIAN =====
+   Permintaan pemilik (2026-09-21): *"di pelaporan bulanan terdapat beberapa
+   part yang harus kamu generate, mulai dari cover letter, halaman pembatas,
+   form SA, debit harian yg tercompile, dan lampiran untuk scan report ...
+   aku ingin setiap part itu bisa kupilih generatenya satu per satu terpisah,
+   aku juga bisa pilih formatnya apakah memang harus word ... bisa excel ...
+   dan juga bisa PDF yang sudah siap."*
+
+   Yang SUDAH ada sebelum ini: dokumen utuh berisi kelima bagian itu, keluar
+   sebagai Word (.doc) atau cetak/PDF. Yang belum ada: memilih bagian, dan
+   keluaran Excel untuk bagian yang berkas mentahnya memang Excel.
+
+   Keputusan penting soal Excel: isinya TIDAK dihitung ulang di sini, melainkan
+   dibaca dari tabel yang sudah dibangun untuk dokumen. Menulis ulang logika
+   pengambilan angkanya berarti punya dua sumber kebenaran yang pasti akan
+   berbeda suatu hari -- dan bedanya baru ketahuan di dokumen kepatuhan yang
+   sudah dikirim.
+
+   Dimuat ulang dari scripts/data/laporan/bagian_laporan.js setiap kali
+   dibangun (aturan 6r). */
+(function () {
+  'use strict';
+
+  /* Kelima bagian, beserta format yang masuk akal untuk masing-masing.
+     "excel" hanya dinyalakan untuk bagian yang berkas mentahnya memang
+     Excel -- form SA dan debit harian. Cover letter dan halaman pembatas
+     adalah dokumen Word; memaksakannya jadi Excel tidak menghasilkan apa pun
+     yang bisa dipakai. */
+  var LAP_BAGIAN = [
+    { k: 'cover', label: 'Cover letter', word: 1, excel: 0, pdf: 1,
+      ket: 'Surat pengantar berkop, bernomor dan bertanggal' },
+    { k: 'pembatas', label: 'Halaman pembatas', word: 1, excel: 0, pdf: 1,
+      ket: 'Halaman judul pemisah tiap bagian' },
+    { k: 'sa', label: 'Form SA (tabel pemantauan)', word: 1, excel: 1, pdf: 1,
+      ket: 'Tabel hasil pemantauan per titik' },
+    { k: 'debit', label: 'Debit harian (compiled)', word: 1, excel: 1, pdf: 1,
+      ket: 'Lampiran debit harian per bulan' },
+    { k: 'scan', label: 'Lampiran scan report', word: 1, excel: 0, pdf: 1,
+      ket: 'Hasil lab dari luar — hanya ditempel, tidak dibuat di sini' },
+  ];
+  window.LAP_BAGIAN = LAP_BAGIAN;
+
+  function _lapBagianState() {
+    if (!window._lapBagian) {
+      window._lapBagian = {};
+      LAP_BAGIAN.forEach(function (b) { window._lapBagian[b.k] = true; });
+    }
+    return window._lapBagian;
+  }
+  /* Dipanggil dari _lapBuildDocHtml untuk tiap bagian. Default-nya TRUE
+     supaya perilaku lama (dokumen utuh) tidak berubah kalau blok ini gagal
+     dimuat karena sebab apa pun. */
+  function _lapBagianOn(k) {
+    try { return _lapBagianState()[k] !== false; } catch (e) { return true; }
+  }
+  window._lapBagianOn = _lapBagianOn;
+
+  function _lapBagianSet(k, v) {
+    _lapBagianState()[k] = !!v;
+    if (typeof _lapRefreshGenModal === 'function') _lapRefreshGenModal();
+    _lapBagianBarRender();
+  }
+  window._lapBagianSet = _lapBagianSet;
+
+  function _lapBagianPilih(semua) {
+    LAP_BAGIAN.forEach(function (b) { _lapBagianState()[b.k] = !!semua; });
+    if (typeof _lapRefreshGenModal === 'function') _lapRefreshGenModal();
+    _lapBagianBarRender();
+  }
+  window._lapBagianPilih = _lapBagianPilih;
+
+  function _esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function _lapBagianAktif() {
+    return LAP_BAGIAN.filter(function (b) { return _lapBagianOn(b.k); });
+  }
+  /* Excel hanya masuk akal kalau SEMUA bagian yang dipilih memang punya
+     bentuk Excel. Memilih cover letter lalu menekan Excel akan menghasilkan
+     berkas yang diam-diam kehilangan surat pengantarnya -- itu jenis
+     kegagalan sunyi yang sudah mahal di ekspor EMF. */
+  function _lapExcelBisa() {
+    var a = _lapBagianAktif();
+    return a.length > 0 && a.every(function (b) { return b.excel; });
+  }
+  window._lapExcelBisa = _lapExcelBisa;
+
+  function _lapBagianBarRender() {
+    var host = document.getElementById('lap-bagian-bar');
+    if (!host) return;
+    var st = _lapBagianState();
+    var h = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:10.5px">'
+      + '<b style="font-size:11px;color:#333">Bagian yang digenerate</b>';
+    LAP_BAGIAN.forEach(function (b) {
+      h += '<label title="' + _esc(b.ket) + '" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">'
+        + '<input type="checkbox"' + (st[b.k] !== false ? ' checked' : '')
+        + ' onchange="_lapBagianSet(\'' + b.k + '\',this.checked)"> ' + _esc(b.label)
+        + '<span style="color:#aaa;font-size:9px">' + (b.excel ? 'W/X/P' : 'W/P') + '</span></label>';
+    });
+    h += '<button onclick="_lapBagianPilih(true)" style="border:1px solid #ddd;background:#fff;border-radius:6px;padding:3px 9px;font-size:10px;cursor:pointer;font-family:inherit">Semua</button>'
+      + '<button onclick="_lapBagianPilih(false)" style="border:1px solid #ddd;background:#fff;border-radius:6px;padding:3px 9px;font-size:10px;cursor:pointer;font-family:inherit">Kosongkan</button>'
+      + '<span style="color:#999;font-size:9px">W=Word, X=Excel, P=PDF</span>';
+    var aktif = _lapBagianAktif();
+    if (!aktif.length) {
+      h += '<span style="color:#c0392b;font-size:10px;margin-left:auto">⚠ Belum ada bagian yang dipilih</span>';
+    } else if (!_lapExcelBisa()) {
+      var tanpa = aktif.filter(function (b) { return !b.excel; }).map(function (b) { return b.label; });
+      h += '<span style="color:#8a6d00;font-size:10px;margin-left:auto">Excel nonaktif — '
+        + _esc(tanpa.join(', ')) + ' tidak punya bentuk Excel</span>';
+    }
+    h += '</div>';
+    host.innerHTML = h;
+    var xb = document.getElementById('lap-excel-btn');
+    if (xb) {
+      var bisa = _lapExcelBisa();
+      xb.disabled = !bisa;
+      xb.style.opacity = bisa ? '1' : '.45';
+      xb.style.cursor = bisa ? 'pointer' : 'not-allowed';
+      xb.title = bisa ? 'Simpan bagian terpilih sebagai workbook Excel'
+                      : 'Hanya Form SA dan Debit harian yang punya bentuk Excel';
+    }
+  }
+  window._lapBagianBarRender = _lapBagianBarRender;
+
+  /* ---- Excel: dibaca dari tabel dokumen, bukan dihitung ulang ---------- */
+
+  /* Teks satu sel, dengan spasi disisipkan di batas antar-elemen. textContent
+     saja menyambung "Baku Mutu" dan "Konsentrasi" yang dipisah <br> menjadi
+     "Baku MutuKonsentrasi", dan menempelkan catatan kecil ke ujung kalimat
+     sebelumnya. */
+  function _lapSelTeks(el) {
+    var out = '';
+    (function jalan(n) {
+      for (var i = 0; i < n.childNodes.length; i++) {
+        var c = n.childNodes[i];
+        if (c.nodeType === 3) out += c.nodeValue;
+        else if (c.nodeType === 1) { out += ' '; jalan(c); out += ' '; }
+      }
+    })(el);
+    return out.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  /* Angka dibaca dengan aturan yang SAMA seperti aplikasi ini menulisnya.
+     Jebakan yang sempat kena: memperlakukan titik sebagai pemisah ribuan
+     membuat pH "6.78" tersimpan sebagai 678 di Excel -- salah diam-diam, dan
+     baru ketahuan kalau workbook-nya dibuka. Aturannya:
+       - ada koma  -> koma itu pemisah desimal, titik pemisah ribuan
+                      ("1.036,8" -> 1036.8)
+       - tanpa koma -> titik itu pemisah desimal, sama seperti _hsParseNum
+                      ("6.78" -> 6.78) */
+  function _lapKeAngka(t) {
+    var s = t.replace(/\s/g, '');
+    if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+    var n = parseFloat(s);
+    return isFinite(n) ? n : null;
+  }
+
+  /* Diekspos supaya aturan penguraian angkanya bisa diuji langsung tanpa
+     Data Pack asli. Ini fungsi murni: masuk teks, keluar nilai. */
+  window._lapKeAngka = _lapKeAngka;
+
+  function _lapSelKeNilai(td) {
+    var t = _lapSelTeks(td);
+    if (!t) return { t: 's', v: '' };
+    /* "-" adalah tanda resmi "tidak ada data" (aturan tampilan 3); biarkan
+       sebagai teks supaya tidak berubah jadi nol saat dihitung di Excel. */
+    if (t === '-') return { t: 's', v: '-' };
+    /* "< 0.01" dan "> 5" adalah batas deteksi, bukan angka: menyimpannya
+       sebagai angka membuang tanda kurang-dari-nya. */
+    if (/^[<>]/.test(t)) return { t: 's', v: t };
+    var n = _lapKeAngka(t);
+    return (n == null) ? { t: 's', v: t } : { t: 'n', v: n };
+  }
+  /* Juga diekspos: satu sel HTML -> nilai Excel. Inilah aturan yang paling
+     mudah salah diam-diam, jadi harus bisa diuji sendiri. */
+  window._lapSelKeNilai = _lapSelKeNilai;
+
+  /* Satu <table> HTML -> satu lembar Excel. colspan/rowspan dijaga: sel yang
+     menyeberang diisi di kolom pertamanya dan kolom sisanya dikosongkan,
+     supaya tidak ada nilai yang bergeser kolom. */
+  function _lapTblKeAoa(tbl) {
+    var rows = [], grid = [];
+    var trs = tbl.querySelectorAll('tr');
+    for (var r = 0; r < trs.length; r++) {
+      grid[r] = grid[r] || [];
+      var c = 0;
+      var tds = trs[r].children;
+      for (var i = 0; i < tds.length; i++) {
+        while (grid[r][c] !== undefined) c++;
+        var el = tds[i];
+        var cs = parseInt(el.getAttribute('colspan') || '1', 10) || 1;
+        var rs = parseInt(el.getAttribute('rowspan') || '1', 10) || 1;
+        var v = _lapSelKeNilai(el);
+        for (var dr = 0; dr < rs; dr++) {
+          grid[r + dr] = grid[r + dr] || [];
+          for (var dc = 0; dc < cs; dc++) {
+            grid[r + dr][c + dc] = (dr === 0 && dc === 0) ? v : { t: 's', v: '' };
+          }
+        }
+        c += cs;
+      }
+    }
+    for (var g = 0; g < grid.length; g++) {
+      var baris = [];
+      for (var k = 0; k < (grid[g] || []).length; k++) baris.push(grid[g][k] || { t: 's', v: '' });
+      rows.push(baris);
+    }
+    return rows;
+  }
+
+  function _lapAoaKeSheet(aoa) {
+    var ws = {}, maxC = 0;
+    for (var r = 0; r < aoa.length; r++) {
+      if (aoa[r].length > maxC) maxC = aoa[r].length;
+      for (var c = 0; c < aoa[r].length; c++) {
+        var sel = aoa[r][c];
+        if (sel.v === '' ) continue;
+        ws[XLSX.utils.encode_cell({ r: r, c: c })] = (sel.t === 'n')
+          ? { t: 'n', v: sel.v } : { t: 's', v: String(sel.v) };
+      }
+    }
+    /* aoa_to_sheet tidak dipakai di sini, jadi !ref harus disetel sendiri --
+       tanpa itu seluruh lembarnya hilang saat disimpan (aturan 6v). */
+    ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(0, aoa.length - 1), c: Math.max(0, maxC - 1) } });
+    var cols = [];
+    for (var q = 0; q < maxC; q++) cols.push({ wch: q === 0 ? 26 : 12 });
+    ws['!cols'] = cols;
+    return ws;
+  }
+
+  function _lapNamaSheet(s, dipakai) {
+    var n = String(s || 'Sheet').replace(/[\\\/\?\*\[\]:]/g, '-').slice(0, 28) || 'Sheet';
+    var asli = n, i = 2;
+    while (dipakai[n]) { n = (asli.slice(0, 25) + '_' + i).slice(0, 31); i++; }
+    dipakai[n] = 1;
+    return n;
+  }
+
+  function _lapExcelBagian() {
+    if (typeof XLSX === 'undefined' || !XLSX.utils) {
+      if (typeof toast === 'function') toast('⚠ Library Excel belum siap.');
+      return;
+    }
+    if (!_lapExcelBisa()) {
+      if (typeof toast === 'function') toast('⚠ Hanya Form SA dan Debit harian yang punya bentuk Excel.');
+      return;
+    }
+    /* Tanpa konteks dokumen, _lapDocCtx.def melempar TypeError dan tombolnya
+       tampak rusak. _lapExportZip sudah menjaga hal yang sama; disamakan. */
+    if (typeof _lapDocCtx === 'undefined' || !_lapDocCtx || !_lapDocCtx.def) {
+      if (typeof toast === 'function') toast('⚠ Buka dulu pratinjau laporannya.');
+      return;
+    }
+    if (typeof _lapGateOk === 'function' && !_lapGateOk()) {
+      if (typeof toast === 'function') toast('⛔ Data laporan belum lengkap — lengkapi item di checklist dulu.');
+      return;
+    }
+    var html = _lapBuildDocHtml();
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var halaman = doc.querySelectorAll('.pg');
+    var wb = XLSX.utils.book_new(), dipakai = {}, n = 0;
+    for (var i = 0; i < halaman.length; i++) {
+      var tbl = halaman[i].querySelector('table');
+      if (!tbl) continue;
+      var judulEl = halaman[i].querySelector('.tt,h3,h4');
+      var judul = judulEl ? (judulEl.textContent || '').trim() : ('Tabel ' + (n + 1));
+      var aoa = _lapTblKeAoa(tbl);
+      if (!aoa.length) continue;
+      XLSX.utils.book_append_sheet(wb, _lapAoaKeSheet(aoa), _lapNamaSheet(judul, dipakai));
+      n++;
+    }
+    if (!n) {
+      if (typeof toast === 'function') toast('⚠ Bagian terpilih tidak memuat tabel apa pun untuk periode ini.');
+      return;
+    }
+    var nama = (_lapDocCtx.def.label + ' ' + _lapDocCtx.period.label + ' - '
+      + _lapBagianAktif().map(function (b) { return b.label; }).join(', '))
+      .replace(/[\\/:*?"<>|]/g, '-').slice(0, 120);
+    XLSX.writeFile(wb, nama + '.xlsx');
+    if (typeof toast === 'function')
+      toast('✅ ' + n + ' lembar tersimpan ke Excel — angkanya dibaca dari tabel laporan yang sama.');
+  }
+  window._lapExcelBagian = _lapExcelBagian;
+})();
+
+</script><script id="coordinate-legacy-field-normalization-2026-08-27">
 (function(){
   var _coordParseBase=window._coordParse;
   function _coordPlausible(p){return !!p&&isFinite(Number(p.lat))&&isFinite(Number(p.lng))&&Math.abs(Number(p.lat))<=90&&Math.abs(Number(p.lng))<=180;}
