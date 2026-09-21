@@ -5165,7 +5165,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-21',h:'c7a1c99f'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-21',h:'7a9c2907'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -30904,15 +30904,7 @@ function _lapGenerate(defKey,periodId){
    +'<input type="file" id="lap-coa-pdf" accept=".pdf" multiple style="display:none" onchange="_lapCoaPdfIntake(this.files);this.value=&quot;&quot;">'
    +'<iframe id="lap-doc-frame" style="flex:1;border:1px solid #ddd;border-radius:8px;width:100%;background:#9aa0a6"></iframe>'
    +'<div id="lap-bagian-bar" style="flex-shrink:0;border:1px solid #eee;border-radius:8px;padding:7px 10px;margin-bottom:8px;background:#fff"></div>'
-   +'<div style="display:flex;gap:8px;justify-content:flex-end;padding:10px 4px 0;flex-shrink:0;align-items:center;flex-wrap:wrap">'
-   +'<span id="lap-coa-scan-status" style="font-size:9.5px;color:#888;margin-right:auto"></span>'
-   +'<button onclick="document.getElementById(&quot;lap-gen-ov&quot;).remove()" style="background:#fff;border:1px solid #ddd;border-radius:7px;padding:7px 16px;cursor:pointer;font-family:inherit;font-size:12px">Tutup</button>'
-   +'<button onclick="document.getElementById(&quot;lap-coa-pdf&quot;).click()" title="Upload PDF CoA yang sudah dirilis lab — di-OCR lalu dicocokkan otomatis ke laporan berdasarkan nama titik, site, RFA, tanggal sampel & no. lab" style="background:#6a1b9a;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">📎 Input CoA PDF Lab</button>'
-   +'<button onclick="_lapCoaExport()" title="Workbook CoA Authority pra-isi (format sama seperti file lab) untuk dikirim ke lab — hasil scan bertanda tangannya yang jadi lampiran laporan" style="background:#2e7d32;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">📥 Export CoA Auth (XLSX)</button>'
-   +'<button id="lap-zip-btn" onclick="_lapExportZip()" title="Dokumen + manifest: dari mana angkanya dan aturan mana yang dipakai" style="background:#00695c;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">\U0001F4E6 Paket ZIP + manifest</button>'
-   +'<button id="lap-excel-btn" onclick="_lapExcelBagian()" title="Hanya untuk bagian yang berkas mentahnya Excel (Form SA, Debit harian)" style="background:#2e7d32;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">\U0001F4CA Simpan Excel (.xlsx)</button>'
-   +'<button id="lap-word-btn" onclick="_lapWordDoc()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">📄 Simpan Word (.doc)</button>'
-   +'<button id="lap-print-btn" onclick="_lapPrintDoc()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:7px 18px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">🖨 Cetak / Simpan PDF</button></div></div>';
+   +'<div id="lap-aksi-bar" style="flex-shrink:0;padding:8px 4px 0"></div></div>';
   const sel=document.getElementById('lap-addr-sel');
   if(sel)sel.onchange=function(){
     _lapDocCtx.addrIdx=parseInt(sel.value,10)||0;
@@ -31391,7 +31383,15 @@ function renderLaporan(){
   window._lapYear=window._lapYear||new Date().getFullYear();
   const track=_lapTrack();
   const yearOpts=[window._lapYear-1,window._lapYear,window._lapYear+1].map(y=>`<option value="${y}" ${y===window._lapYear?'selected':''}>${y}</option>`).join('');
-  const cards=LAPORAN_DEFS.map(def=>{
+  /* Y517: ketiga laporan bulanan (PW, Domestik, Drainase) digabung jadi satu
+     kartu dengan pemilih bulan. Kalau blok kartunya gagal dimuat karena sebab
+     apa pun, SELURUH definisi tetap digambar seperti semula -- lebih baik
+     tampilan lama daripada ada laporan yang hilang dari layar. */
+  const _adaKartuBulanan=(typeof _lapKartuBulanan==='function');
+  const _kartuBulanan=_adaKartuBulanan
+    ?_lapKartuBulanan(LAPORAN_DEFS.filter(function(d){return d.freq==='monthly';}),window._lapYear,track)
+    :'';
+  const cards=_kartuBulanan+LAPORAN_DEFS.filter(function(d){return !(_adaKartuBulanan&&d.freq==='monthly');}).map(def=>{
     const periods=_lapPeriods(def.freq,window._lapYear);
     const rows=periods.map(p=>{
       const k=def.key+'|'+p.id;
@@ -47148,40 +47148,168 @@ function _coordDetailMainInput(actId,q){
   }
   window._lapExcelBisa = _lapExcelBisa;
 
+  /* ---- Y517: panel ekspor dirombak jadi dua langkah bernomor ------------
+     Laporan pemilik (2026-09-21): *"aku ga ngerti dibagian mana aku bisa
+     milih export per page/bagian, tolong revamp bagian ini dan simplified
+     kan."* Empat hal yang membuatnya tidak terbaca, dan apa gantinya:
+
+       1. Judulnya "Bagian yang digenerate" -- menamai benda, bukan menyuruh.
+          Diganti perintah bernomor: "1 · Pilih bagian yang ikut".
+       2. Penanda formatnya "W/X/P" dengan keterangan terpisah di ujung baris.
+          Diganti kata utuh di tiap bagian: "Word · PDF".
+       3. Deretan kotak centang polos tidak terlihat seperti sesuatu yang
+          bisa ditekan. Diganti pil bergaris yang berubah warna saat aktif.
+       4. Enam tombol sederajat di satu baris: dua di antaranya (CoA) bukan
+          bentuk berkas sama sekali, melainkan alat terpisah. Keempat bentuk
+          berkas dikumpulkan di bawah "2 · Simpan sebagai"; alat CoA turun ke
+          barisnya sendiri.
+
+     Panel tombolnya sekarang digambar di sini juga (#lap-aksi-bar), bukan
+     ditulis tetap di markup, supaya perubahan tata letak berikutnya cukup di
+     berkas ini -- berkas ini disegarkan tiap build (aturan 6r). */
+
+  function _lapGerbangOk() {
+    try { return (typeof _lapGateOk === 'function') ? !!_lapGateOk() : true; }
+    catch (e) { return true; }
+  }
+
+  function _lapFormatTeks(b) {
+    var f = ['Word'];
+    if (b.excel) f.push('Excel');
+    if (b.pdf) f.push('PDF');
+    return f.join(' · ');
+  }
+
+  function _lapTombolKecil(aksi, teks) {
+    return '<button onclick="' + aksi + '" style="border:1px solid #ddd;background:#fff;border-radius:6px;'
+      + 'padding:3px 10px;font-size:10px;cursor:pointer;font-family:inherit;color:#555">' + teks + '</button>';
+  }
+
+  function _lapNomor(n) {
+    return '<span style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;'
+      + 'width:17px;height:17px;border-radius:50%;background:#1565c0;color:#fff;font-size:10px;'
+      + 'font-weight:700">' + n + '</span>';
+  }
+
+  /* Langkah 1 — pilih bagiannya. */
+  function _lapLangkah1() {
+    var st = _lapBagianState();
+    var aktif = _lapBagianAktif();
+    var h = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      + _lapNomor(1)
+      + '<b style="font-size:11px;color:#222">Pilih bagian yang ikut</b>'
+      + '<span style="font-size:9.5px;color:#888">' + aktif.length + ' dari ' + LAP_BAGIAN.length + ' bagian</span>';
+    LAP_BAGIAN.forEach(function (b) {
+      var on = st[b.k] !== false;
+      h += '<label title="' + _esc(b.ket) + '" style="display:inline-flex;align-items:center;gap:6px;'
+        + 'border:1px solid ' + (on ? '#1565c0' : '#ddd') + ';background:' + (on ? '#eaf2ff' : '#fff') + ';'
+        + 'border-radius:999px;padding:4px 11px;cursor:pointer;font-size:10.5px;'
+        + 'color:' + (on ? '#10467e' : '#777') + '">'
+        + '<input type="checkbox"' + (on ? ' checked' : '')
+        + ' onchange="_lapBagianSet(\'' + b.k + '\',this.checked)" style="margin:0;cursor:pointer">'
+        + '<span style="font-weight:700">' + _esc(b.label) + '</span>'
+        + '<span style="font-size:9px;color:' + (on ? '#5a86b8' : '#aaa') + '">' + _lapFormatTeks(b) + '</span>'
+        + '</label>';
+    });
+    h += '<span style="margin-left:auto;display:inline-flex;gap:6px">'
+      + _lapTombolKecil('_lapBagianPilih(true)', 'Pilih semua')
+      + _lapTombolKecil('_lapBagianPilih(false)', 'Kosongkan')
+      + '</span></div>';
+    return h;
+  }
+
+  /* Langkah 2 — pilih bentuk berkasnya, plus alasan kalau ada yang mati.
+     Alasan ditulis di sebelah judul langkahnya, bukan di ujung kanan baris
+     lain, supaya terbaca bersama tombol yang dijelaskannya. */
+  function _lapLangkah2() {
+    var aktif = _lapBagianAktif();
+    var bisaExcel = _lapExcelBisa();
+    var gerbang = _lapGerbangOk();
+    /* Setiap tombol yang mati harus punya alasannya sendiri yang terbaca.
+       Versi pertama memakai if/else berantai, sehingga ketika Word, PDF DAN
+       Excel sama-sama mati, yang tampil cuma satu alasan -- dua tombol abu-abu
+       lainnya tanpa keterangan. Alasannya dikumpulkan, bukan dipilih. */
+    var alasan = [];
+    if (!aktif.length) {
+      alasan.push(['#c0392b', 'Belum ada bagian yang dipilih di langkah 1']);
+    } else if (!bisaExcel) {
+      var tanpa = aktif.filter(function (b) { return !b.excel; }).map(function (b) { return b.label; });
+      alasan.push(['#8a6d00', 'Excel nonaktif — ' + tanpa.join(', ') + ' tidak punya bentuk Excel']);
+    }
+    if (!gerbang) {
+      alasan.push(['#c0392b', 'Word & PDF nonaktif — lengkapi dulu checklist di atas']);
+    }
+    var catatan = alasan.map(function (a) {
+      return '<span style="font-size:9.5px;color:' + a[0] + '">' + _esc(a[1]) + '</span>';
+    }).join('<span style="color:#ddd">·</span>');
+
+    var tombol = function (id, aksi, warna, teks, hidup, judul) {
+      return '<button id="' + id + '" onclick="' + aksi + '"' + (hidup ? '' : ' disabled')
+        + ' title="' + _esc(judul) + '"'
+        + ' style="background:' + warna + ';color:#fff;border:none;border-radius:7px;padding:7px 14px;'
+        + 'font-family:inherit;font-size:12px;font-weight:700;'
+        + 'cursor:' + (hidup ? 'pointer' : 'not-allowed') + ';opacity:' + (hidup ? '1' : '.45') + '">'
+        + teks + '</button>';
+    };
+
+    return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">'
+      + _lapNomor(2)
+      + '<b style="font-size:11px;color:#222">Simpan sebagai</b>'
+      + catatan
+      + '<span style="display:inline-flex;gap:8px;flex-wrap:wrap;margin-left:auto">'
+      + tombol('lap-print-btn', '_lapPrintDoc()', '#1565c0', '🖨 PDF', gerbang,
+               'Buka jendela cetak — dari situ bisa disimpan sebagai PDF')
+      + tombol('lap-word-btn', '_lapWordDoc()', '#1565c0', '📄 Word (.doc)', gerbang,
+               'Simpan bagian terpilih sebagai dokumen Word')
+      + tombol('lap-excel-btn', '_lapExcelBagian()', '#2e7d32', '📊 Excel (.xlsx)', bisaExcel,
+               bisaExcel ? 'Simpan bagian terpilih sebagai workbook Excel'
+                         : 'Hanya Form SA dan Debit harian yang punya bentuk Excel')
+      + tombol('lap-zip-btn', '_lapExportZip()', '#00695c', '📦 ZIP + manifest', true,
+               'Dokumen + manifest: dari mana angkanya dan aturan mana yang dipakai')
+      + '</span></div>';
+  }
+
+  /* Baris ketiga — alat yang BUKAN bentuk berkas. Dipisah justru karena
+     dulu ikut berbaris dengan tombol ekspor dan membuat barisan itu tampak
+     seperti enam pilihan format yang setara. */
+  function _lapBarisAlat() {
+    var alat = function (aksi, teks, judul) {
+      return '<button onclick="' + aksi + '" title="' + _esc(judul) + '"'
+        + ' style="border:1px solid #ccc;background:#fff;color:#444;border-radius:7px;padding:5px 12px;'
+        + 'cursor:pointer;font-family:inherit;font-size:11px;font-weight:700">' + teks + '</button>';
+    };
+    return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;'
+      + 'padding-top:8px;border-top:1px solid #eee">'
+      + '<span style="font-size:9.5px;color:#999">Alat lain</span>'
+      + alat('document.getElementById(&quot;lap-coa-pdf&quot;).click()', '📎 Input CoA PDF Lab',
+             'Upload PDF CoA yang sudah dirilis lab — di-OCR lalu dicocokkan otomatis ke laporan '
+             + 'berdasarkan nama titik, site, RFA, tanggal sampel & no. lab')
+      + alat('_lapCoaExport()', '📥 Export CoA Auth (XLSX)',
+             'Workbook CoA Authority pra-isi (format sama seperti file lab) untuk dikirim ke lab — '
+             + 'hasil scan bertanda tangannya yang jadi lampiran laporan')
+      + '<span id="lap-coa-scan-status" style="font-size:9.5px;color:#888"></span>'
+      + '<button onclick="document.getElementById(&quot;lap-gen-ov&quot;).remove()"'
+      + ' style="margin-left:auto;background:#fff;border:1px solid #ddd;border-radius:7px;padding:6px 16px;'
+      + 'cursor:pointer;font-family:inherit;font-size:11.5px">Tutup</button>'
+      + '</div>';
+  }
+
   function _lapBagianBarRender() {
     var host = document.getElementById('lap-bagian-bar');
     if (!host) return;
-    var st = _lapBagianState();
-    var h = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:10.5px">'
-      + '<b style="font-size:11px;color:#333">Bagian yang digenerate</b>';
-    LAP_BAGIAN.forEach(function (b) {
-      h += '<label title="' + _esc(b.ket) + '" style="display:flex;align-items:center;gap:4px;cursor:pointer;color:#555">'
-        + '<input type="checkbox"' + (st[b.k] !== false ? ' checked' : '')
-        + ' onchange="_lapBagianSet(\'' + b.k + '\',this.checked)"> ' + _esc(b.label)
-        + '<span style="color:#aaa;font-size:9px">' + (b.excel ? 'W/X/P' : 'W/P') + '</span></label>';
-    });
-    h += '<button onclick="_lapBagianPilih(true)" style="border:1px solid #ddd;background:#fff;border-radius:6px;padding:3px 9px;font-size:10px;cursor:pointer;font-family:inherit">Semua</button>'
-      + '<button onclick="_lapBagianPilih(false)" style="border:1px solid #ddd;background:#fff;border-radius:6px;padding:3px 9px;font-size:10px;cursor:pointer;font-family:inherit">Kosongkan</button>'
-      + '<span style="color:#999;font-size:9px">W=Word, X=Excel, P=PDF</span>';
-    var aktif = _lapBagianAktif();
-    if (!aktif.length) {
-      h += '<span style="color:#c0392b;font-size:10px;margin-left:auto">⚠ Belum ada bagian yang dipilih</span>';
-    } else if (!_lapExcelBisa()) {
-      var tanpa = aktif.filter(function (b) { return !b.excel; }).map(function (b) { return b.label; });
-      h += '<span style="color:#8a6d00;font-size:10px;margin-left:auto">Excel nonaktif — '
-        + _esc(tanpa.join(', ')) + ' tidak punya bentuk Excel</span>';
-    }
-    h += '</div>';
-    host.innerHTML = h;
-    var xb = document.getElementById('lap-excel-btn');
-    if (xb) {
-      var bisa = _lapExcelBisa();
-      xb.disabled = !bisa;
-      xb.style.opacity = bisa ? '1' : '.45';
-      xb.style.cursor = bisa ? 'pointer' : 'not-allowed';
-      xb.title = bisa ? 'Simpan bagian terpilih sebagai workbook Excel'
-                      : 'Hanya Form SA dan Debit harian yang punya bentuk Excel';
-    }
+    /* Status scan CoA ditulis langsung ke elemennya oleh _lapCoaPdfIntake,
+       jadi isinya harus diselamatkan sebelum baris alat digambar ulang --
+       kalau tidak, pesan "3 halaman terbaca" hilang setiap kali salah satu
+       kotak bagian dicentang. */
+    var lama = document.getElementById('lap-coa-scan-status');
+    var teksStatus = lama ? lama.innerHTML : '';
+
+    host.innerHTML = _lapLangkah1();
+    var aksi = document.getElementById('lap-aksi-bar');
+    if (aksi) aksi.innerHTML = _lapLangkah2() + _lapBarisAlat();
+
+    var st2 = document.getElementById('lap-coa-scan-status');
+    if (st2 && teksStatus) st2.innerHTML = teksStatus;
   }
   window._lapBagianBarRender = _lapBagianBarRender;
 
@@ -47345,6 +47473,168 @@ function _coordDetailMainInput(actId,q){
       toast('✅ ' + n + ' lembar tersimpan ke Excel — angkanya dibaca dari tabel laporan yang sama.');
   }
   window._lapExcelBagian = _lapExcelBagian;
+})();
+
+</script><script id="kartu-bulanan-y517">
+/* ===== Y517: tiga laporan bulanan jadi SATU kartu, periodenya dropdown =====
+   Permintaan pemilik (2026-09-21): *"untuk tampilan air limbah terproduksi,
+   domestik dan drainase baiknya dijadikan 1 card aja karena mereka laporan
+   bulanan. kemudian untuk periodenya dibuat drop down aja jika salah satu
+   bulan dipilih maka bulan itu yg muncul tampilannya. agar mempermudah user
+   dalam navigasi"*
+
+   Sebelumnya: tiga kartu terpisah, masing-masing memuat tabel 12 baris (satu
+   per bulan) -- 36 baris untuk melihat satu bulan. Sekarang: satu kartu, satu
+   bulan terpilih, tiga baris.
+
+   Yang TIDAK berubah: kunci pelacakan (`defKey|periodId`), fungsi status,
+   tanggal kirim, nomor surat, dan tombol Generate semuanya memanggil fungsi
+   yang sama persis seperti sebelumnya. Yang berubah hanya berapa banyak baris
+   yang ditampilkan sekaligus. Jadi data yang sudah tercatat tidak perlu
+   dipindahkan dan tetap terbaca oleh kartu triwulan/semester yang dibiarkan
+   apa adanya.
+
+   Kenapa kartu triwulan & semester TIDAK ikut diringkas: isinya cuma 4 dan 2
+   baris, sudah muat sekaligus, dan melihat seluruh periode sekaligus di situ
+   justru berguna. Meringkasnya hanya menambah satu klik tanpa menghemat apa
+   pun.
+
+   Dimuat ulang dari scripts/data/laporan/kartu_bulanan.js setiap kali
+   dibangun (aturan 6r). */
+(function () {
+  'use strict';
+
+  function _esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  /* Bulan yang sedang dilihat, 0..11. Default: bulan berjalan kalau tahunnya
+     memang tahun ini; kalau pengguna pindah ke tahun lain, "bulan ini" tidak
+     punya arti di sana, jadi mulai dari Januari. */
+  function _lapBulanIdx() {
+    if (window._lapBulan == null) {
+      var now = new Date();
+      window._lapBulan = (now.getFullYear() === window._lapYear) ? now.getMonth() : 0;
+    }
+    var n = parseInt(window._lapBulan, 10);
+    if (!isFinite(n)) n = 0;
+    return Math.max(0, Math.min(11, n));
+  }
+  window._lapBulanIdx = _lapBulanIdx;
+
+  function _lapSetBulan(v) {
+    var n = parseInt(v, 10);
+    if (!isFinite(n)) return;
+    window._lapBulan = Math.max(0, Math.min(11, n));
+    if (typeof renderLaporan === 'function') renderLaporan();
+  }
+  window._lapSetBulan = _lapSetBulan;
+
+  function _lapGeserBulan(d) { _lapSetBulan(_lapBulanIdx() + d); }
+  window._lapGeserBulan = _lapGeserBulan;
+
+  var MON = (typeof LAPORAN_MON_ABBR !== 'undefined' && LAPORAN_MON_ABBR)
+    ? LAPORAN_MON_ABBR
+    : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  function _statusDari(track, defKey, periodId) {
+    var t = track[defKey + '|' + periodId] || {};
+    return t.status || 'Belum';
+  }
+  function _warnaStatus(s) {
+    return (typeof _lapStatusColor === 'function')
+      ? _lapStatusColor(s)
+      : (s === 'Terkirim' ? '#2e7d32' : (s === 'Draft' ? '#e65100' : '#999'));
+  }
+
+  /* "A. Air Limbah Terproduksi (PW)" -> "Air Limbah Terproduksi (PW)".
+     Huruf urutannya dibuang karena di dalam satu kartu gabungan ketiganya
+     sama-sama "A." -- mengulangnya tiga kali tidak memberi informasi. */
+  function _namaPendek(label) {
+    return String(label || '').replace(/^[A-Z]\.\s*/, '');
+  }
+
+  /* Satu kartu untuk seluruh laporan bulanan. `defs` sudah disaring pemanggil
+     menjadi hanya yang freq==='monthly', supaya urutan dan isinya tetap
+     ditentukan LAPORAN_DEFS -- bukan disalin ulang di sini. */
+  function _lapKartuBulanan(defs, year, track) {
+    if (!defs || !defs.length) return '';
+    var bIdx = _lapBulanIdx();
+    var idBulan = function (i) { return year + '-M' + (i + 1); };
+
+    /* Label tiap pilihan bulan membawa ringkasan statusnya. Ini yang menjaga
+       pandangan sekilas "bulan mana yang sudah beres" tetap ada walaupun
+       tabelnya cuma menampilkan satu bulan. */
+    var opsi = MON.map(function (m, i) {
+      var kirim = 0;
+      defs.forEach(function (d) { if (_statusDari(track, d.key, idBulan(i)) === 'Terkirim') kirim++; });
+      var ket = kirim === defs.length ? 'semua terkirim' : (kirim + '/' + defs.length + ' terkirim');
+      return '<option value="' + i + '"' + (i === bIdx ? ' selected' : '') + '>'
+        + _esc(m + ' ' + year + ' — ' + ket) + '</option>';
+    }).join('');
+
+    var pid = idBulan(bIdx);
+    var baris = defs.map(function (def) {
+      var t = track[def.key + '|' + pid] || {};
+      var status = t.status || 'Belum';
+      return '<tr>'
+        + '<td style="padding:7px 8px;border-bottom:1px solid #eee">'
+        + '<div style="font-size:11px;font-weight:700;color:#333">' + _esc(_namaPendek(def.label)) + '</div>'
+        + '<div style="font-size:9px;color:#999;margin-top:1px">Site: ' + _esc((def.sites || []).join(', '))
+        + ' · Ke: ' + _esc((def.recipients || []).join(', ')) + '</div></td>'
+        + '<td style="padding:7px 8px;border-bottom:1px solid #eee;text-align:center">'
+        + '<span onclick="_lapCycle(\'' + def.key + '\',\'' + pid + '\')" title="Klik untuk ubah status"'
+        + ' style="cursor:pointer;display:inline-block;padding:2px 10px;border-radius:10px;font-size:9.5px;'
+        + 'font-weight:700;color:#fff;background:' + _warnaStatus(status) + '">' + _esc(status) + '</span></td>'
+        + '<td style="padding:7px 8px;border-bottom:1px solid #eee">'
+        + '<input type="date" value="' + _esc(t.tglKirim || '') + '"'
+        + ' onchange="_lapSetField(\'' + def.key + '\',\'' + pid + '\',\'tglKirim\',this.value)"'
+        + ' style="font-size:10px;border:1px solid #ddd;border-radius:4px;padding:2px 4px"></td>'
+        + '<td style="padding:7px 8px;border-bottom:1px solid #eee">'
+        + '<input type="text" value="' + _esc(t.noSurat || '') + '" placeholder="No. surat"'
+        + ' onchange="_lapSetField(\'' + def.key + '\',\'' + pid + '\',\'noSurat\',this.value)"'
+        + ' style="width:110px;font-size:10px;border:1px solid #ddd;border-radius:4px;padding:2px 4px"></td>'
+        + '<td style="padding:7px 8px;border-bottom:1px solid #eee;text-align:center">'
+        + '<button onclick="_lapGenerate(\'' + def.key + '\',\'' + pid + '\')"'
+        + ' style="border:1px solid #1565c0;background:#eaf2ff;color:#1565c0;border-radius:5px;'
+        + 'padding:4px 12px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">🔧 Generate</button></td>'
+        + '</tr>';
+    }).join('');
+
+    var tombolGeser = function (d, teks, mati) {
+      return '<button onclick="_lapGeserBulan(' + d + ')"' + (mati ? ' disabled' : '')
+        + ' style="border:1px solid #ddd;background:#fff;border-radius:6px;padding:3px 9px;font-size:11px;'
+        + 'font-family:inherit;cursor:' + (mati ? 'not-allowed' : 'pointer') + ';opacity:' + (mati ? '.4' : '1') + '">'
+        + teks + '</button>';
+    };
+
+    /* Tabelnya sengaja polos -- satu baris <thead>, tanpa colspan dan tanpa
+       baris pengelompokan -- supaya pengurut tabel bersama (Y442) memungutnya
+       sendiri, sesuai aturan tampilan 2. */
+    return '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:14px 16px;margin-bottom:14px">'
+      + '<div style="font-weight:700;font-size:12.5px;color:#333;margin-bottom:2px">Laporan Bulanan — Air Limbah</div>'
+      + '<div style="font-size:9.5px;color:#888;margin-bottom:10px">Bulanan · '
+      + defs.length + ' jenis laporan dengan periode yang sama, jadi disatukan di sini.</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
+      + '<span style="font-size:11px;color:#666">Bulan</span>'
+      + '<select onchange="_lapSetBulan(this.value)" style="font-size:11.5px;border:1px solid #ddd;'
+      + 'border-radius:6px;padding:4px 9px;font-family:inherit;min-width:210px">' + opsi + '</select>'
+      + tombolGeser(-1, '‹ Bulan sebelumnya', bIdx === 0)
+      + tombolGeser(1, 'Bulan berikutnya ›', bIdx === 11)
+      + '</div>'
+      + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+      + '<thead><tr>'
+      + '<th style="padding:5px 8px;text-align:left;font-size:9px;color:#999;border-bottom:2px solid #eee">Jenis laporan</th>'
+      + '<th style="padding:5px 8px;font-size:9px;color:#999;border-bottom:2px solid #eee">Status</th>'
+      + '<th style="padding:5px 8px;text-align:left;font-size:9px;color:#999;border-bottom:2px solid #eee">Tgl Kirim</th>'
+      + '<th style="padding:5px 8px;text-align:left;font-size:9px;color:#999;border-bottom:2px solid #eee">No. Surat</th>'
+      + '<th style="padding:5px 8px;font-size:9px;color:#999;border-bottom:2px solid #eee">Aksi</th>'
+      + '</tr></thead><tbody>' + baris + '</tbody></table></div>'
+      + '</div>';
+  }
+  window._lapKartuBulanan = _lapKartuBulanan;
 })();
 
 </script><script id="coordinate-legacy-field-normalization-2026-08-27">
