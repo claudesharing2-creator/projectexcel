@@ -3806,14 +3806,14 @@ html[data-theme="neraca"] #hasil-content{
   html[data-theme="studio"] #envtools-content #et-sub-content>div[style*="display:flex"],html[data-theme="studio"] #envtools-content #et-sub-content>div[style*="display: grid"],html[data-theme="studio"] #envtools-content #et-sub-content>div[style*="display:grid"]{display:flex!important;flex-direction:column!important;gap:10px!important}
   html[data-theme="studio"] #envtools-content #et-sub-content .et-card{width:100%!important;min-width:0!important;max-width:none!important;flex:0 0 auto!important;margin:0!important;padding:14px!important;border-radius:14px!important}
   html[data-theme="studio"] #envtools-content .et-sec-desc,html[data-theme="studio"] #envtools-content .ftext,html[data-theme="studio"] #envtools-content .step-desc{font-size:11px!important;line-height:1.45!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:3!important;overflow:hidden!important}
-  html[data-theme="studio"] #envtools-content .et-card button{width:100%!important;min-height:42px!important;margin-top:8px!important}
+  html[data-theme="studio"] #envtools-content .et-card button:not(.ui-kendali-sebaris){width:100%!important;min-height:42px!important;margin-top:8px!important}
   /* Laporan: keep form controls touchable and make long explanations secondary */
   html[data-theme="studio"] #laporan-content{padding:14px 12px 112px!important}
   html[data-theme="studio"] #laporan-content>div{padding:0!important}
   html[data-theme="studio"] #laporan-content .et-sec-desc{font-size:10.5px!important;line-height:1.42!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:3!important;overflow:hidden!important}
   html[data-theme="studio"] #laporan-content .et-card{width:100%!important;min-width:0!important;max-width:none!important;margin:10px 0!important;padding:14px!important;border-radius:14px!important}
   html[data-theme="studio"] #laporan-content input,html[data-theme="studio"] #laporan-content select{min-height:40px!important;font-size:13px!important}
-  html[data-theme="studio"] #laporan-content .et-card button{min-height:42px!important;width:100%!important;margin-top:8px!important}
+  html[data-theme="studio"] #laporan-content .et-card button:not(.ui-kendali-sebaris){min-height:42px!important;width:100%!important;margin-top:8px!important}
   html[data-theme="studio"] #laporan-content table{display:block!important;overflow-x:auto!important;max-width:100%!important}
   /* RFA/Panduan: tabs scroll, descriptions wrap, cards use the full phone width */
   html[data-theme="studio"] #rfa-content .et-sub-btn,html[data-theme="studio"] #panduan-content .et-sub-btn{flex:0 0 auto!important;min-height:42px!important}
@@ -3904,6 +3904,29 @@ html[data-theme="neraca"] #hasil-content{
   padding:12px 14px;border-radius:var(--ui-rad-sm);border:1px solid #F0C8A8;
   background:#FFF8F0;color:var(--ui-warn);font-size:var(--ui-fs-sm);margin:0 0 var(--sp-3)}
 .ui-banner b{font-weight:700}
+
+/* Y529c ── tanggal terpilih di kalender harus terbaca di atas pilnya sendiri.
+   `.mca-day.selected .mca-num{background:var(--teal,#76FB91);color:#000}`
+   menulis warna teksnya MATI sebagai hitam, sementara latarnya mengikuti
+   `--teal` yang didefinisikan ulang oleh tiap tema. Terukur untuk kesepuluh
+   tema: lima di antaranya memakai --teal gelap, sehingga angkanya jadi hitam
+   di atas hitam. Yang terburuk tema Studio, rasio 1,16 — angkanya benar-benar
+   tidak kelihatan (dilihat langsung pada potongan tangkapan layar, bukan
+   hanya dihitung).
+     tema      --teal              hitam   putih
+     studio    rgb(20,22,26)        1.16   18.11
+     neraca    rgb(31,66,53)        1.89   11.12
+     kontur    rgb(44,95,70)        2.83    7.41
+     pasang    rgb(14,110,124)      3.54    5.93
+     lapangan  rgb(181,80,42)       4.15    5.07
+   Lima tema sisanya (bawaan, simple, command, romer, anjungan) memakai --teal
+   terang dan tetap hitam — daftar ini diambil dari pengukuran, bukan dikira.
+   Berlaku di SEMUA lebar: kalendernya sama di desktop. */
+html[data-theme="studio"] .mca-day.selected .mca-num,
+html[data-theme="neraca"] .mca-day.selected .mca-num,
+html[data-theme="kontur"] .mca-day.selected .mca-num,
+html[data-theme="pasang"] .mca-day.selected .mca-num,
+html[data-theme="lapangan"] .mca-day.selected .mca-num{color:#FFFFFF!important}
 .ui-banner .ui-banner-act{margin-left:auto;flex:0 0 auto}
 
 @media (max-width:768px){
@@ -3936,6 +3959,61 @@ html[data-theme="neraca"] #hasil-content{
   .ui-btnwrap > button{min-width:0!important;width:100%!important;flex:none!important;
     min-height:var(--ui-tap);white-space:normal!important;text-align:left!important;
     display:flex!important;align-items:center!important;gap:8px!important}
+
+  /* 4b ── Y528b: deret kartu angka jadi petak seragam.
+         Bentuknya sengaja SAMA PERSIS dengan .ui-btnwrap di atas — satu
+         bahasa, bukan komponen baru. Sebelumnya induknya `display:flex`
+         dengan anak seukuran isinya, dan itu membuat kartu "Bulan belum
+         diinput" melebar 121px sementara tetangganya 110px, lalu menggeser
+         baris berikutnya (terukur: x 28/146 pada baris 1, 28/157 pada baris
+         2). Lebar seragamnya datang dari petaknya, bukan dari angka piksel
+         yang dipasang di tiap kartu — itu syarat aturan tampilan 1. */
+  .ui-petak-angka{display:grid!important;
+    grid-template-columns:repeat(auto-fill,minmax(104px,1fr))!important;
+    gap:var(--sp-2)!important;align-items:stretch!important;
+    max-width:100%!important;overflow:visible!important;flex-wrap:initial!important}
+  .ui-petak-angka > *{width:auto!important;min-width:0!important;max-width:none!important;
+    flex:none!important;margin:0!important}
+
+  /* 4b-2 ── Y529: deret chip penyaring = SATU baris yang digeser.
+         Tepi bergerigi hanya bisa ada kalau barisnya lebih dari satu; satu
+         baris menghapus masalahnya, bukan merapikannya. Bilah gulirnya
+         disembunyikan (sama seperti pemilih alat ENV Tools) supaya tidak ada
+         garis abu-abu melintang di bawah chip. */
+  .ui-baris-chip{display:flex!important;flex-wrap:nowrap!important;
+    overflow-x:auto!important;overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;scrollbar-width:none!important;
+    gap:6px!important;max-width:100%!important;padding-bottom:2px!important}
+  .ui-baris-chip::-webkit-scrollbar{display:none!important}
+  .ui-baris-chip > *{flex:0 0 auto!important;margin:0!important}
+
+  /* 4c ── Y528d: bilah notifikasi RFA tidak memotong barisnya di tengah.
+         Chipnya memang sudah `flex-wrap:wrap`, tetapi wadahnya membawa
+         `max-height:60px;overflow:hidden` dari tata letak desktop, di mana
+         semuanya muat dalam SATU baris. Begitu chipnya membungkus jadi tiga
+         baris di HP, batas 60px itu memotong baris ketiga tepat di tengah
+         tulisannya. Ini peringatan tenggat -- memotongnya separuh bukan
+         sekadar jelek, ia menyembunyikan RFA yang lewat tenggat. */
+  #rfa-notif-bar > div[style*="flex-wrap"]{max-height:none!important;overflow:visible!important}
+
+  /* 4d ── Y529b: teks bilah notifikasi harus kontras dengan bilahnya.
+         Terukur: "25 RFA Overdue, 0 mendekati deadline" tampil PUTIH di atas
+         latar merah muda #fdecea — rasio kontras 1,16 (ambang WCAG AA 4,5).
+         Praktis tidak terbaca, dan yang tidak terbaca di situ adalah jumlah
+         RFA yang LEWAT TENGGAT.
+         Sebabnya enam aturan yang saling bertabrakan untuk elemen yang sama,
+         semuanya `!important` dan semuanya memilih dari POSISI:
+           #rfa-notif-bar>div:nth-child(2)>span:not([onclick]){color:#FFFFFF}
+         Aturan itu ditulis untuk BARIS CHIP (anak ke-2, chip putih di atas
+         latar gelap). Begitu susunan anaknya bergeser satu, yang kena justru
+         BARIS JUDUL — dan judulnya jadi putih di atas merah muda. Tidak ada
+         error, tidak ada WARN; selektornya memang cocok.
+         Yang ditulis di bawah memilih berdasarkan PERAN: teks yang bukan chip
+         (chip selalu punya onclick) harus memakai warna gelap bilah ini.
+         Spesifisitasnya sengaja dibuat lebih tinggi daripada varian per tema
+         (0,1,2,3 lawan 0,1,2,1) supaya tidak perlu diulang per tema. */
+  html[data-theme] #rfa-notif-bar > div > span:not([onclick]),
+  html[data-theme] #rfa-notif-bar > div > b:not([onclick]){color:#7A1717!important}
 
   /* 5 ── tabel lebar: punya wadah gulir SENDIRI, halaman tidak ikut geser. */
   #envprog-panel table,#laporan-content table,.et-tbl,#hasil-content table{max-width:none}
@@ -5192,7 +5270,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'bbf4c973'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'a74da0f7'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -42285,16 +42363,16 @@ html[data-theme="romer"] :where(button,a[href],input,select,textarea,summary,[ta
   font-size:11px!important;line-height:1.3!important;font-weight:700!important
 }
 #rfa-notif-bar>div:nth-child(2)>span[onclick]{color:#20242A!important}
-#rfa-notif-bar>div:nth-child(2)>span:not([onclick]){color:#FFFFFF!important}
+#rfa-notif-bar>div:nth-child(2)>span:not([onclick]){color:#7A1717!important}
 #rfa-notif-bar>div:first-child>button{color:#20242A!important;font-weight:700!important;opacity:1!important}
 #rfa-notif-bar>div:first-child>span:first-child{color:#8B1E1E!important;font-weight:800!important}
 /* Studio uses a dark inverted overdue surface: all banner text must flip with it. */
 html[data-theme="studio"] #rfa-notif-bar>div:first-child>span:first-child,
-html[data-theme="studio"] #rfa-notif-bar>div:first-child>button{color:#FFFFFF!important}
+html[data-theme="studio"] #rfa-notif-bar>div:first-child>button{color:#7A1717!important}
 html[data-theme="studio"] #rfa-notif-bar>div:nth-child(2)>span[onclick]{
   color:#14161A!important;background:#FFFFFF!important;border-color:#FFFFFF!important
 }
-html[data-theme="studio"] #rfa-notif-bar>div:nth-child(2)>span:not([onclick]){color:#FFFFFF!important}
+html[data-theme="studio"] #rfa-notif-bar>div:nth-child(2)>span:not([onclick]){color:#7A1717!important}
 </style><style id="rfa-theme-contrast-2026-08-25">
 /* The banner is a status surface; every text role must follow its surface. */
 #rfa-notif-bar>div:first-child>span:first-child{color:#7A1717!important;font-weight:800!important}
@@ -42307,7 +42385,7 @@ html[data-theme="studio"] #rfa-notif-bar>div:first-child>button,
 html[data-theme="romer"] #rfa-notif-bar>div:first-child>span:first-child,
 html[data-theme="romer"] #rfa-notif-bar>div:first-child>button,
 html[data-theme="anjungan"] #rfa-notif-bar>div:first-child>span:first-child,
-html[data-theme="anjungan"] #rfa-notif-bar>div:first-child>button{color:#FFFFFF!important}
+html[data-theme="anjungan"] #rfa-notif-bar>div:first-child>button{color:#7A1717!important}
 html[data-theme="studio"] #rfa-notif-bar>div:nth-child(2)>span[onclick],
 html[data-theme="romer"] #rfa-notif-bar>div:nth-child(2)>span[onclick],
 html[data-theme="anjungan"] #rfa-notif-bar>div:nth-child(2)>span[onclick]{
@@ -42315,7 +42393,7 @@ html[data-theme="anjungan"] #rfa-notif-bar>div:nth-child(2)>span[onclick]{
 }
 html[data-theme="studio"] #rfa-notif-bar>div:nth-child(2)>span:not([onclick]),
 html[data-theme="romer"] #rfa-notif-bar>div:nth-child(2)>span:not([onclick]),
-html[data-theme="anjungan"] #rfa-notif-bar>div:nth-child(2)>span:not([onclick]){color:#FFFFFF!important}
+html[data-theme="anjungan"] #rfa-notif-bar>div:nth-child(2)>span:not([onclick]){color:#7A1717!important}
 </style><script id="emf-restored-2026-08-25">function _emfTplLoad(){return _dpIdbGet('emfTemplates').then(function(v){return v||{};}).catch(function(){return {};});}
 function _emfTplSave(m){return _dpIdbSet('emfTemplates',m).catch(function(){return false;});}
 // Y340: read a picked file's bytes before anything else can invalidate the
@@ -46706,10 +46784,28 @@ function _coordDetailMainInput(actId,q){
       if(tl.scrollWidth > (tl.parentElement?tl.parentElement.clientWidth:0) + 1) _uiBungkusGulir(tl);
     }
     if(!HP()) return;
-    var tabel = (akar||document).querySelectorAll('#envprog-panel table, #rfa-panel table, #view-envtools table, #laporan-content table');
+    /* Y528a: SIFAT, bukan daftar tempat.
+       Sebelumnya sasarannya ditulis sebagai daftar wadah:
+         '#envprog-panel table, #rfa-panel table, #view-envtools table,
+          #laporan-content table'
+       Daftar seperti itu meleset diam-diam. Terukur (390px, Data Pack asli):
+       tab Hasil Sampling tidak ada di dalamnya, sehingga ENAM tabel di enam
+       sub-tabnya tetap dipaksa digeser ke samping -- 833px, 863px, 874px,
+       bahkan 2046px, di dalam ruang 332px. Tidak ada WARN, tidak ada error;
+       daftarnya memang tidak menyebut tab itu. Keluarga yang sama dengan
+       aturan 6as (daftar tab yang ditulis tangan) dan 6aq (yang dilewati
+       terbaca sebagai lulus).
+       Sekarang yang dipakai adalah SIFAT tabelnya sendiri -- satu baris
+       <thead>, tanpa gabungan sel, 2-12 kolom, jumlah sel tiap baris sama --
+       dan syarat itu memang menggambarkan "tabel data polos". Tabel yang
+       memang harus tetap berbentuk tabel (mis. matriks Jan-Des di WMR, 17
+       kolom) tersaring sendiri oleh syarat itu, bukan oleh daftar tempat.
+       Jalan keluar manual tetap ada: `class="ui-nokartu"`. */
+    var tabel = (akar||document).querySelectorAll('[id^="view-"] table');
     for(var i=0;i<tabel.length;i++){
       var t = tabel[i];
       if(t.closest('.leaflet-container')) continue;
+      if(t.classList.contains('ui-nokartu') || t.closest('.ui-nokartu')) continue;
       var thead = t.tHead;
       if(!thead || thead.rows.length !== 1){ _uiBungkusGulir(t); continue; }
       var th = thead.rows[0].cells;
@@ -46774,6 +46870,96 @@ function _coordDetailMainInput(actId,q){
     }
   }
 
+  /* 3b-2 \u2500\u2500 Y528b: deret kartu angka jadi satu petak seragam.
+     Laporan pemilik (2026-09-22, tangkapan layar tab Hasil Sampling): kotak
+     angka tidak sejajar. Terukur di 390px: baris pertama 110px + 110px, baris
+     kedua 121px + 110px dan mulai di x yang berbeda (28/146 lalu 28/157),
+     baris ketiga satu kartu sendirian. Penyebabnya induknya `display:flex`
+     dengan anak yang menyesuaikan ISI masing-masing, jadi "Bulan belum
+     diinput" melebar dan menggeser tetangganya -- persis pelanggaran aturan
+     tampilan 1 ("capai secara struktural, jangan dengan angka piksel").
+     Bentuk yang dipakai bukan karangan baru: petak KPI di Dashboard
+     (`.dmain-kpi`) sudah memakai `display:grid` dan terukur SEJAJAR (2 kartu,
+     keduanya 166px). Jadi bentuk itu yang dipinjam, bukan komponen baru --
+     sejalan dengan pelajaran 6bb ("lengkapi yang sudah ada").
+     Yang sudah berupa grid tidak disentuh, supaya petak yang sudah benar
+     (termasuk .dmain-kpi sendiri) tidak berubah jumlah kolomnya. */
+  function _uiKartuAngka(e){
+    if(!e || e.nodeType !== 1) return false;
+    var f = e.firstElementChild;
+    if(!f) return false;
+    if(parseFloat(getComputedStyle(f).fontSize) < 17) return false;
+    if(!/^[\d.,]+$/.test((f.textContent||'').trim())) return false;
+    return (e.textContent||'').trim().length < 44;
+  }
+  function _uiPetakAngka(){
+    var hp = HP();
+    var petak = document.querySelectorAll('[id^="view-"] div');
+    for(var i=0;i<petak.length;i++){
+      var p = petak[i];
+      var anak = p.children;
+      if(anak.length < 2){ continue; }
+      var n = 0;
+      for(var c=0;c<anak.length;c++) if(_uiKartuAngka(anak[c])) n++;
+      /* Menuntut SEMUA anaknya kartu angka, bukan sekadar sebagian: baris
+         campuran (kartu + tombol + keterangan) bukan petak angka, dan
+         memaksanya jadi grid akan merusak susunannya. */
+      if(n < 2 || n !== anak.length){
+        if(p.classList.contains('ui-petak-angka')) p.classList.remove('ui-petak-angka');
+        continue;
+      }
+      if(!hp){ p.classList.remove('ui-petak-angka'); continue; }
+      if(getComputedStyle(p).display === 'grid' && !p.classList.contains('ui-petak-angka')) continue;
+      p.classList.add('ui-petak-angka');
+    }
+  }
+
+  /* 3b-3 \u2500\u2500 Y529: deret chip penyaring jadi SATU baris yang digeser.
+     Pemilik, 2026-09-22, menunjuk tangkapan layar RFA List: *"chip filter yg
+     km kirim itu belum rapi, rapi jika dia simetris satu baris saja."*
+     Terukur di 390px: chip status RFA (Semua / Pending / On Progress / Draft
+     Selesai / Scan Selesai / Cancelled) membungkus jadi TIGA baris dengan
+     ENAM lebar berbeda -- tepi kanannya bergerigi di setiap baris.
+     Yang dipakai bukan `flex-wrap:wrap` yang dirapikan, melainkan pola yang
+     sudah ada di aplikasi ini untuk pemilih alat ENV Tools: satu baris yang
+     digeser mendatar. Satu baris tidak punya tepi bergerigi sama sekali.
+     Penting: yang diubah HANYA deret yang lebarnya BERGERIGI. Deret chip yang
+     sudah seragam (mis. `.studio-hasil-tabs.ui-btnwrap`, semua 1 lebar) sudah
+     simetris dan dibiarkan -- mengubahnya berarti menyembunyikan sebagian
+     pilihan di luar layar tanpa alasan, dan gerbang test:pil menuntut kedua
+     puluh lima pil itu bisa ditekan. */
+  function _uiBarisChip(){
+    var hp = HP();
+    var wadah = document.querySelectorAll('[id^="view-"] div');
+    for(var i=0;i<wadah.length;i++){
+      var p = wadah[i];
+      if(p.classList.contains('ui-btnwrap')) continue;
+      var anak = [];
+      for(var a=0;a<p.children.length;a++){
+        var c = p.children[a];
+        if(c.getClientRects().length) anak.push(c);
+      }
+      if(anak.length < 3){ continue; }
+      var semuaPil = true, lebar = {}, baris = {};
+      for(var k=0;k<anak.length;k++){
+        var e = anak[k];
+        if(e.tagName !== 'BUTTON' && e.tagName !== 'A'){ semuaPil = false; break; }
+        var s = getComputedStyle(e);
+        if(parseFloat(s.borderTopLeftRadius) < 10 || s.whiteSpace !== 'nowrap'){ semuaPil = false; break; }
+        var r = e.getBoundingClientRect();
+        lebar[Math.round(r.width)] = 1; baris[Math.round(r.top)] = 1;
+      }
+      if(!semuaPil){
+        if(p.classList.contains('ui-baris-chip')) p.classList.remove('ui-baris-chip');
+        continue;
+      }
+      if(!hp){ p.classList.remove('ui-baris-chip'); continue; }
+      if(p.classList.contains('ui-baris-chip')) continue;   /* sudah satu baris */
+      /* bergerigi = membungkus lebih dari satu baris DAN lebarnya tidak seragam */
+      if(Object.keys(baris).length > 1 && Object.keys(lebar).length > 1) p.classList.add('ui-baris-chip');
+    }
+  }
+
   /* 3c \u2500\u2500 baris mendatar apa pun yang isinya tidak muat dibuat MEMBUNGKUS.
      Ini menangkap baris yang tidak punya kelas sama sekali -- misalnya deret
      sub-tab RFA beserta label "RFA Tracker \u00b7 N records" di ujungnya, yang
@@ -46788,8 +46974,34 @@ function _coordDetailMainInput(actId,q){
       var el = kandidat[i];
       if(!el.getClientRects().length) continue;
       if(el.closest('.ui-tblwrap,[class*="-pills"],.leaflet-container,.mob-more-sheet,.studio-calendar-tabs')) continue;
+      /* Y529: deret chip yang SENGAJA dijadikan satu baris tergeser dilewati.
+         Tanpa baris ini kedua sapuan saling melawan dan yang menang adalah
+         yang salah: `_uiBarisChip` menandai wadahnya lewat kelas (lembar
+         gaya), sementara sapuan ini menulis `flex-wrap:wrap` sebagai gaya
+         INLINE ber-!important -- dan inline ber-!important mengalahkan
+         lembar gaya ber-!important. Terukur: kelas `.ui-baris-chip` terpasang
+         benar, tetapi chipnya tetap terbagi tiga baris. */
+      if(el.classList.contains('ui-baris-chip')) continue;
       var cs = getComputedStyle(el);
       if(cs.display !== 'flex' && cs.display !== 'inline-flex') continue;
+      /* Y528c: HANYA arah MENDATAR. Sapuan ini dibuat untuk "baris" -- itu
+         tertulis di judulnya -- tetapi tidak pernah memeriksa arahnya, dan
+         `flex-wrap:wrap` pada flex KOLOM artinya sesuatu yang sama sekali
+         berbeda: isinya melipat jadi beberapa KOLOM BERSEBELAHAN, jadi
+         panelnya melebar ke samping alih-alih menyusut.
+         Terukur di 390px dengan Data Pack asli: `#rfa-panel`
+         (`flex-direction:column; height:100%`) menerima
+         `flex-wrap:wrap!important` dari sapuan ini, lalu melar 358px ->
+         1856px, dan seluruh isinya -- bilah notifikasi, baris filter, pil
+         status, tabel -- terbawa keluar layar. Itu bukan tabel yang kelebaran;
+         itu PANELNYA yang dilipat ke samping oleh perbaikan yang salah arah.
+         Tidak ada error, tidak ada WARN; `wrap` memang sah untuk kolom. */
+      if(cs.flexDirection === 'column' || cs.flexDirection === 'column-reverse'){
+        /* Bersihkan juga bekas sapuan versi sebelumnya: elemen yang sudah
+           terlanjur diberi wrap tetap melar selamanya kalau tidak dicabut. */
+        if(el.style.flexWrap) el.style.removeProperty('flex-wrap');
+        continue;
+      }
       if(cs.flexWrap === 'wrap') continue;
       var induk = el.parentElement;
       var muat = induk ? induk.clientWidth : 0;
@@ -47013,6 +47225,8 @@ function _coordDetailMainInput(actId,q){
     try{ _uiJudul(); }catch(e){}
     try{ _uiEnviKeMenu(); }catch(e){}
     try{ _uiPetakTombol(); }catch(e){}
+    try{ _uiPetakAngka(); }catch(e){}
+    try{ _uiBarisChip(); }catch(e){}
     try{ _uiBarisMuat(); }catch(e){}
     try{ _uiSasaranSentuh(); }catch(e){}
     try{ _uiIstilah(); }catch(e){}
@@ -48748,7 +48962,14 @@ function _coordDetailMainInput(actId,q){
   function tombolInfo(k, terbuka) {
     var b = document.createElement('button');
     b.type = 'button';
-    b.className = 'ket-info-btn';
+    /* `ui-kendali-sebaris` adalah PERNYATAAN PERAN, bukan gaya: "tombol ini
+       hidup di dalam satu baris teks, ia tidak pernah jadi balok aksi".
+       Lapisan HP memakai penanda itu untuk mengecualikannya dari aturan
+       selimut `.et-card button{width:100%}`. Terukur kenapa ini perlu: tanpa
+       penanda itu, dua dari empat ikon di tab ENV Tools keluar 272x42 --
+       selebar kartunya -- semata karena kebetulan duduk di dalam .et-card,
+       dan judulnya ikut melar 21px -> 65px. Lihat Y527. */
+    b.className = 'ket-info-btn ui-kendali-sebaris';
     b.dataset[TANDA] = 'btn';
     b.setAttribute('aria-expanded', terbuka ? 'true' : 'false');
     /* Label tombolnya TIDAK pernah berubah saat diklik. Aturan 6m: tooltip
