@@ -4214,7 +4214,7 @@ const DASH_CARDS=[
     const pCnt=(typeof HASIL_PH_DAILY!=='undefined')?Object.keys(HASIL_PH_DAILY).length:0;
     const tile=function(label,val){return '<div style="flex:1;min-width:70px;text-align:center;padding:8px 4px"><div style="font-size:18px;font-weight:800">'+val+'</div><div style="font-size:9px;color:var(--g3);text-transform:uppercase;letter-spacing:.3px;margin-top:2px">'+label+'</div></div>';};
     return '<div style="display:flex;flex-wrap:wrap;gap:2px">'+tile('Titik Debit',dCnt)+tile('Titik pH',pCnt)+'</div>'+
-    '<button onclick="switchTab(\'envtools\',document.getElementById(\'tb-envtools\'));if(typeof _etSwitchSub===\'function\')_etSwitchSub(\'debitph\')" style="margin-top:8px;width:100%;border:1px solid var(--g2);background:transparent;color:var(--text);border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-family:inherit">Buka Recording Debit & pH →</button>';
+    '<button onclick="if(typeof _navAlatLaporan===\'function\')_navAlatLaporan(\'debitph\')" style="margin-top:8px;width:100%;border:1px solid var(--g2);background:transparent;color:var(--text);border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-family:inherit">Buka Recording Debit & pH →</button>';
   }},
   {id:'log_recent',title:'Log Perubahan Terbaru',icon:'🕒',render:function(){
     if(typeof CHANGE_LOG==='undefined'||!CHANGE_LOG.length)return '<div style="color:var(--g3);font-size:11px;text-align:center;padding:12px">Belum ada log.</div>';
@@ -5165,7 +5165,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'140a6696'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'9d16725e'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -5222,7 +5222,22 @@ function showLanding(){var l=document.getElementById('landing');if(l){_ldStats()
       '<button class="ld-enter" onclick="hideLanding()">Masuk Dashboard →</button>'+
       '<div class="ld-foot">Offline-first · semua data tersimpan lokal di browser</div>'+
     '</div>';
-    d.addEventListener('click',function(e){if(e.target===d)hideLanding();});
+    d.addEventListener('click',function(e){
+      if(e.target!==d)return;
+      hideLanding();
+      /* Y522: layar pembuka menutupi bilah tab, dan penutupnya berbunyi "klik
+         di latar = tutup". Jadi klik PERTAMA pada sebuah tombol tab hanya
+         menutup layar ini, tabnya tidak berpindah -- terukur, perlu dua kali
+         klik. Klik itu diteruskan ke kendali di bawahnya, TAPI hanya yang ada
+         di bilah atas, supaya menutup layar pembuka tidak pernah bisa memicu
+         aksi lain di dalam aplikasi. hideLanding() sudah memasang
+         pointer-events:none, jadi elementFromPoint melewati layar ini. */
+      try{
+        var u=document.elementFromPoint(e.clientX,e.clientY);
+        var b=(u&&u.closest)?u.closest('.topbar button,.topbar [onclick]'):null;
+        if(b)b.click();
+      }catch(_e){}
+    });
     document.body.appendChild(d);
     document.addEventListener('keydown',function(e){if(e.key==='Escape')hideLanding();});
     setTimeout(function(){
@@ -6691,6 +6706,21 @@ function switchTab(t,btn){
       window._onDataReady(function(){if(window._pendingTabRequest===req){window._pendingTabRequest=null;switchTab(req.t,req.btn);}});
     }
     return;
+  }
+  /* Y522: dua sebab tombol pengarah mendarat salah, keduanya terukur dengan
+     menekan tombolnya sungguhan.
+     (1) switchTab('sched') -- kunci tab yang tidak pernah ada. Hasilnya bukan
+         error melainkan LAYAR KOSONG: nol view terlihat, nol tab tersorot.
+     (2) switchTab('hasil') dan sembilan pemanggilan lain tidak menyertakan
+         argumen tombol. Layarnya benar, tetapi _switchTab_core mencopot
+         .active dari semua .tab-btn dan tidak ada yang memakainya kembali,
+         jadi bilah tab jadi tanpa sorotan -- pengguna tidak tahu di mana ia
+         berada. Yang salah bukan kesepuluh pemanggilnya, melainkan asumsi
+         bahwa penelepon selalu tahu tombol tabnya; jadi diperbaiki di sini. */
+  if(t==='sched')t='scheduling';
+  if(!btn){
+    var _y522k={activities:'scheduling',calendar:'scheduling',sequence:'scheduling'}[t]||t;
+    btn=document.getElementById('tb-'+_y522k)||null;
   }
   if(t===window._curTabName&&(!btn||!btn.classList||btn.classList.contains('active')))return;
   try{
@@ -20599,6 +20629,19 @@ function _bmSectionHtml(t,c,esc,jq){
     <div>${chips||'<span style="color:#bbb;font-size:10px">Belum ada titik dipetakan.</span>'}</div>
   </div>`;
 }
+function _bmKosongHtml(){
+  /* Y522: tanpa Data Pack, registry baku mutu berisi NOL jenis pemantauan.
+     Dulu _bmMasterHtml langsung membaca types[0].kind dan melempar; rendernya
+     batal di tengah sehingga view SEBELUMNYA tetap di layar dan pil "Baku
+     Mutu" tampak sekadar tidak bereaksi (aturan 6ai). Keadaan kosong harus
+     mengaku kosong -- dan harus punya jalan keluar (aturan 6av). */
+  return '<div style="padding:28px 18px;text-align:center;border:1px dashed var(--g2);border-radius:10px">'
+    +'<div style="font-size:26px;line-height:1;margin-bottom:8px">\u23F3</div>'
+    +'<b style="font-size:13px">Daftar baku mutu belum bisa ditampilkan</b>'
+    +'<div style="font-size:11px;color:#777;margin:8px 0 14px;line-height:1.6">Registry baku mutu masih berisi 0 jenis pemantauan, jadi belum ada yang bisa ditampilkan atau diubah di sini.<br>Muat Data Pack lebih dulu \u2014 isinya yang membawa daftar parameter beserta baku mutunya.</div>'
+    +'<button onclick="if(typeof _navDataPack===\'function\')_navDataPack()" style="border:1px solid #1565c0;background:#eaf2ff;color:#1565c0;border-radius:7px;padding:7px 16px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Buka Dataset \u2192 Data Pack</button>'
+    +'</div>';
+}
 function _bmMasterHtml(q){
   const w=_bmWorking();const qLow=(q||'').toLowerCase();
   const TH='padding:5px 8px;text-align:left;font-size:10px;font-weight:700;border:1px solid #d0d0d0;background:#f2f2f2;color:#333;white-space:nowrap';
@@ -20611,6 +20654,7 @@ function _bmMasterHtml(q){
     const act=_bmType===t.key;const col=t.kind==='nonroutine'?'#e65100':'#00695c';
     return `<button onclick="_bmSetType('${jq(t.key)}')" style="border:2px solid ${act?col:'#e0e0e0'};background:${act?col:'#fff'};color:${act?'#fff':'#666'};border-radius:8px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">${esc(t.label)}<span style="opacity:.7;font-size:9px;margin-left:4px">${t.categories.reduce((a,c)=>a+Object.keys(c.params||{}).length,0)}</span></button>`;
   }).join('');
+  if(!types.length)return {html:_bmKosongHtml(),count:0};   /* Y522 */
   const t=types.find(x=>x.key===_bmType)||types[0];
   const isNR=t.kind==='nonroutine';
   let count=0;
@@ -22169,7 +22213,7 @@ function _hsDrainSyncGridHtml(pt,yearNum,monthNum){
   return `<div style="padding:10px 12px">
     <div style="font-size:9.5px;color:#888;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span>🔗 Otomatis sinkron dari <b>ENV Tools → Data Debit Drainase</b> (titik "${_ep(pt)}", catchment ${_ep(catchment)}), dihitung dari curah hujan harian. ${filled}/${days} hari ada data curah hujan.</span>
-      <button onclick="switchTab('envtools',document.getElementById('tb-envtools'));if(typeof _etSwitchSub==='function')_etSwitchSub('drain')" style="border:1px solid #1565c0;background:#eaf2ff;color:#1565c0;border-radius:6px;padding:3px 10px;font-size:9.5px;font-weight:700;cursor:pointer;white-space:nowrap">Edit Curah Hujan →</button>
+      <button onclick="if(typeof _navDrainase==='function')_navDrainase()" style="border:1px solid #1565c0;background:#eaf2ff;color:#1565c0;border-radius:6px;padding:3px 10px;font-size:9.5px;font-weight:700;cursor:pointer;white-space:nowrap">Edit Curah Hujan →</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:6px 4px;margin-bottom:10px">${cells.join('')}</div>
     <div style="display:flex;gap:18px;font-size:10.5px;border-top:1px solid #eee;padding-top:8px;align-items:center;flex-wrap:wrap">
@@ -24168,7 +24212,7 @@ function _rtGoTo(ev){
       else if(epSub==='semesterly'){g.push({t:'Daftar titik <b>Semesterly</b> — hanya titik yang punya penulisan/RFA ditampilkan',done:false});}
       else if(epSub==='yearly'){g.push({t:'Daftar titik <b>Yearly</b> — dipantau sekali setahun per site',done:false});}
       else if(epSub==='nonRoutine'){g.push({t:'Daftar titik <b>Non-Routine</b> (Dredging/Trenching/Leveling/dll) — sumbernya master titik, beda dari Daftar Kegiatan',done:false});g.push({t:'Untuk isi koordinat & cetak panduan PDF, buka kegiatannya lewat Scheduling → Daftar Kegiatan',done:false,act:{l:'Buka Daftar Kegiatan',f:"switchTab('scheduling',document.getElementById('tb-scheduling'));if(typeof switchSchedulingTab==='function')switchSchedulingTab('activities')"}});}
-      else if(epSub==='parameter'){g.push({t:'Daftar semua <b>parameter</b> yang dipantau lintas jenis — referensi cepat, tidak untuk diedit di sini',done:false});g.push({t:'Untuk ubah nilai baku mutu suatu parameter, buka sub-tab ⚖ Baku Mutu',done:false,act:{l:'Buka Baku Mutu',f:"_epSub='bm';_epSite='';_epQ='';renderEnvProgram();_azRender()"}});}
+      else if(epSub==='parameter'){g.push({t:'Daftar semua <b>parameter</b> yang dipantau lintas jenis — referensi cepat, tidak untuk diedit di sini',done:false});g.push({t:'Untuk ubah nilai baku mutu suatu parameter, buka sub-tab ⚖ Baku Mutu',done:false,act:{l:'Buka Baku Mutu',f:"if(typeof _navBakuMutu==='function')_navBakuMutu()"}});}
       else if(epSub==='map'){g.push({t:'<b>Peta</b> menampilkan semua titik master di satu tampilan (Esri/OSM/Topo), diambil dari koordinat yang sudah diisi',done:false});g.push({t:'Titik non-routine yang belum ada koordinatnya tidak akan muncul di peta ini — isi dulu di Daftar Kegiatan',done:false});}
       else {g.push({t:'Sub-tab ⚖ <b>Baku Mutu</b>: pastikan tiap titik terpetakan ke kategori & BM benar',done:false});}
     }
@@ -24176,10 +24220,10 @@ function _rtGoTo(ev){
     else if(/ENV Tools/i.test(tab)){
       const sub=(typeof ET_SUB!=='undefined')?ET_SUB:'compress';
       if(sub==='drain'){
-        g.push({t:'Tab <b>Impor Data</b>: tempel/seret CSV curah hujan (NASA POWER) untuk Samboja & Anggana',done:false,act:{l:'Buka Impor Data',f:"if(typeof _drainSwitchSub==='function')_drainSwitchSub('import')"}});
-        g.push({t:'Tab <b>Lihat Data</b>: cek histori curah hujan yang sudah tersimpan',done:false,act:{l:'Buka Lihat Data',f:"if(typeof _drainSwitchSub==='function')_drainSwitchSub('data')"}});
-        g.push({t:'Tab <b>Export</b>: pilih Site + rentang bulan, lalu Export Auth/Ket (PDF) atau per titik (XLSX)',done:false,act:{l:'Buka Export',f:"if(typeof _drainSwitchSub==='function')_drainSwitchSub('export')"}});
-        g.push({t:'Tab <b>Konfigurasi</b>: cuma perlu diubah kalau ada perubahan resmi rumus/catchment area',done:false,act:{l:'Buka Konfigurasi',f:"if(typeof _drainSwitchSub==='function')_drainSwitchSub('config')"}});
+        g.push({t:'Tab <b>Impor Data</b>: tempel/seret CSV curah hujan (NASA POWER) untuk Samboja & Anggana',done:false,act:{l:'Buka Impor Data',f:"if(typeof _navDrainase==='function')_navDrainase('import')"}});
+        g.push({t:'Tab <b>Lihat Data</b>: cek histori curah hujan yang sudah tersimpan',done:false,act:{l:'Buka Lihat Data',f:"if(typeof _navDrainase==='function')_navDrainase('data')"}});
+        g.push({t:'Tab <b>Export</b>: pilih Site + rentang bulan, lalu Export Auth/Ket (PDF) atau per titik (XLSX)',done:false,act:{l:'Buka Export',f:"if(typeof _navDrainase==='function')_navDrainase('export')"}});
+        g.push({t:'Tab <b>Konfigurasi</b>: cuma perlu diubah kalau ada perubahan resmi rumus/catchment area',done:false,act:{l:'Buka Konfigurasi',f:"if(typeof _navDrainase==='function')_navDrainase('config')"}});
       } else if(sub==='review'){
         g.push({t:'Klik atau seret file <b>.xls</b> laporan lab (bisa banyak sekaligus) ke kotak upload',done:false});
         g.push({t:'Hasil dikelompokkan otomatis <b>per RFA</b> — Draft A & B untuk RFA yang sama akan digabung',done:false});
@@ -24193,7 +24237,7 @@ function _rtGoTo(ev){
         g.push({t:'<b>Compress PDF</b>: perkecil ukuran file PDF, atur kualitas lalu unggah filenya',done:false});
         g.push({t:'<b>Unlock PDF</b>: hilangkan proteksi edit/print (hanya untuk PDF tanpa password buka)',done:false});
         g.push({t:'<b>PDF ↔ JPG</b>: pecah PDF jadi gambar per halaman, atau gabungkan gambar jadi PDF',done:false});
-        g.push({t:'Coba juga sub-tab Data Debit Drainase & Review Draft Report di atas',done:false,act:{l:'Buka Data Debit Drainase',f:"if(typeof _etSwitchSub==='function')_etSwitchSub('drain')"}});
+        g.push({t:'Coba juga sub-tab Data Debit Drainase & Review Draft Report di atas',done:false,act:{l:'Buka Data Debit Drainase',f:"if(typeof _navDrainase==='function')_navDrainase()"}});
       }
     }
     else g.push({t:'Buka salah satu tab, atau buka sebuah kegiatan/RFA — aku akan tunjukkan langkahnya',done:false});
@@ -24212,7 +24256,7 @@ function _rtGoTo(ev){
     {k:['tahap','before','during','after','plankton'],a:'Parameter non-routine punya tag <b>Tahap</b>: TSS berlaku Before/During/After, Plankton hanya During. Diedit lewat chip B/D/A di tab Baku Mutu.'},
     {k:['link rfa','pending','no rfa','hubungkan'],a:'Event yang Completed tapi RFA-nya belum bernomor akan menunjukkan "RFA pending". Buka RFA Tracker untuk lengkapi No RFA, atau pakai tombol <b>🔗 Link RFA</b> di event untuk menghubungkan RFA yang sudah ada.',act:[{l:'Buka RFA Tracker',f:"switchTab('rfa')"}]},
     {k:['titik','duplikat','tumpang tindih','ganda'],a:'Di view Per Titik, variant "set 1/2/3" dan beda huruf besar/kecil dari titik yang sama sudah digabung. Site CPA & HDL ditampilkan sebagai HCA. (Penyeragaman nama titik yang beda konvensi masih dalam proses.)'},
-    {k:['kegiatan','tambah kegiatan','plot','jadwal','kalender'],a:'Tambah kegiatan di <b>Scheduling / Daftar Kegiatan</b>, lalu plot tanggal Before/During/After di kalender. Setelah sampel diambil, set event Completed supaya RFA bisa di-generate.',act:[{l:'Buka Scheduling',f:"switchTab('sched')"}]},
+    {k:['kegiatan','tambah kegiatan','plot','jadwal','kalender'],a:'Tambah kegiatan di <b>Scheduling / Daftar Kegiatan</b>, lalu plot tanggal Before/During/After di kalender. Setelah sampel diambil, set event Completed supaya RFA bisa di-generate.',act:[{l:'Buka Scheduling',f:"switchTab('scheduling',document.getElementById('tb-scheduling'))"}]},
     {k:['alur','flow','urutan','langkah','mulai dari mana','bingung'],a:'Alur lengkap: <b>Kegiatan → Jadwal → Completed → Generate RFA → isi tanggal RFA → ⚗ Generate Hasil → isi nilai → nilai vs BM → Completed</b>. Panel ini selalu menunjukkan langkah untuk apa pun yang sedang kamu buka.'},
     // ── workflow gates ──
     {k:['coc','chain of custody','email','kirim email','gate','sebelum kirim rfa'],a:'Sebelum <b>Tgl Kirim RFA</b> bisa diisi, aku pastikan dulu: (1) <b>CoC</b> (nomor Chain of Custody) sudah terisi, dan (2) RFA sudah kamu kirim ke lab <b>lewat email</b> beserta CoC. Ini gate wajib biar tidak ada RFA "terkirim" tanpa CoC.'},
@@ -24237,8 +24281,8 @@ function _rtGoTo(ev){
     // ── ENV Tools ──
     {k:['env tools','tools','menu tools','pdf tools','compress pdf','kompres pdf','unlock pdf','jpg ke pdf','pdf ke jpg'],a:'<b>ENV Tools</b> berisi utilitas bantu kerja, semuanya offline: <b>PDF Tools</b> (Compress PDF, Unlock PDF — hilangkan proteksi edit untuk PDF yang bisa dibuka tanpa password, PDF→JPG, JPG→PDF), <b>Data Debit Drainase</b>, <b>Review Draft Report</b>, dan <b>Transform Koordinat</b>.',act:[{l:'Buka ENV Tools',f:"switchTab('envtools',document.getElementById('tb-envtools'))"}]},
     {k:['transform koordinat','p2exc','segara','t9','konversi koordinat','ubah koordinat','grid lokal','dms','derajat menit detik','utm zona'],a:'<b>Transform Koordinat</b> (di ENV Tools) mengonversi antara <b>Decimal Degrees</b>, <b>DMS</b> (Derajat Menit Detik), <b>UTM</b> (zona berapa pun, tidak cuma 50S), dan grid lokal <b>P2EXC-T9 (Segara)</b>. Pilih CRS asal & tujuan, isi koordinatnya (kalau UTM, isi juga zona & hemisphere-nya), klik Transform. Semua rumus dihitung langsung di aplikasi (bukan lewat internet), jadi jalan online maupun offline. Rumus P2EXC↔UTM diturunkan dari regresi least-squares 50 titik referensi (akurasi ±1-3 cm) — bukan parameter resmi terpublikasi, jadi bagus untuk navigasi lapangan tapi bukan pengganti transformasi survei legal.',act:[{l:'Buka ENV Tools',f:"switchTab('envtools',document.getElementById('tb-envtools'));if(typeof _etSwitchSub==='function')_etSwitchSub('coord')"}]},
-    {k:['debit drainase','curah hujan','nasa power','catchment','titik penaatan drainase','disposal tube'],a:'<b>Data Debit Drainase</b> (di ENV Tools) menghitung debit 15 titik drainase dari curah hujan harian (NASA POWER), pakai rumus persis seperti Excel aslinya. Ada tab <b>Impor Data</b> (drag-drop/tempel CSV), <b>Lihat Data</b> (histori lengkap), <b>Export</b> (Auth/Ket PDF per site, atau data mentah .xlsx per titik penaatan), dan <b>Konfigurasi</b> (ubah konstanta rumus/catchment area kalau perlu).',act:[{l:'Buka ENV Tools',f:"switchTab('envtools',document.getElementById('tb-envtools'));if(typeof _etSwitchSub==='function')_etSwitchSub('drain')"}]},
-    {k:['review draft','draft report','laporan lab','sucofindo','laporan analisis','xls lab','catatan kesesuaian','terapkan ke hasil','terapkan hasil sampling'],a:'<b>Review Draft Report</b> (di ENV Tools) membaca file laporan hasil lab (.xls), mencocokkan tiap sampel ke titik dan RFA yang sudah ada, dan menampilkan panel <b>📋 Catatan Kesesuaian</b> yang otomatis mengecek Site, No CoC, Analisa/Uji, tanggal pengambilan contoh per titik, kemungkinan typo nama titik, kelengkapan jumlah titik, dan apakah RFA-nya sudah pernah di-generate hasilnya. Kalau semua sesuai cukup muncul "✓ Semua sesuai". Klik <b>✅ Terapkan ke Hasil Sampling</b> untuk langsung mengisi nilai parameter (bukan plankton/organisme) ke Hasil Sampling — otomatis generate barisnya kalau belum ada, atau update kalau sudah ada.',act:[{l:'Buka ENV Tools',f:"switchTab('envtools',document.getElementById('tb-envtools'));if(typeof _etSwitchSub==='function')_etSwitchSub('review')"}]},
+    {k:['debit drainase','curah hujan','nasa power','catchment','titik penaatan drainase','disposal tube'],a:'<b>Data Debit Drainase</b> (di ENV Tools) menghitung debit 15 titik drainase dari curah hujan harian (NASA POWER), pakai rumus persis seperti Excel aslinya. Ada tab <b>Impor Data</b> (drag-drop/tempel CSV), <b>Lihat Data</b> (histori lengkap), <b>Export</b> (Auth/Ket PDF per site, atau data mentah .xlsx per titik penaatan), dan <b>Konfigurasi</b> (ubah konstanta rumus/catchment area kalau perlu).',act:[{l:'Buka ENV Tools',f:"if(typeof _navDrainase==='function')_navDrainase()"}]},
+    {k:['review draft','draft report','laporan lab','sucofindo','laporan analisis','xls lab','catatan kesesuaian','terapkan ke hasil','terapkan hasil sampling'],a:'<b>Review Draft Report</b> (di ENV Tools) membaca file laporan hasil lab (.xls), mencocokkan tiap sampel ke titik dan RFA yang sudah ada, dan menampilkan panel <b>📋 Catatan Kesesuaian</b> yang otomatis mengecek Site, No CoC, Analisa/Uji, tanggal pengambilan contoh per titik, kemungkinan typo nama titik, kelengkapan jumlah titik, dan apakah RFA-nya sudah pernah di-generate hasilnya. Kalau semua sesuai cukup muncul "✓ Semua sesuai". Klik <b>✅ Terapkan ke Hasil Sampling</b> untuk langsung mengisi nilai parameter (bukan plankton/organisme) ke Hasil Sampling — otomatis generate barisnya kalau belum ada, atau update kalau sudah ada.',act:[{l:'Buka ENV Tools',f:"if(typeof _navAlatLaporan==='function')_navAlatLaporan('review')"}]},
     {k:['rfa batch','isi batch','kirim batch','batch kirim','tanggal kirim sekaligus','kirim cbt bareng','kirim rfa bareng','centang rfa','isi tanggal kirim','coc batch','coc bareng','satu coc'],a:'Kalau beberapa RFA dikirim ke lab dalam <b>satu batch</b> (mis. sampel tanggal 1-5 Juli dikirim bareng dengan 1 nomor CoC yang sama), buka <b>RFA Tracker → tab RFA List</b>: tiap baris punya <b>checkbox</b> di kolom paling kiri. Centang semua RFA yang dikirim bareng, lalu klik tombol <b>📦 Isi Batch</b> di pojok kanan atas tabel — pilih mau isi Tgl Kirim CBT, Tgl Kirim RFA, atau <b>CoC</b>, isi satu nilai, lalu diterapkan ke semua yang dicentang sekaligus.',act:[{l:'Buka RFA List',f:"switchTab('rfa');if(typeof rfaSwitchSub==='function')rfaSwitchSub('list')"}]},
     {k:['layer gis','arcgis','sumur','pipeline','pipa','platform','custodianship','zona terbatas','well','pertamina geoportal'],a:'Di <b>ENV Mon Program → 🗺 Peta</b>, sidebar kanan punya bagian <b>🧭 Layer GIS (ArcGIS)</b>: 6 grup (Sumur & Platform, Pipa & Perlintasan, Area Dumping/Monitoring, Custodianship Area, Zona Terbatas, Basecamp & Fasilitas) diambil dari data ArcGIS Mahakam Geoportal. Centang grup atau layer satuan untuk menampilkannya di peta — klik fiturnya untuk lihat semua atributnya.'},
     {k:['titik penaatan filter','filter kegiatan peta','hide monthly','sembunyikan semesterly','filter jenis peta'],a:'Peta juga punya <b>📍 Titik Penaatan (Kegiatan)</b> — checkbox per tipe kegiatan (Dredging/Drilling/Trenching/Leveling/Hydrotest) untuk menampilkan titik koordinat kegiatan non-routine. Untuk titik sampling Monthly/Semesterly/Yearly sendiri, ada checkbox terpisah di bagian <b>🔎 Filter Titik Sampling</b> — bisa sembunyikan salah satu jenis sambil tetap menampilkan yang lain.'},
@@ -24254,11 +24298,11 @@ function _rtGoTo(ev){
     {k:['simpel','pelaporan simpel','simpel harian','simpel berkala'],a:'Kartu <b>SIMPEL</b> di tab Laporan: <b>Harian</b> = satu klik export Excel per titik per bulan (kolom Tanggal 1-31 + Nilai; hari kosong otomatis -1; file pH terpisah untuk SPS/BKP). <b>Berkala</b> = datanya sama persis dengan Hasil Sampling per titik — tombolnya langsung mengantarmu ke sana.',act:[{l:'Buka Laporan',f:"switchTab('laporan',document.getElementById('tb-laporan'))"}]},
     {k:['produksi','data produksi','barrel','boe','produksi bulanan'],a:'Data <b>Produksi bulanan (Barrel/bulan)</b> dipakai untuk baris Produksi & Beban Pencemar di laporan. Angka real 2018-2026 sudah ter-seed dari data recap-mu (BSP mengisi BKP+SPS, CPA mengisi HCA); bulan yang belum ada tinggal diisi manual di tab Laporan → bagian <b>Data Produksi</b> — isian manualmu selalu menang atas seed.',act:[{l:'Buka Laporan',f:"switchTab('laporan',document.getElementById('tb-laporan'))"}]},
     // ── Review Report (draft + scan) & OCR ──
-    {k:['review report','review scan','scan report','ocr','tesseract','scan a','scan b','cocokkan scan'],a:'<b>ENV Tools → 📑 Review Report</b> dua panel: kiri <b>Review Draft Report</b> (baca .xls draft lab → cek kesesuaian → Terapkan ke Hasil Sampling; tanggal Draft A/B otomatis terisi), kanan <b>Review Scan Report</b> — upload PDF scan dari lab, sistem membacanya (termasuk <b>OCR offline</b> untuk scan gambar) lalu mencocokkan No. RFA, CoC, No. Sucofindo, site, dan nilai parameter dengan data yang ada. Parameter yang tidak tercakup scan (mis. TSS di Scan B resampling) otomatis dilewati, bukan dianggap beda. Klik <b>Sesuai</b> untuk merekam tanggal terima Scan A/B di RFA.',act:[{l:'Buka Review Report',f:"switchTab('envtools',document.getElementById('tb-envtools'));if(typeof _etSwitchSub==='function')_etSwitchSub('review')"}]},
+    {k:['review report','review scan','scan report','ocr','tesseract','scan a','scan b','cocokkan scan'],a:'<b>ENV Tools → 📑 Review Report</b> dua panel: kiri <b>Review Draft Report</b> (baca .xls draft lab → cek kesesuaian → Terapkan ke Hasil Sampling; tanggal Draft A/B otomatis terisi), kanan <b>Review Scan Report</b> — upload PDF scan dari lab, sistem membacanya (termasuk <b>OCR offline</b> untuk scan gambar) lalu mencocokkan No. RFA, CoC, No. Sucofindo, site, dan nilai parameter dengan data yang ada. Parameter yang tidak tercakup scan (mis. TSS di Scan B resampling) otomatis dilewati, bukan dianggap beda. Klik <b>Sesuai</b> untuk merekam tanggal terima Scan A/B di RFA.',act:[{l:'Buka Review Report',f:"if(typeof _navAlatLaporan==='function')_navAlatLaporan('review')"}]},
     // ── Recording Debit & pH ──
-    {k:['recording debit','debit harian','ph harian','upload debit','import debit','rekaman debit'],a:'<b>ENV Tools → 💧 Recording Debit & pH</b>: drop banyak file Excel recording sekaligus (format apa pun — bulanan per titik, SIMPEL Tanggal/Nilai, sampai workbook multi-titik "Authority") — sistem mendeteksi jenis (debit/pH), mencocokkan ke titik berdasarkan nama file/sheet + site, dan kamu tinggal review lalu Terapkan. Data 2026 sudah ter-seed dari raw data-mu; recording tahun 2018-2025 lengkap ada di file <b>Data Pack</b> yang tinggal di-load.',act:[{l:'Buka Recording',f:"switchTab('envtools',document.getElementById('tb-envtools'));if(typeof _etSwitchSub==='function')_etSwitchSub('debitph')"}]},
+    {k:['recording debit','debit harian','ph harian','upload debit','import debit','rekaman debit'],a:'<b>ENV Tools → 💧 Recording Debit & pH</b>: drop banyak file Excel recording sekaligus (format apa pun — bulanan per titik, SIMPEL Tanggal/Nilai, sampai workbook multi-titik "Authority") — sistem mendeteksi jenis (debit/pH), mencocokkan ke titik berdasarkan nama file/sheet + site, dan kamu tinggal review lalu Terapkan. Data 2026 sudah ter-seed dari raw data-mu; recording tahun 2018-2025 lengkap ada di file <b>Data Pack</b> yang tinggal di-load.',act:[{l:'Buka Recording',f:"if(typeof _navAlatLaporan==='function')_navAlatLaporan('debitph')"}]},
     // ── Data Pack ──
-    {k:['data pack','save state','backup semua','pindah komputer','muat data','load data','export semua data'],a:'<b>ENV Tools → 💾 Data Pack</b>: file HTML ini sistem murni — seluruh data (recording harian semua tahun + semua isian aplikasi) bisa diexport jadi satu file .json sebagai <b>save state</b>, lalu di-import kapan pun (backup, pindah komputer, berbagi). Pack yang di-import tersimpan permanen di browser (IndexedDB) dan otomatis dimuat ulang tiap buka file.',act:[{l:'Buka Data Pack',f:"switchTab('envtools',document.getElementById('tb-envtools'));if(typeof _etSwitchSub==='function')_etSwitchSub('datapack')"}]},
+    {k:['data pack','save state','backup semua','pindah komputer','muat data','load data','export semua data'],a:'<b>ENV Tools → 💾 Data Pack</b>: file HTML ini sistem murni — seluruh data (recording harian semua tahun + semua isian aplikasi) bisa diexport jadi satu file .json sebagai <b>save state</b>, lalu di-import kapan pun (backup, pindah komputer, berbagi). Pack yang di-import tersimpan permanen di browser (IndexedDB) dan otomatis dimuat ulang tiap buka file.',act:[{l:'Buka Data Pack',f:"if(typeof _navDataPack==='function')_navDataPack()"}]},
     {k:['geotag','gps map camera','stempel foto','foto lapangan','tag foto','watermark foto'],a:'<b>ENV Tools → 📷 Geotag Foto</b>: stempel foto lapangan persis gaya <b>GPS Map Camera</b> (peta mini + judul + bendera + alamat + Lat/Long + hari/tanggal/jam GMT+08 + badge logo). <b>Hybrid</b>: saat online peta mini memakai peta OSM asli dan alamat bisa diisi otomatis dari koordinat (tombol 🌐); saat offline otomatis pakai peta skematik dan alamat manual. Koordinat bisa diambil dari titik sampling yang ada.',act:[{l:'Buka Geotag',f:"switchTab('envtools',document.getElementById('tb-envtools'));if(typeof _etSwitchSub==='function')_etSwitchSub('geotag')"}]},
     // ── Panduan ──
     {k:['panduan','cara pakai','flow kerja','alur kerja lengkap','mulai dari mana','tutorial'],a:'Tab <b>📖 Panduan</b> berisi alur kerjamu dari awal sampai akhir secara sistematis: siklus bulanan (schedule → sampling → RFA → draft → review → hasil → CoA → scan → laporan → SIMPEL), apa saja yang harus dilengkapi di tiap tahap, dan menu mana untuk masing-masing.',act:[{l:'Buka Panduan',f:"switchTab('panduan',document.getElementById('tb-panduan'))"}]},
@@ -47890,6 +47934,103 @@ function _coordDetailMainInput(actId,q){
       + '</div>';
   }
   window._lapKartuBulanan = _lapKartuBulanan;
+})();
+
+</script><script id="nav-redirect-y522">
+/* Y522 — tujuan pengarahan yang dipakai bersama semua tombol "Buka ...".
+ *
+ * Kenapa ini ada. Pemilik minta (2026-09-22) "coba cek ulang semua tombol
+ * redirect di tab lainnya". Yang ditemukan dengan menekan tombolnya sungguhan,
+ * bukan dengan membaca kodenya:
+ *   - "Buka Scheduling" memanggil switchTab('sched') -- kunci tabnya tidak ada
+ *     (yang benar 'scheduling'), dan hasilnya LAYAR KOSONG: nol view terlihat,
+ *     nol tab tersorot.
+ *   - Empat tombol drainase ("Buka Impor Data", "Lihat Data", "Export",
+ *     "Konfigurasi") hanya memanggil _drainSwitchSub(...) tanpa berpindah ke
+ *     mana pun. Panelnya sendiri sudah pindah ke tab Laporan, jadi yang
+ *     terjadi: tidak ada apa-apa.
+ *   - "Buka Data Debit Drainase" memanggil _etSwitchSub('drain') -- merakit
+ *     salinan panel yang sudah usang di ENV Tools, tanpa berpindah tab.
+ *   - "Buka Baku Mutu" hanya menyetel _epSub dan merender, tanpa pindah ke tab
+ *     ENV Program.
+ * Semuanya kelas kegagalan yang DIAM: tidak ada pesan, tidak ada error, tombol
+ * ditekan dan tidak terjadi apa-apa.
+ *
+ * Aturannya sekarang satu kalimat: sebuah tombol pengarah harus membawa orang
+ * SAMPAI KE LAYAR TUJUAN, bukan sekadar menyetel keadaan di belakang layar.
+ *
+ * Catatan lingkup (aturan 6p): berkas ini jadi blok <script> tersendiri, jadi
+ * ia TIDAK bisa membaca `let`/`const` tingkat atas milik blok lain. Karena itu
+ * setiap tujuan dicapai dengan memanggil fungsi tingkat atas (yang memang ada
+ * di window) atau dengan MENEKAN kendali aslinya di layar -- tidak pernah
+ * dengan menulis langsung ke variabel keadaan milik blok lain.
+ */
+(function () {
+  'use strict';
+
+  function _navTab(t) {
+    try {
+      var b = document.getElementById('tb-' + t) || null;
+      switchTab(t, b);
+    } catch (e) { }
+  }
+
+  /* Panel "Data Debit Drainase" tinggal di tab Laporan, di dalam
+     <details data-pd-key="lap_drain"> -- bukan lagi di ENV Tools. */
+  window._navDrainase = function (sub) {
+    try {
+      if (typeof _lapKeAlat === 'function') _lapKeAlat('laporan', null, '[data-pd-key="lap_drain"]');
+      else _navTab('laporan');
+    } catch (e) { _navTab('laporan'); }
+    if (!sub) return;
+    setTimeout(function () {
+      try { if (typeof _drainSwitchSub === 'function') _drainSwitchSub(sub); } catch (e) { }
+    }, 950);
+  };
+
+  /* Daftar baku mutu ada di tab ENV Program, pil "Baku Mutu". Pilnya ditekan
+     sungguhan supaya tidak ada dua jalur yang bisa berbeda diam-diam. */
+  window._navBakuMutu = function () {
+    _navTab('envprog');
+    setTimeout(function () {
+      var b = Array.prototype.slice.call(document.querySelectorAll('#view-envprog [onclick]'))
+        .filter(function (x) { return (x.getAttribute('onclick') || '').indexOf("_epSub='bm'") >= 0; })[0];
+      if (b) b.click();
+    }, 260);
+  };
+
+  /* "Review Draft Report" dan "Recording Debit & pH" juga sudah pindah: rumah
+     keduanya sekarang #lap-envtool-host di tab Laporan. Lewat ENV Tools mereka
+     masih tergambar, tetapi itu SALINAN KEDUA dengan id yang sama (aturan
+     6am), di bilah pil yang sudah tidak punya pilnya -- jadi orang mendarat di
+     panel yang tidak bisa ia temukan lagi.
+     _lapSetEnvTool() sengaja tidak dipakai: fungsi itu TOGGLE, jadi memanggil
+     nya saat alat yang sama sudah terpilih justru mematikannya. */
+  window._navAlatLaporan = function (t) {
+    try { window._lapEnvTool = t; } catch (e) { }
+    /* Kalau sudah berada di tab Laporan, switchTab berhenti lebih awal dan
+       renderLaporan tidak akan jalan lagi -- panelnya harus digambar sendiri. */
+    if (window._curTabName === 'laporan') {
+      try { if (typeof renderLaporan === 'function') renderLaporan(); } catch (e) { }
+    }
+    try {
+      if (typeof _lapKeAlat === 'function') _lapKeAlat('laporan', null, '#lap-envtool-host');
+      else _navTab('laporan');
+    } catch (e) { _navTab('laporan'); }
+  };
+
+  /* Data Pack tidak lagi punya pil sendiri: ia ada di dalam pil "Dataset". */
+  window._navDataPack = function () {
+    _navTab('envtools');
+    setTimeout(function () {
+      try { if (typeof _etSwitchSub === 'function') _etSwitchSub('dataset'); } catch (e) { }
+      setTimeout(function () {
+        var b = Array.prototype.slice.call(document.querySelectorAll('#et-sub-content [onclick]'))
+          .filter(function (x) { return (x.getAttribute('onclick') || '').indexOf("DATASET_SUB='pack'") >= 0; })[0];
+        if (b) b.click();
+      }, 260);
+    }, 260);
+  };
 })();
 
 </script><script id="coordinate-legacy-field-normalization-2026-08-27">
