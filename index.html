@@ -4015,7 +4015,27 @@ html[data-theme="neraca"] #hasil-content{
 .brand h1{min-width:0;overflow:hidden;text-overflow:ellipsis}
 #left-panel.collapsed .lp-body{min-width:0;overflow:hidden}
 </style>
-</head>
+<style id="ket-info-y525">
+.ket-info-btn{border:1px solid var(--g2,#ddd);background:transparent;color:var(--g4,#888);
+  border-radius:999px;width:18px;height:18px;line-height:1;padding:0;margin-left:6px;
+  font-size:11px;font-family:inherit;cursor:pointer;vertical-align:middle;flex:0 0 auto}
+/* Glifnya dari CSS, bukan dari textContent -- lihat alasannya di ket_info.js.
+   Ditulis sebagai KARAKTER HARFIAH, bukan escape: aturan 6ap. Versi pertama
+   memakai "\24D8" di dalam literal Python biasa, dan Python membaca \24
+   sebagai escape OKTAL -- yang tertulis ke artefak jadi content:"D8", dan
+   ikonnya muncul sebagai dua huruf. Tidak ada WARN, build hijau. */
+.ket-info-btn::before{content:"ⓘ"}
+.ket-info-btn:hover{color:var(--text,#333);border-color:var(--g4,#aaa)}
+.ket-info-btn.on{background:var(--g1,#f2f2f2);color:var(--text,#333);border-color:var(--g4,#aaa)}
+.ket-info-teks{margin-top:4px}
+/* Di HP tombolnya dibuat cukup besar untuk jempol tanpa mengubah tinggi
+   barisnya -- sasaran sentuhnya dilebarkan lewat ::after yang transparan,
+   bukan dengan membesarkan kotaknya (itu akan mendorong judulnya turun). */
+@media (max-width:760px){
+  .ket-info-btn{position:relative;width:20px;height:20px;font-size:12px}
+  .ket-info-btn::after{content:"";position:absolute;left:-10px;right:-10px;top:-10px;bottom:-10px}
+}
+</style></head>
 <body>
 
 <script>
@@ -5165,7 +5185,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'d7a70d23'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'03b6022b'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -48547,6 +48567,291 @@ function _coordDetailMainInput(actId,q){
     return true;
   }
   window._lapTabRender = _lapTabRender;
+})();
+
+</script><script id="ket-info-y525-js">
+/* ===== Y525: keterangan panel yang panjang pindah ke ikon ⓘ ================
+   Permintaan pemilik (2026-09-22): *"Salah satu problem yg sampe skrg masih
+   ada adalah sub header/deskripsi yg terlalu panjang... tanpa menghilangkan
+   informasi penting? Baik di tampilan desktop atau mobile."* Ditawarkan empat
+   cara, pemilik memilih **ikon ⓘ di sebelah judul**.
+
+   Yang terukur sebelum dikerjakan, di HP 390x844:
+     - tab ENV Tools memakai 378px hanya untuk teks keterangan -- hampir
+       setengah layar sebelum sampai ke kendali apa pun, tersebar di 8 blok,
+       yang terpanjang 5 baris;
+     - se-aplikasi ada 21 keterangan >= 60 karakter, 10 di antaranya >= 120,
+       tiga tembus 200+, terpanjang 277 (dan 435 di sub-panel Transform
+       Koordinat).
+
+   Akar masalahnya bukan panjangnya, melainkan satu paragraf memuat tiga hal
+   sekaligus: "apa ini" (selalu perlu), "kenapa/aman" (perlu sekali seumur
+   hidup), dan "status/peringatan" (perlu hanya saat kondisinya berlaku).
+
+   ── Yang TIDAK disentuh, dan kenapa ─────────────────────────────────────
+   PERINGATAN DAN STATUS TIDAK PERNAH DISEMBUNYIKAN. Teks ber-⚠ / ✔ / ✗ itu
+   ajakan bertindak, bukan penjelasan panel; menyembunyikannya di balik ikon
+   sama saja menyembunyikan pekerjaan yang belum selesai. Begitu juga kartu
+   langkah di tab Panduan -- itu ISI tabnya, bukan keterangan, jadi tab
+   Panduan dikecualikan seluruhnya.
+
+   ── Kenapa pemilihnya seketat ini ───────────────────────────────────────
+   Versi pertama pemilih ini longgar (font kecil + ada judul di atasnya) dan
+   hasil pengukurannya 30 kandidat -- tetapi di dalamnya ikut terbawa BARIS
+   HASIL pemeriksaan kualitas data ("✔ Titik berkoordinat — semua titik rutin
+   sudah punya koordinat") dan kartu langkah Panduan. Menerapkannya akan
+   menyembunyikan DATA, bukan keterangan. Itu aturan 6x dalam bentuk tata
+   letak: pemilih yang membaca lebih longgar daripada maksudnya akan mengarang
+   sasaran. Aturan yang dipakai sekarang menuntut SEMUANYA terpenuhi:
+     1. tepat saudara BERIKUTNYA dari judul panel yang dikenali
+        (.et-sec-title, <summary>, atau anak pertama .et-sec/.et-card yang
+        tebal),
+     2. ukuran font <= 11.5px dan TIDAK tebal (judul & isi dikecualikan),
+     3. panjang >= 70 karakter,
+     4. tidak memuat ⚠ ✔ ✗ ×,
+     5. tidak di dalam <table>, dan tidak memuat kendali apa pun
+        (button/input/select/a) -- itu tandanya ia panel, bukan keterangan.
+   Terukur dengan aturan ini: 19 kandidat, seluruhnya prosa pengantar panel
+   90-435 karakter; nol baris data, nol peringatan, nol kartu Panduan.
+
+   Dimuat ulang dari scripts/data/ui/ket_info.js setiap kali dibangun
+   (aturan 6r). */
+(function () {
+  'use strict';
+
+  var TANDA = 'ketInfo';           // dataset flag supaya tidak diproses dua kali
+  var INGAT = {};                  // judul -> terbuka?
+  var SIMPAN = 'env26_ket_info';
+
+  try {
+    var s = localStorage.getItem(SIMPAN);
+    if (s) INGAT = JSON.parse(s) || {};
+  } catch (e) { INGAT = {}; }
+
+  function simpan() {
+    try { localStorage.setItem(SIMPAN, JSON.stringify(INGAT)); } catch (e) { }
+  }
+
+  function kunci(judulEl) {
+    return (judulEl.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  }
+
+  function tampak(e) {
+    return !!(e && e.checkVisibility
+      ? e.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })
+      : (e && e.getClientRects().length));
+  }
+
+  function viewAktif() {
+    var v = [].slice.call(document.querySelectorAll('[id^="view-"]'))
+      .filter(function (e) { return e.getClientRects().length && getComputedStyle(e).display !== 'none'; });
+    return v[0] || null;
+  }
+
+  /* Kandidat = keterangan pengantar panel. Aturannya sengaja ketat; lihat
+     alasannya di kepala berkas ini. */
+  function kandidat(v) {
+    if (!v || v.id === 'view-panduan') return [];
+    var judul = [];
+    [].forEach.call(v.querySelectorAll('.et-sec-title, summary'), function (j) { judul.push(j); });
+    [].forEach.call(v.querySelectorAll('.et-sec, .et-card, .lap-data-card'), function (p) {
+      var f = p.firstElementChild;
+      if (f && +getComputedStyle(f).fontWeight >= 600 && judul.indexOf(f) < 0) judul.push(f);
+    });
+    /* Judul bagian yang ditulis sebagai <h1>..<h4> -- mis. pengantar tab ENV
+       Tools. Syarat lainnya tetap berlaku seluruhnya, jadi ini memperluas
+       jangkauan tanpa melonggarkan penyaringnya. */
+    [].forEach.call(v.querySelectorAll('h1, h2, h3, h4'), function (j) {
+      if (judul.indexOf(j) < 0) judul.push(j);
+    });
+    /* Banyak judul panel di aplikasi ini cuma <div> TEBAL, tanpa kelas apa
+       pun. Yang diterima hanya yang tebal (>=600) DAN fontnya tidak lebih
+       kecil daripada keterangannya -- dua syarat sekaligus, supaya baris data
+       yang kebetulan tebal tidak ikut terbaca sebagai judul. */
+    [].forEach.call(v.querySelectorAll('div, span, p'), function (e) {
+      var pr = e.previousElementSibling;
+      if (!pr || judul.indexOf(pr) >= 0) return;
+      var ps = getComputedStyle(pr), es = getComputedStyle(e);
+      if (+ps.fontWeight >= 600 && parseFloat(ps.fontSize) >= parseFloat(es.fontSize)) judul.push(pr);
+    });
+    var out = [];
+    judul.forEach(function (j) {
+      if (!tampak(j)) return;
+      var e = j.nextElementSibling;
+      if (!e || e.dataset[TANDA] === 'ket') return;
+      if (!tampak(e)) return;
+      var st = getComputedStyle(e);
+      if (parseFloat(st.fontSize) > 11.5) return;
+      if (+st.fontWeight >= 600) return;
+      var txt = (e.textContent || '').replace(/\s+/g, ' ').trim();
+      if (txt.length < 70) return;
+      if (/[⚠✔✗×]/.test(txt)) return;   // ⚠ ✔ ✗ ×  — status, bukan keterangan
+      if (e.closest('table')) return;
+      if (e.querySelector('button,input,select,a')) return;
+      /* Tiga pengecualian berikut ditemukan dengan MENYAPU seluruh tab lalu
+         membaca apa saja yang jadi tersembunyi -- bukan dari membaca kode.
+         Ketiganya sempat lolos dan semuanya menyembunyikan DATA, bukan
+         keterangan. */
+      var jt = (j.textContent || '').replace(/\s+/g, ' ').trim();
+      // (a) Baris hasil pemeriksaan kualitas data. Tanda ⚠/✔-nya ada di
+      //     ELEMEN TERPISAH, jadi teksnya sendiri lolos saringan di atas;
+      //     yang menandainya adalah "judul" yang cuma berisi satu glif.
+      if (jt.length < 3) return;
+      // (b) Keadaan kosong: "Belum ada data sama sekali" + cara mengatasinya.
+      //     Itu ajakan bertindak, sekeluarga dengan peringatan (aturan C01) --
+      //     menyembunyikannya membuat aplikasi tampak diam saat justru sedang
+      //     meminta sesuatu.
+      if (/belum ada|kosong|gagal|error|tidak ditemukan/i.test(jt)) return;
+      // (c) Metadata kartu laporan ("Bulanan · Site: BPN · Ke: Walikota …").
+      //     Titik tengah berspasi adalah pemisah metadata di aplikasi ini, dan
+      //     site/tujuan justru yang dicari orang saat memindai kartu.
+      if (/ · /.test(txt)) return;
+      out.push([j, e]);
+    });
+    /* Keterangan yang ditulis sebagai BEBERAPA paragraf berturut-turut: yang
+       kedua dan seterusnya ikut disembunyikan di balik ikon yang sama.
+       Tanpa ini, menekan ⓘ hanya memunculkan paragraf pertama dan sisanya
+       tetap memenuhi layar -- setengah perbaikan yang justru membingungkan. */
+    out.slice().forEach(function (pair) {
+      var e = pair[1], lanjut = e.nextElementSibling, pengaman = 0;
+      while (lanjut && pengaman++ < 4) {
+        if (!tampak(lanjut)) break;
+        if (lanjut.dataset[TANDA]) break;
+        var ls = getComputedStyle(lanjut);
+        if (parseFloat(ls.fontSize) > 11.5 || +ls.fontWeight >= 600) break;
+        var lt = (lanjut.textContent || '').replace(/\s+/g, ' ').trim();
+        if (lt.length < 70) break;
+        if (/[\u26A0\u2714\u2717\u00D7]/.test(lt)) break;
+        if (/ · /.test(lt)) break;
+        if (lanjut.closest('table') || lanjut.querySelector('button,input,select,a')) break;
+        out.push([pair[0], lanjut, true]);   // true = ikut induknya, tanpa ikon sendiri
+        lanjut = lanjut.nextElementSibling;
+      }
+    });
+    return out;
+  }
+
+  function tombolInfo(k, terbuka) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ket-info-btn';
+    b.dataset[TANDA] = 'btn';
+    b.setAttribute('aria-expanded', terbuka ? 'true' : 'false');
+    /* Label tombolnya TIDAK pernah berubah saat diklik. Aturan 6m: tooltip
+       aplikasi ini menyimpan `title` saat mouseover lalu mengembalikannya saat
+       mouseout, jadi tombol yang mengganti labelnya sendiri kehilangan label
+       barunya begitu kursor bergeser -- dan kursornya memang di situ, karena
+       baru saja dipakai menekan. */
+    b.title = 'Penjelasan';
+    /* Glifnya digambar lewat CSS ::before, JADI TOMBOL INI TIDAK MENYUMBANG
+       SATU KARAKTER PUN ke textContent judulnya. Terukur kenapa itu penting:
+       versi pertama memakai b.textContent='ⓘ' dan ditempel di dalam judul,
+       sehingga `.et-sec-title`.textContent berubah dari "Data Tergabung per
+       Titik" menjadi "Data Tergabung per Titik ⓘ" -- test:laporan yang
+       mencocokkan judul itu PERSIS langsung merah. Kode produk memang tidak
+       mencocokkan teks judul secara persis (diperiksa: nol `textContent===`),
+       tetapi penerjemah istilah aplikasi ini MEMBACA dan MENULIS teks
+       `.et-sec-title`, jadi glif di dalamnya cepat atau lambat akan
+       dikutak-katik. Yang tidak ada di textContent tidak bisa dirusak. */
+    b.setAttribute('aria-label', 'Penjelasan');
+    return b;
+  }
+
+  /* HARUS memakai prioritas `important`. Terukur: tema HP memuat aturan
+     `html[data-theme="studio"] #envtools-content .et-sec-desc{display:-webkit-box
+     !important}` -- specificity-nya (id + atribut + kelas) mengalahkan aturan
+     apa pun yang masuk akal ditulis di lembar gaya bersama, dan !important-nya
+     mengalahkan `style.display='none'` biasa. Akibatnya keterangan tetap
+     terlihat di HP walaupun sudah "disembunyikan". Gaya inline BER-!important
+     adalah satu-satunya yang menang atas semua itu.
+     Catatan: aturan tema itu sendiri adalah jawaban parsial aplikasi ini atas
+     masalah yang sama (line-clamp). Ia tidak dilawan, hanya dilangkahi saat
+     keterangannya memang sedang disembunyikan. */
+  function setTampil(e, tampil) {
+    if (tampil) e.style.removeProperty('display');
+    else e.style.setProperty('display', 'none', 'important');
+  }
+  function tampilkah(e) {
+    return getComputedStyle(e).display !== 'none';
+  }
+
+  var SAUDARA = {};   // judul -> paragraf lanjutan yang ikut ikon yang sama
+
+  var sedangUbah = false;
+
+  function pasang(v) {
+    var ps = kandidat(v);
+    if (!ps.length) return 0;
+    sedangUbah = true;
+    var n = 0;
+    ps.forEach(function (pair) {
+      var j = pair[0], e = pair[1], lanjutan = pair[2];
+      var k = kunci(j);
+      var terbuka = !!INGAT[k];
+      e.dataset[TANDA] = 'ket';
+      e.classList.add('ket-info-teks');
+      setTampil(e, terbuka);
+      if (lanjutan) {
+        /* Paragraf lanjutan ikut induknya: disembunyikan/ditampilkan oleh ikon
+           yang sama, jadi ia TIDAK mendapat ikon sendiri. */
+        (SAUDARA[k] = SAUDARA[k] || []).push(e);
+        n++;
+        return;
+      }
+      var b = tombolInfo(k, terbuka);
+      b.onclick = function (ev) {
+        ev.stopPropagation();
+        /* <summary> menelan klik untuk membuka/menutup lipatannya; tanpa ini
+           menekan ⓘ di judul lipatan justru menutup panelnya. */
+        ev.preventDefault();
+        var buka = !tampilkah(e);
+        setTampil(e, buka);
+        (SAUDARA[k] || []).forEach(function (x) { if (x.isConnected) setTampil(x, buka); });
+        b.setAttribute('aria-expanded', buka ? 'true' : 'false');
+        b.classList.toggle('on', buka);
+        INGAT[k] = buka;
+        simpan();
+      };
+      if (terbuka) b.classList.add('on');
+      /* Ditempel DI DALAM judulnya, bukan sesudahnya: kalau judulnya sebuah
+         <summary>, menaruh tombol di luar akan melemparnya ke badan lipatan
+         dan ia hilang saat lipatannya tertutup. */
+      /* Tanpa simpul teks pemisah: spasinya diurus margin di CSS, supaya
+         textContent judulnya benar-benar tidak berubah sedikit pun. */
+      j.appendChild(b);
+      n++;
+    });
+    sedangUbah = false;
+    return n;
+  }
+
+  function jalan() {
+    var v = viewAktif();
+    if (!v) return 0;
+    return pasang(v);
+  }
+  window._ketInfoJalan = jalan;
+
+  /* Panel dirakit ulang terus-menerus (ganti tab, ganti sub-tab, render ulang
+     sesudah impor), jadi sekali jalan tidak cukup. Pengamatnya dibuat malas:
+     satu pemasangan per hentakan, dan dimatikan selama kita sendiri yang
+     mengubah DOM supaya tidak memicu dirinya sendiri. */
+  var timer = null;
+  function jadwalkan() {
+    if (sedangUbah) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(function () { timer = null; try { jalan(); } catch (e) { } }, 180);
+  }
+
+  function mulai() {
+    try { jalan(); } catch (e) { }
+    try {
+      new MutationObserver(jadwalkan).observe(document.body, { childList: true, subtree: true });
+    } catch (e) { }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mulai);
+  else setTimeout(mulai, 0);
 })();
 
 </script><script id="coordinate-legacy-field-normalization-2026-08-27">
