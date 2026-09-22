@@ -4016,25 +4016,32 @@ html[data-theme="neraca"] #hasil-content{
 #left-panel.collapsed .lp-body{min-width:0;overflow:hidden}
 </style>
 <style id="ket-info-y525">
-.ket-info-btn{border:1px solid var(--g2,#ddd);background:transparent;color:var(--g4,#888);
-  border-radius:999px;width:18px;height:18px;line-height:1;padding:0;margin-left:6px;
-  font-size:11px;font-family:inherit;cursor:pointer;vertical-align:middle;flex:0 0 auto}
+/* Y526: sekecil mungkin. Dua hal yang membuat versi pertama memakan tempat:
+   (a) border bulat -- padahal glif ⓘ SUDAH membawa lingkarannya sendiri, jadi
+       itu lingkaran di dalam lingkaran; dan
+   (b) di HP, aturan sentuh tema `button{min-height:var(--ui-tap)}` (44px)
+       mengenai tombol ini juga, sehingga ikonnya terukur 20x44px dan BARIS
+       JUDULNYA ikut melar dari 21px menjadi 44px.
+   Jadi kotaknya dikecilkan sampai sebesar glifnya saja, dan sasaran sentuhnya
+   dikembalikan lewat ::after transparan yang melebar keluar -- biaya tata
+   letaknya NOL, sementara jempol tetap punya ~44px untuk ditekan.
+   `min-height:0` menang tanpa !important karena selektor kelas mengalahkan
+   selektor elemen milik aturan sentuh itu. */
+.ket-info-btn{border:0;background:none;padding:0;margin:0 0 0 4px;
+  width:auto;height:auto;min-height:0;min-width:0;line-height:1;
+  font-size:12px;font-family:inherit;color:var(--g4,#999);cursor:pointer;
+  vertical-align:baseline;flex:0 0 auto;position:relative}
 /* Glifnya dari CSS, bukan dari textContent -- lihat alasannya di ket_info.js.
    Ditulis sebagai KARAKTER HARFIAH, bukan escape: aturan 6ap. Versi pertama
    memakai "\24D8" di dalam literal Python biasa, dan Python membaca \24
    sebagai escape OKTAL -- yang tertulis ke artefak jadi content:"D8", dan
    ikonnya muncul sebagai dua huruf. Tidak ada WARN, build hijau. */
 .ket-info-btn::before{content:"ⓘ"}
-.ket-info-btn:hover{color:var(--text,#333);border-color:var(--g4,#aaa)}
-.ket-info-btn.on{background:var(--g1,#f2f2f2);color:var(--text,#333);border-color:var(--g4,#aaa)}
+.ket-info-btn:hover{color:var(--text,#333)}
+.ket-info-btn.on{color:#1565c0}
+/* Sasaran sentuh diperbesar KELUAR, tanpa menambah tinggi barisnya. */
+.ket-info-btn::after{content:"";position:absolute;left:-16px;right:-16px;top:-16px;bottom:-16px}
 .ket-info-teks{margin-top:4px}
-/* Di HP tombolnya dibuat cukup besar untuk jempol tanpa mengubah tinggi
-   barisnya -- sasaran sentuhnya dilebarkan lewat ::after yang transparan,
-   bukan dengan membesarkan kotaknya (itu akan mendorong judulnya turun). */
-@media (max-width:760px){
-  .ket-info-btn{position:relative;width:20px;height:20px;font-size:12px}
-  .ket-info-btn::after{content:"";position:absolute;left:-10px;right:-10px;top:-10px;bottom:-10px}
-}
 </style></head>
 <body>
 
@@ -5185,7 +5192,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'03b6022b'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'bbf4c973'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -46812,6 +46819,13 @@ function _coordDetailMainInput(actId,q){
     for(var i=0;i<el.length;i++){
       var e = el[i];
       if(e.closest('.leaflet-container,.leaflet-control')) continue;
+      /* Y526: ikon keterangan (ⓘ) dilewati. Sasaran sentuhnya sudah 44x44,
+         tetapi dibuat dari ::after transparan yang melebar KELUAR, bukan dari
+         kotaknya -- jadi jempol tetap dapat 44px sementara tinggi barisnya
+         nol tambahan. Terukur: tanpa pengecualian ini ikon 12px terpaksa jadi
+         44px dan BARIS JUDULNYA ikut melar 21px -> 44px, yang justru
+         kebalikan dari tujuan ikon itu dibuat. */
+      if(e.classList.contains('ket-info-btn')) continue;
       if(!hp){ e.style.removeProperty('min-height'); continue; }
       if(!e.getClientRects().length) continue;
       if(e.getBoundingClientRect().height < 43.5) e.style.setProperty('min-height','44px','important');
