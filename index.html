@@ -5165,7 +5165,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-21',h:'7a9c2907'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-21',h:'71635f0e'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -28277,7 +28277,7 @@ function _lapValidasiTxt(mf){
 function _lapExportZip(){
   if(!_lapDocCtx){if(typeof toast==='function')toast('\u26a0 Buka dulu preview laporannya.');return;}
   // Y415: sejajarkan dengan _lapPrintDoc/_lapWordDoc yang sudah dijaga.
-  if(typeof _lapGateOk==='function'&&!_lapGateOk()){
+  if(typeof _lapBolehKeluar==='function'?!_lapBolehKeluar():(typeof _lapGateOk==='function'&&!_lapGateOk())){   /* Y518 */
     if(typeof toast==='function')toast('\u26d4 Data laporan belum lengkap \u2014 lengkapi item di checklist dulu.');
     return;
   }
@@ -28287,7 +28287,7 @@ function _lapExportZip(){
   var html=window._lapCurrentDoc||_lapBuildDocHtml();
   var doc=_lapDocBytes(html);
   var mf=_lapManifest(doc);
-  var base=(_lapDocCtx.def.label+' '+_lapDocCtx.period.label).replace(/[\\/:*?"<>|]/g,'-');
+  var base=(typeof _lapNamaBerkas==='function')?_lapNamaBerkas():(_lapDocCtx.def.label+' '+_lapDocCtx.period.label).replace(/[\\/:*?"<>|]/g,'-');   /* Y518 */
   var files={};
   files[base+'.doc']=fflate.strToU8('\ufeff'+doc);
   files['manifest.json']=fflate.strToU8(JSON.stringify(mf,null,1));
@@ -30780,29 +30780,45 @@ function _lapChecklist(){
   items.push({ok:slots.length>0,label:'Data Hasil Sampling (Form SA) periode ini'+(slots.length?'':' — belum ada data'),act:"_lapGoto('hasil')",actLabel:'Ke Hasil Sampling'});
   if(def.bebanPencemar){
     const missing=[];
+    let dinilaiProd=0;   /* Y518 */
     const mons=def.freq==='semester'?period.months:[period.months[0]];
     def.sites.forEach(function(site){
       const sn=_hsSiteN(site);
       if(LAPORAN_PROD_SITES.indexOf(sn)<0)return;
       if(!slots.some(function(s){return s.site===sn;}))return;
+      dinilaiProd++;   /* Y518 */
       mons.forEach(function(m){
         if(_lapProdFinal(m,yr,sn)==null)missing.push(sn+' ('+_lapPrevMonthLabel(m,yr)+')');
       });
     });
     const uniq=Array.from(new Set(missing));
+    /* Y518: kalau TIDAK ADA site yang sempat dinilai (Form SA periode ini
+       kosong seluruhnya), daftar 'kurang' kosong bukan karena datanya
+       lengkap melainkan karena tidak ada yang diperiksa. Jangan hijau. */
+    if(!dinilaiProd){
+      items.push({ok:false,belumBisa:true,
+        label:'Data Produksi bulanan — belum bisa dinilai, menunggu Data Hasil Sampling periode ini'});
+    } else
     items.push({ok:!uniq.length,label:'Data Produksi bulanan'+(uniq.length?' — kurang: '+uniq.slice(0,6).join(', ')+(uniq.length>6?' +'+(uniq.length-6)+' lagi':''):''),act:"_lapGoto('laporan')",actLabel:'Isi Data Produksi'});
   }
   if(!def.hsGroup){
     const needDaily=(dc.sections||[]).filter(function(s){return s.debitTitle;});
     if(needDaily.length){
       const missing=[];
+      let dinilaiDebit=0;   /* Y518 */
       needDaily.forEach(function(sec){
         def.sites.forEach(function(site){
           const matrix=_lapSiteMatrix(def,period,site,sec.sheets);
           if(!_lapMatrixHasParams(matrix))return;
+          dinilaiDebit++;   /* Y518 */
           if(!_lapDailyPages(def,period,site,matrix,sec).length)missing.push(site+' ('+sec.sheets[0]+')');
         });
       });
+      /* Y518: lihat catatan Y518a -- nol site yang dinilai bukan berarti lengkap. */
+      if(!dinilaiDebit){
+        items.push({ok:false,belumBisa:true,
+          label:'Recording debit harian — belum bisa dinilai, menunggu Data Hasil Sampling periode ini'});
+      } else
       items.push({ok:!missing.length,label:'Recording debit harian'+(missing.length?' — kurang: '+missing.join(', '):''),act:"_lapGoto('envtools','debitph')",actLabel:'Ke Recording Debit & pH'});
     }
   }
@@ -30883,7 +30899,7 @@ function _lapBuildDocHtml(){
       });
     });
   }
-  return _lapDocWrap(pages.join(''));
+  return _lapDocWrap((typeof _lapTandaDraf==='function')?_lapTandaDraf(pages):pages.join(''));   /* Y518 */
 }
 function _lapGenerate(defKey,periodId){
   const def=LAPORAN_DEFS.find(function(d){return d.key===defKey;});if(!def)return;
@@ -30923,12 +30939,23 @@ function _lapRefreshGenModal(){
   if(panel){
     const items=_lapChecklist();
     const allOk=items.every(function(i){return i.ok;});
+    /* Y518: hitungannya ditulis supaya kemajuannya bisa dilacak, dan jalan
+       keluarnya disebut -- sebelumnya kalimatnya hanya menyuruh melengkapi,
+       tanpa memberi tahu berapa lagi maupun bahwa draf kerja tetap bisa
+       disimpan. */
+    const _ok=items.filter(function(i){return i.ok;}).length;
     let h='<div style="font-size:10.5px;font-weight:700;color:'+(allOk?'#2e7d32':'#c62828')+';margin-bottom:5px">'
-      +(allOk?'✅ Data laporan lengkap — final PDF/Word bisa digenerate.':'⛔ Data laporan belum lengkap — lengkapi dulu sebelum generate final PDF/Word:')+'</div>';
+      +(allOk?'✅ Semua '+items.length+' syarat terpenuhi — laporan final bisa dibuat.'
+             :'⛔ '+_ok+' dari '+items.length+' syarat terpenuhi — laporan final belum bisa dibuat. Draf kerja tetap bisa disimpan.')+'</div>';
     items.forEach(function(it){
-      h+='<div style="display:flex;align-items:center;gap:8px;font-size:10.5px;padding:2px 0;color:'+(it.ok?'#2e7d32':'#c62828')+'">'
-        +'<span style="flex-shrink:0">'+(it.ok?'✔':'✘')+'</span><span style="flex:1">'+_ep(it.label)+'</span>'
-        +(it.ok||it.detail?'':'<button onclick="'+it.act.replace(/"/g,'&quot;')+'" style="flex-shrink:0;border:1px solid #c62828;background:#fff;color:#c62828;border-radius:5px;padding:2px 8px;font-size:9.5px;font-weight:700;cursor:pointer;font-family:inherit">'+_ep(it.actLabel)+' →</button>')
+      /* Y518: tiga keadaan, bukan dua. "belum bisa dinilai" ditulis abu-abu
+         dengan jam pasir -- bukan merah, karena tidak ada yang salah dengan
+         datanya; syarat pendahulunya saja yang belum ada. */
+      const _w=it.ok?'#2e7d32':(it.belumBisa?'#8a8a8a':'#c62828');
+      const _ik=it.ok?'✔':(it.belumBisa?'⏳':'✘');
+      h+='<div style="display:flex;align-items:center;gap:8px;font-size:10.5px;padding:2px 0;color:'+_w+'">'
+        +'<span style="flex-shrink:0">'+_ik+'</span><span style="flex:1">'+_ep(it.label)+'</span>'
+        +(it.ok||it.detail||!it.act?'':'<button onclick="'+it.act.replace(/"/g,'&quot;')+'" style="flex-shrink:0;border:1px solid #c62828;background:#fff;color:#c62828;border-radius:5px;padding:2px 8px;font-size:9.5px;font-weight:700;cursor:pointer;font-family:inherit">'+_ep(it.actLabel)+' →</button>')
         +'</div>'
         +(it.detail||'');
     });
@@ -30945,12 +30972,13 @@ function _lapRefreshGenModal(){
       b.style.cursor=allOk?'pointer':'not-allowed';
       b.title=allOk?'':'Data laporan belum lengkap — lihat checklist di atas.';
     };
-    gate('lap-word-btn');gate('lap-print-btn');
+    if(typeof _lapBagianBarRender==='function')_lapBagianBarRender();   /* Y518 */
+    else {gate('lap-word-btn');gate('lap-print-btn');}
   }
 }
 window._lapRefreshGenModal=_lapRefreshGenModal;
 function _lapPrintDoc(){
-  if(!_lapGateOk()){if(typeof toast==='function')toast('⛔ Data laporan belum lengkap — lengkapi item di checklist dulu.');return;}
+  if(typeof _lapBolehKeluar==='function'?!_lapBolehKeluar():!_lapGateOk()){   /* Y518 */if(typeof toast==='function')toast('⛔ Data laporan belum lengkap — lengkapi item di checklist dulu.');return;}
   const w=window.open('','_blank');
   if(!w){if(typeof toast==='function')toast('⚠ Popup diblokir browser — izinkan popup untuk mencetak.');return;}
   w.document.write(window._lapCurrentDoc||'');
@@ -30958,7 +30986,7 @@ function _lapPrintDoc(){
   setTimeout(function(){try{w.print();}catch(e){}},400);
 }
 function _lapWordDoc(){
-  if(!_lapGateOk()){if(typeof toast==='function')toast('⛔ Data laporan belum lengkap — lengkapi item di checklist dulu.');return;}
+  if(typeof _lapBolehKeluar==='function'?!_lapBolehKeluar():!_lapGateOk()){   /* Y518 */if(typeof toast==='function')toast('⛔ Data laporan belum lengkap — lengkapi item di checklist dulu.');return;}
   const html=window._lapCurrentDoc||_lapBuildDocHtml();
   // Word opens HTML .doc natively and keeps the exact same layout
   // (letterhead images, tables, page breaks) as the print/PDF output
@@ -30968,7 +30996,7 @@ function _lapWordDoc(){
   const blob=new Blob([bomEsc,doc],{type:'application/msword'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=(_lapDocCtx.def.label+' '+_lapDocCtx.period.label).replace(/[\\/:*?"<>|]/g,'-')+'.doc';
+  a.download=(typeof _lapNamaBerkas==='function'?_lapNamaBerkas():(_lapDocCtx.def.label+' '+_lapDocCtx.period.label).replace(/[\\/:*?"<>|]/g,'-'))+'.doc';   /* Y518 */
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(function(){URL.revokeObjectURL(a.href);},4000);
   if(typeof toast==='function')toast('✅ Laporan Word (.doc) tersimpan — buka di Microsoft Word.');
@@ -47173,6 +47201,88 @@ function _coordDetailMainInput(actId,q){
     catch (e) { return true; }
   }
 
+  /* ---- Y518: draf kerja vs laporan final -------------------------------
+     Laporan pemilik (2026-09-22): *"untuk simpan sebagai, sekarang bisa
+     disimpan partially ... akan tetapi tombol generate laporan final blm bisa
+     dipencet krn datanya harus full ... tolong revamp tampilan card ini agar
+     lebih mudah di trace ... krn jujur user bingung."*
+
+     Yang diukur lebih dulu, dan ternyata bukan seperti yang terlihat:
+     KEEMPAT tombol ekspor sama-sama dijaga `_lapGateOk()` -- PDF, Word, Excel
+     dan ZIP. Bedanya cuma pada tampilannya. PDF dan Word memang diabukan;
+     Excel diabukan hanya karena alasan FORMAT; ZIP selalu tampak hidup. Jadi
+     dua dari empat tombol tampak bisa dipakai lalu menolak saat diklik dengan
+     toast. Itulah sumber bingungnya: layar menjanjikan "bisa disimpan
+     sebagian", kenyataannya sebelum checklist lengkap tidak ada satu pun yang
+     keluar.
+
+     Dua perbaikan, dan keduanya perlu:
+       1. Status tombol dibuat JUJUR -- semuanya ikut mati kalau memang mati.
+       2. Jalur draf dibuat SUNGGUHAN, karena kalau tidak, jawaban jujur atas
+          "apa yang bisa dipakai sekarang" menjadi "tidak ada", dan itu jalan
+          buntu untuk orang yang cuma ingin draf kerja.
+
+     Drafnya ditandai supaya tidak mungkin tertukar dengan berkas final:
+     awalan nama berkas DAN pita merah di dalam dokumennya sendiri. */
+  window._lapModeSimpan = window._lapModeSimpan || 'final';
+
+  function _lapModeDraf() { return window._lapModeSimpan === 'draf'; }
+  window._lapModeDraf = _lapModeDraf;
+
+  /* Menggantikan _lapGateOk() di keempat jalur ekspor. */
+  function _lapBolehKeluar() {
+    if (_lapModeDraf()) return true;
+    return _lapGerbangOk();
+  }
+  window._lapBolehKeluar = _lapBolehKeluar;
+
+  function _lapSetMode(m) {
+    window._lapModeSimpan = (m === 'draf') ? 'draf' : 'final';
+    if (typeof _lapRefreshGenModal === 'function') _lapRefreshGenModal();
+    _lapBagianBarRender();
+  }
+  window._lapSetMode = _lapSetMode;
+
+  /* Nama berkas. Draf diberi awalan supaya di folder unduhan pun tidak bisa
+     tertukar dengan berkas final. */
+  function _lapNamaBerkas() {
+    var n = 'Laporan';
+    try { n = _lapDocCtx.def.label + ' ' + _lapDocCtx.period.label; } catch (e) {}
+    if (_lapModeDraf()) n = 'DRAF - ' + n;
+    return n.replace(/[\\/:*?"<>|]/g, '-');
+  }
+  window._lapNamaBerkas = _lapNamaBerkas;
+
+  function _lapSyaratKurang() {
+    try {
+      return _lapChecklist().filter(function (i) { return !i.ok; })
+        .map(function (i) { return String(i.label).split(' — ')[0].trim(); });
+    } catch (e) { return []; }
+  }
+  window._lapSyaratKurang = _lapSyaratKurang;
+
+  /* Tanda draf DI DALAM dokumennya. Awalan nama berkas saja tidak cukup:
+     begitu berkasnya dibuka, di-rename, atau diteruskan lewat email, nama itu
+     hilang sementara isinya tetap tampak seperti laporan resmi. Pitanya
+     ditulis inline, bukan lewat kelas CSS, karena dokumen ini juga dibuka
+     sebagai .doc di Word -- Word mengabaikan banyak aturan stylesheet tapi
+     menghormati style inline. */
+  function _lapTandaDraf(pagesHtml) {
+    var gabung = Array.isArray(pagesHtml) ? pagesHtml.join('') : String(pagesHtml || '');
+    if (!_lapModeDraf()) return gabung;
+    var kurang = _lapSyaratKurang();
+    var ket = kurang.length
+      ? 'Belum lengkap: ' + kurang.join('; ')
+      : 'Ditandai draf oleh pembuatnya.';
+    var pita = '<div style="flex-shrink:0;border:2px solid #c62828;background:#fdecea;'
+      + 'color:#b71c1c;font-weight:700;font-size:12px;padding:6px 10px;margin:0 0 10px;'
+      + 'text-align:center;letter-spacing:.5px">DRAF — BUKAN UNTUK DIKIRIM'
+      + '<div style="font-weight:400;font-size:9px;color:#7f1d1d;margin-top:2px">'
+      + _esc(ket) + '</div></div>';
+    return gabung.replace(/<div class="pg([^"]*)">/g, '<div class="pg$1">' + pita);
+  }
+  window._lapTandaDraf = _lapTandaDraf;
+
   function _lapFormatTeks(b) {
     var f = ['Word'];
     if (b.excel) f.push('Excel');
@@ -47221,10 +47331,35 @@ function _coordDetailMainInput(actId,q){
   /* Langkah 2 — pilih bentuk berkasnya, plus alasan kalau ada yang mati.
      Alasan ditulis di sebelah judul langkahnya, bukan di ujung kanan baris
      lain, supaya terbaca bersama tombol yang dijelaskannya. */
+  /* Dua pil mode. Bawaannya "final" -- itu tujuan sebenarnya, dan menyetel
+     draf sebagai bawaan berisiko ada orang mengirim berkas bertanda DRAF.
+     Tapi supaya pertanyaan "apa yang bisa kupakai sekarang" tetap terjawab
+     sekilas, pil draf diberi petunjuk "bisa dipakai sekarang" justru ketika
+     jalur final sedang terkunci. */
+  function _lapPilMode() {
+    var draf = _lapModeDraf();
+    var bolehFinal = _lapGerbangOk();
+    var pil = function (m, judul, ket, aktif) {
+      return '<button onclick="_lapSetMode(\'' + m + '\')"'
+        + ' style="text-align:left;border:1px solid ' + (aktif ? '#1565c0' : '#ddd') + ';'
+        + 'background:' + (aktif ? '#eaf2ff' : '#fff') + ';border-radius:8px;padding:5px 11px;'
+        + 'cursor:pointer;font-family:inherit;line-height:1.25">'
+        + '<div style="font-size:11px;font-weight:700;color:' + (aktif ? '#10467e' : '#666') + '">'
+        + (aktif ? '● ' : '○ ') + judul + '</div>'
+        + '<div style="font-size:9px;color:' + (aktif ? '#5a86b8' : '#999') + '">' + ket + '</div>'
+        + '</button>';
+    };
+    return pil('draf', 'Draf kerja',
+               'Boleh walau data belum lengkap · diberi tanda DRAF'
+               + (bolehFinal ? '' : ' · <b>bisa dipakai sekarang</b>'), draf)
+         + pil('final', 'Laporan final',
+               'Untuk dikirim ke instansi · perlu semua syarat', !draf);
+  }
+
   function _lapLangkah2() {
     var aktif = _lapBagianAktif();
     var bisaExcel = _lapExcelBisa();
-    var gerbang = _lapGerbangOk();
+    var gerbang = _lapBolehKeluar();
     /* Setiap tombol yang mati harus punya alasannya sendiri yang terbaca.
        Versi pertama memakai if/else berantai, sehingga ketika Word, PDF DAN
        Excel sama-sama mati, yang tampil cuma satu alasan -- dua tombol abu-abu
@@ -47237,7 +47372,12 @@ function _coordDetailMainInput(actId,q){
       alasan.push(['#8a6d00', 'Excel nonaktif — ' + tanpa.join(', ') + ' tidak punya bentuk Excel']);
     }
     if (!gerbang) {
-      alasan.push(['#c0392b', 'Word & PDF nonaktif — lengkapi dulu checklist di atas']);
+      /* Y518: alasannya menyebut jumlahnya dan jalan keluarnya. Sebelumnya
+         cuma "lengkapi dulu checklist di atas", yang tidak memberi tahu
+         berapa banyak lagi maupun bahwa ada jalur draf. */
+      var n = _lapSyaratKurang().length;
+      alasan.push(['#c0392b', 'Semua nonaktif — ' + n + ' syarat belum terpenuhi. '
+        + 'Pilih "Draf kerja" kalau cuma butuh berkas kerja.']);
     }
     var catatan = alasan.map(function (a) {
       return '<span style="font-size:9.5px;color:' + a[0] + '">' + _esc(a[1]) + '</span>';
@@ -47252,19 +47392,26 @@ function _coordDetailMainInput(actId,q){
         + teks + '</button>';
     };
 
+    /* Y518: status keempat tombol sekarang JUJUR. Sebelumnya ZIP selalu
+       tampak hidup dan Excel diabukan hanya karena alasan format, padahal
+       keduanya sama-sama menolak saat checklist belum lengkap -- sebuah
+       tombol yang tampak bisa dipakai lalu menolak adalah kebohongan yang
+       lebih membingungkan daripada tombol abu-abu. */
     return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">'
       + _lapNomor(2)
       + '<b style="font-size:11px;color:#222">Simpan sebagai</b>'
+      + '<span style="display:inline-flex;gap:6px;flex-wrap:wrap">' + _lapPilMode() + '</span>'
       + catatan
       + '<span style="display:inline-flex;gap:8px;flex-wrap:wrap;margin-left:auto">'
       + tombol('lap-print-btn', '_lapPrintDoc()', '#1565c0', '🖨 PDF', gerbang,
                'Buka jendela cetak — dari situ bisa disimpan sebagai PDF')
       + tombol('lap-word-btn', '_lapWordDoc()', '#1565c0', '📄 Word (.doc)', gerbang,
                'Simpan bagian terpilih sebagai dokumen Word')
-      + tombol('lap-excel-btn', '_lapExcelBagian()', '#2e7d32', '📊 Excel (.xlsx)', bisaExcel,
+      + tombol('lap-excel-btn', '_lapExcelBagian()', '#2e7d32', '📊 Excel (.xlsx)',
+               bisaExcel && gerbang,
                bisaExcel ? 'Simpan bagian terpilih sebagai workbook Excel'
                          : 'Hanya Form SA dan Debit harian yang punya bentuk Excel')
-      + tombol('lap-zip-btn', '_lapExportZip()', '#00695c', '📦 ZIP + manifest', true,
+      + tombol('lap-zip-btn', '_lapExportZip()', '#00695c', '📦 ZIP + manifest', gerbang,
                'Dokumen + manifest: dari mana angkanya dan aturan mana yang dipakai')
       + '</span></div>';
   }
@@ -47443,14 +47590,30 @@ function _coordDetailMainInput(actId,q){
       if (typeof toast === 'function') toast('⚠ Buka dulu pratinjau laporannya.');
       return;
     }
-    if (typeof _lapGateOk === 'function' && !_lapGateOk()) {
-      if (typeof toast === 'function') toast('⛔ Data laporan belum lengkap — lengkapi item di checklist dulu.');
+    if (!_lapBolehKeluar()) {   /* Y518: mode draf melewati gerbang ini */
+      if (typeof toast === 'function') toast('⛔ Data laporan belum lengkap — lengkapi item di checklist dulu, atau pilih "Draf kerja".');
       return;
     }
     var html = _lapBuildDocHtml();
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var halaman = doc.querySelectorAll('.pg');
     var wb = XLSX.utils.book_new(), dipakai = {}, n = 0;
+    /* Y518: workbook draf dibuka dengan lembar peringatannya sendiri. Pita
+       merah di dokumen tidak ikut ke sini -- yang dibaca ke Excel hanya
+       <table>, sehingga tanpa lembar ini workbook draf tidak terbedakan sama
+       sekali dari yang final. */
+    if (_lapModeDraf()) {
+      var kurang = _lapSyaratKurang();
+      var baris = [['DRAF — BUKAN UNTUK DIKIRIM'],
+                   ['Workbook ini dibuat saat data laporan belum lengkap.'], ['']];
+      if (kurang.length) {
+        baris.push(['Syarat yang belum terpenuhi:']);
+        kurang.forEach(function (k) { baris.push([k]); });
+      }
+      var wsD = XLSX.utils.aoa_to_sheet(baris);
+      wsD['!cols'] = [{ wch: 70 }];
+      XLSX.utils.book_append_sheet(wb, wsD, _lapNamaSheet('DRAF', dipakai));
+    }
     for (var i = 0; i < halaman.length; i++) {
       var tbl = halaman[i].querySelector('table');
       if (!tbl) continue;
@@ -47465,7 +47628,7 @@ function _coordDetailMainInput(actId,q){
       if (typeof toast === 'function') toast('⚠ Bagian terpilih tidak memuat tabel apa pun untuk periode ini.');
       return;
     }
-    var nama = (_lapDocCtx.def.label + ' ' + _lapDocCtx.period.label + ' - '
+    var nama = (_lapNamaBerkas() + ' - '                                  /* Y518 */
       + _lapBagianAktif().map(function (b) { return b.label; }).join(', '))
       .replace(/[\\/:*?"<>|]/g, '-').slice(0, 120);
     XLSX.writeFile(wb, nama + '.xlsx');
