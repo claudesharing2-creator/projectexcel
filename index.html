@@ -5165,7 +5165,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'edbdc748'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'140a6696'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -30647,6 +30647,33 @@ let _lapDocCtx=null;
 // Uploading it here OCRs every page and matches pages to the report's
 // needed CoA slots by nama titik, site, RFA, tanggal sampel & no. lab.
 window._lapCoaScans=window._lapCoaScans||[]; // session-only: [{name,pages:[{page,text,img}]}]
+/* Y521: mengantar SAMPAI ke alatnya, bukan cuma ke tabnya. Membuka
+   <details> yang tertutup, menggulirkan tujuannya ke tengah layar, lalu
+   mengedipkannya sebentar supaya jelas di mana ia mendarat. Tundaannya
+   menunggu tab (dan sub-tab ENV Tools) selesai dirender lebih dulu -- kalau
+   tidak, querySelector berjalan sebelum isinya ada dan diam-diam tidak
+   melakukan apa-apa. */
+function _lapKeAlat(tab,sub,sel){
+  _lapGoto(tab,sub);
+  if(!sel)return;
+  setTimeout(function(){
+    var el=document.querySelector(sel);
+    if(!el)return;
+    var d=(el.tagName==='DETAILS')?el:(el.closest?el.closest('details'):null);
+    if(d&&!d.open){
+      d.open=true;
+      /* aplikasi mengingat buka/tutup tiap <details>; kalau ingatannya tidak
+         ikut disetel, render berikutnya menutupnya kembali. */
+      try{if(typeof _detailsOpenMem!=='undefined'&&d.dataset&&d.dataset.pdKey)_detailsOpenMem[d.dataset.pdKey]=true;}catch(e){}
+    }
+    try{el.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){el.scrollIntoView();}
+    var lama=el.style.boxShadow;
+    el.style.transition='box-shadow .25s';
+    el.style.boxShadow='0 0 0 3px #1565c0';
+    setTimeout(function(){el.style.boxShadow=lama||'';},1900);
+  },sub?750:450);
+}
+window._lapKeAlat=_lapKeAlat;
 function _lapGoto(tab,sub){
   const ov=document.getElementById('lap-gen-ov');if(ov)ov.remove();
   const btn=Array.from(document.querySelectorAll('.tab-btn')).find(function(b){return (b.getAttribute('onclick')||'').indexOf("switchTab('"+tab+"'")>=0;});
@@ -30836,9 +30863,10 @@ function _lapChecklist(){
        lengkap melainkan karena tidak ada yang diperiksa. Jangan hijau. */
     if(!dinilaiProd){
       items.push({ok:false,belumBisa:true,
-        label:'Data Produksi bulanan — belum bisa dinilai, menunggu Data Hasil Sampling periode ini'});
+        label:'Data Produksi bulanan — belum bisa dinilai, menunggu Data Hasil Sampling periode ini',
+        act:"_lapGoto('hasil')",actLabel:'Ke Hasil Sampling'});   /* Y521 */
     } else
-    items.push({ok:!uniq.length,label:'Data Produksi bulanan'+(uniq.length?' — kurang: '+uniq.slice(0,6).join(', ')+(uniq.length>6?' +'+(uniq.length-6)+' lagi':''):''),act:"_lapGoto('laporan')",actLabel:'Isi Data Produksi'});
+    items.push({ok:!uniq.length,label:'Data Produksi bulanan'+(uniq.length?' — kurang: '+uniq.slice(0,6).join(', ')+(uniq.length>6?' +'+(uniq.length-6)+' lagi':''):''),act:"_lapKeAlat('laporan',null,'[data-pd-key=lap_produksi]')",actLabel:'Isi Data Produksi'});   /* Y521 */
   }
   if(!def.hsGroup){
     const needDaily=(dc.sections||[]).filter(function(s){return s.debitTitle;});
@@ -30864,7 +30892,8 @@ function _lapChecklist(){
       /* Y518: lihat catatan Y518a -- nol site yang dinilai bukan berarti lengkap. */
       if(!dinilaiDebit){
         items.push({ok:false,belumBisa:true,
-          label:'Recording debit harian — belum bisa dinilai, menunggu Data Hasil Sampling periode ini'});
+          label:'Recording debit harian — belum bisa dinilai, menunggu Data Hasil Sampling periode ini',
+          act:"_lapGoto('hasil')",actLabel:'Ke Hasil Sampling'});   /* Y521 */
       } else
       items.push({ok:!missing.length,
         label:'Recording debit harian'+(missing.length
@@ -30890,7 +30919,8 @@ function _lapChecklist(){
     }else if(!_rec.dibanding){
       /* Y520: nol dibandingkan bukan berarti cocok. */
       items.push({ok:false,belumBisa:true,
-        label:'Rekonsiliasi angka — belum bisa dinilai, belum ada angka yang bisa dibandingkan'});
+        label:'Rekonsiliasi angka — belum bisa dinilai, belum ada angka yang bisa dibandingkan',
+        act:"_lapGoto('hasil')",actLabel:'Ke Hasil Sampling'});   /* Y521 */
     }else{
       items.push({ok:true,
         label:'Rekonsiliasi angka — '+_rec.dibanding+' angka dibandingkan, semuanya cocok'});
@@ -30901,7 +30931,8 @@ function _lapChecklist(){
   if(!asg.length){
     /* Y520: nol bagian = belum ada yang perlu discan, bukan gagal. */
     items.push({ok:false,belumBisa:true,
-      label:'Scan CoA lab — belum bisa dinilai, belum ada bagian yang perlu scan'});
+      label:'Scan CoA lab — belum bisa dinilai, belum ada bagian yang perlu scan',
+      act:"_lapGoto('hasil')",actLabel:'Ke Hasil Sampling'});   /* Y521 */
   } else
   items.push({ok:asg.length>0&&un.length===0,
     label:'Scan CoA lab (PDF rilis lab, bertanda tangan): '+(asg.length-un.length)+'/'+asg.length+' bagian cocok'+(un.length?' — belum ada scan untuk: '+un.slice(0,4).map(function(a){return a.slot.label;}).join('; ')+(un.length>4?' …':''):''),
