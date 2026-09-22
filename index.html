@@ -5165,7 +5165,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'3fa40f06'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'8e292510'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -30380,6 +30380,21 @@ function _lapSiteMatrix(def,period,site,sheets){
   return byTitik;
 }
 function _lapMatrixHasParams(m){for(const e of m.values())if(e.params.size)return true;return false;}
+/* Y519: syarat yang LEBIH KERAS dan sama dengan yang dipakai _lapNeededCoaSlots --
+   bukan sekadar "ada entri parameter", melainkan "ada NILAI untuk bulan yang
+   diminta". Lihat catatan patch Y519. */
+function _lapMatrixAdaNilai(m,mons){
+  const bulan=Array.isArray(mons)?mons:[mons];
+  for(const e of m.values()){
+    for(const p of e.params.values()){
+      for(let i=0;i<bulan.length;i++){
+        const v=p.values[bulan[i]];
+        if(v!=null&&v!=='')return true;
+      }
+    }
+  }
+  return false;
+}
 function _lapRound(v){const n=parseFloat(v);return isFinite(n)?(Math.round(n*100)/100).toFixed(2):String(v==null?'':v);}
 function _lapDebitLPerDay(sp,mon,period){
   if(!sp||sp.values[mon]==null||sp.values[mon]==='')return null;
@@ -30777,7 +30792,9 @@ function _lapChecklist(){
   const sg=_lapSigner();
   items.push({ok:!!(sg.name&&sg.title),label:'Penandatangan surat (nama & jabatan)',act:"_lapGoto('laporan')",actLabel:'Isi di tab Laporan'});
   const slots=_lapNeededCoaSlots();
-  items.push({ok:slots.length>0,label:'Data Hasil Sampling (Form SA) periode ini'+(slots.length?'':' — belum ada data'),act:"_lapGoto('hasil')",actLabel:'Ke Hasil Sampling'});
+  items.push({ok:slots.length>0,label:'Data Hasil Sampling (Form SA) periode ini'
+    +(slots.length?' — '+slots.length+' bagian bernilai':' — belum ada data'),
+    act:"_lapGoto('hasil')",actLabel:'Ke Hasil Sampling'});
   if(def.bebanPencemar){
     const missing=[];
     let dinilaiProd=0;   /* Y518 */
@@ -30806,12 +30823,20 @@ function _lapChecklist(){
     if(needDaily.length){
       const missing=[];
       let dinilaiDebit=0;   /* Y518 */
+      let halLampiran=0;    /* Y519 */
+      const monsDebit=def.freq==='semester'?period.months:[period.months[0]];
       needDaily.forEach(function(sec){
         def.sites.forEach(function(site){
           const matrix=_lapSiteMatrix(def,period,site,sec.sheets);
-          if(!_lapMatrixHasParams(matrix))return;
+          /* Y519: dulu _lapMatrixHasParams -- "ada entri parameter?" -- yang
+             jauh lebih longgar daripada syarat butir Form SA di atas. Baris
+             Form SA yang ada tetapi kosong nilainya membuat butir ini hijau
+             sementara butir Form SA merah. */
+          if(!_lapMatrixAdaNilai(matrix,monsDebit))return;
           dinilaiDebit++;   /* Y518 */
-          if(!_lapDailyPages(def,period,site,matrix,sec).length)missing.push(site+' ('+sec.sheets[0]+')');
+          const hal=_lapDailyPages(def,period,site,matrix,sec);
+          if(!hal.length)missing.push(site+' ('+sec.sheets[0]+')');
+          else halLampiran+=hal.length;
         });
       });
       /* Y518: lihat catatan Y518a -- nol site yang dinilai bukan berarti lengkap. */
@@ -30819,7 +30844,11 @@ function _lapChecklist(){
         items.push({ok:false,belumBisa:true,
           label:'Recording debit harian — belum bisa dinilai, menunggu Data Hasil Sampling periode ini'});
       } else
-      items.push({ok:!missing.length,label:'Recording debit harian'+(missing.length?' — kurang: '+missing.join(', '):''),act:"_lapGoto('envtools','debitph')",actLabel:'Ke Recording Debit & pH'});
+      items.push({ok:!missing.length,
+        label:'Recording debit harian'+(missing.length
+          ?' — kurang: '+missing.join(', ')
+          :' — '+halLampiran+' halaman lampiran dari '+dinilaiDebit+' site'),
+        act:"_lapGoto('envtools','debitph')",actLabel:'Ke Recording Debit & pH'});
     }
   }
   // Y452 / EXPORT-RECONCILE-001: gerbang terakhir sebelum dokumen keluar dari
