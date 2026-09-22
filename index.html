@@ -5165,7 +5165,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'8e292510'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'edbdc748'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -28053,6 +28053,10 @@ function _lapReconNum(v){
 }
 function _lapReconcile(){
   var out=[];
+  /* Y520: berapa angka yang BENAR-BENAR dibandingkan. Daftar selisih yang
+     kosong bisa berarti "semuanya cocok" ATAU "tidak ada yang dibandingkan",
+     dan keduanya tidak boleh terlihat sama di checklist. */
+  out.dibanding=0;
   if(!_lapDocCtx)return out;
   var def=_lapDocCtx.def,period=_lapDocCtx.period;
   if(def.hsGroup)return out;                 // badan air has no debit/produksi rows
@@ -28087,6 +28091,7 @@ function _lapReconcile(){
             if(!n)return;
             var gap=Math.abs(ring-sum),base=Math.max(Math.abs(ring),Math.abs(sum));
             if(base<=0)return;                       // both zero: nothing to reconcile
+            out.dibanding++;                         /* Y520: di sinilah perbandingan sungguh terjadi */
             if(gap/base<=LAP_RECON_TOL)return;
             out.push({kind:'debit',site:sn,titik:titik,mon:mon,
               a:{label:'ringkasan (tabel utama)',v:ring},
@@ -28108,6 +28113,7 @@ function _lapReconcile(){
           if(v!=null)seen.push({titik:en[0],v:v});
         });
         if(seen.length<2)return;
+        out.dibanding++;   /* Y520 */
         var lo=seen[0],hi=seen[0];
         seen.forEach(function(x){if(x.v<lo.v)lo=x;if(x.v>hi.v)hi=x;});
         // Production is not a measurement with a tolerance -- one site, one
@@ -30227,8 +30233,16 @@ const LAPORAN_DOC={
       {sheets:['DWW'],title:'AIR LIMBAH DOMESTIK',table:'PEMANTAUAN AIR LIMBAH DOMESTIK',debitTitle:'Debit Harian Air Limbah Domestik',bebanRow:true},
       {sheets:['Drainase'],title:'AIR LIMBAH DRAINASE',table:'PEMANTAUAN AIR LIMBAH DRAINASE',debitTitle:'Debit Harian Air Limbah Drainase'}]}
 };
+/* Y520: spasi-saja dianggap kosong. Tanpa ini, nama berisi spasi lolos
+   sebagai "terisi" dan suratnya tercetak dengan tanda tangan kosong. */
+function _lapSignerBersih(v){return (typeof v==='string')?v.trim():'';}
+function _lapSignerKustom(){
+  try{const s=JSON.parse(localStorage.getItem('env26_lap_signer')||'{}');
+    return {name:_lapSignerBersih(s.name),title:_lapSignerBersih(s.title)};}
+  catch(e){return {name:'',title:''};}
+}
 function _lapSigner(){
-  try{const s=JSON.parse(localStorage.getItem('env26_lap_signer')||'{}');return {title:s.title||'Manager HSSE Operations Zona 8',name:s.name||'RS. Kinoturangga Nitikoesoemo'};}
+  try{const s=JSON.parse(localStorage.getItem('env26_lap_signer')||'{}');return {title:_lapSignerBersih(s.title)||'Manager HSSE Operations Zona 8',name:_lapSignerBersih(s.name)||'RS. Kinoturangga Nitikoesoemo'};}
   catch(e){return {title:'Manager HSSE Operations Zona 8',name:'RS. Kinoturangga Nitikoesoemo'};}
 }
 // Manual monthly production figures (Barrel/Bulan) per site — no data
@@ -30790,7 +30804,15 @@ function _lapChecklist(){
   const dc=LAPORAN_DOC[def.key]||{};
   const items=[];
   const sg=_lapSigner();
-  items.push({ok:!!(sg.name&&sg.title),label:'Penandatangan surat (nama & jabatan)',act:"_lapGoto('laporan')",actLabel:'Isi di tab Laporan'});
+  /* Y520: butir ini dulu tidak pernah bisa merah (lihat catatan patch), jadi
+     ia tidak memberi tahu apa pun. Sekarang ia menyebut siapa yang akan
+     tercetak di suratnya, dan dari mana asalnya. */
+  const _sgK=(typeof _lapSignerKustom==='function')?_lapSignerKustom():{name:sg.name,title:sg.title};
+  const _sgSendiri=!!(_sgK.name&&_sgK.title);
+  items.push({ok:!!(sg.name&&sg.title),
+    label:'Penandatangan surat — '+sg.name+' ('+sg.title+')'
+      +(_sgSendiri?'':' · bawaan aplikasi, belum diisi sendiri'),
+    act:"_lapGoto('laporan')",actLabel:'Isi di tab Laporan'});
   const slots=_lapNeededCoaSlots();
   items.push({ok:slots.length>0,label:'Data Hasil Sampling (Form SA) periode ini'
     +(slots.length?' — '+slots.length+' bagian bernilai':' — belum ada data'),
@@ -30865,12 +30887,22 @@ function _lapChecklist(){
               +(_done?' (sudah ditinjau)':''),
         act:"void 0",actLabel:'Lihat di bawah',
         detail:_done?'':_lapReconPanelHtml(_rec)});
+    }else if(!_rec.dibanding){
+      /* Y520: nol dibandingkan bukan berarti cocok. */
+      items.push({ok:false,belumBisa:true,
+        label:'Rekonsiliasi angka — belum bisa dinilai, belum ada angka yang bisa dibandingkan'});
     }else{
-      items.push({ok:true,label:'Rekonsiliasi angka — ringkasan dan lampiran cocok'});
+      items.push({ok:true,
+        label:'Rekonsiliasi angka — '+_rec.dibanding+' angka dibandingkan, semuanya cocok'});
     }
   }catch(e){}
   const asg=_lapScanAssignments();
   const un=asg.filter(function(a){return !a.hits.length;});
+  if(!asg.length){
+    /* Y520: nol bagian = belum ada yang perlu discan, bukan gagal. */
+    items.push({ok:false,belumBisa:true,
+      label:'Scan CoA lab — belum bisa dinilai, belum ada bagian yang perlu scan'});
+  } else
   items.push({ok:asg.length>0&&un.length===0,
     label:'Scan CoA lab (PDF rilis lab, bertanda tangan): '+(asg.length-un.length)+'/'+asg.length+' bagian cocok'+(un.length?' — belum ada scan untuk: '+un.slice(0,4).map(function(a){return a.slot.label;}).join('; ')+(un.length>4?' …':''):''),
     act:"document.getElementById('lap-coa-pdf').click()",actLabel:'📎 Upload CoA PDF Lab'});
