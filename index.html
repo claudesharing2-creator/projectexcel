@@ -5633,7 +5633,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'188fef4f'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'0e498c88'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -22055,7 +22055,7 @@ function renderSequenceView(){
     <div style="display:flex;gap:8px;padding:6px 14px;font-size:13px;color:#777;align-items:center;flex-wrap:wrap;flex-shrink:0;background:#fcfcfc;border-bottom:1px solid #f0f0f0">
       <span style="color:#aaa">Status:</span>
       ${_seqLegendChip('Planned','#1565C0')}
-      ${_seqLegendChip('Completed','#2e7d32')}
+      ${_seqLegendChip('Completed',_PD_AKSEN)}
       ${_seqLegendChip('Cancelled','#b0b0b0')}
       ${todayInRange?'<span style="margin-left:4px"><span style="display:inline-block;width:2px;height:11px;background:#e53935;margin-right:5px;vertical-align:middle"></span>Hari ini</span>':''}
     </div>
@@ -23938,8 +23938,8 @@ function _hsRenderCore(){
       <details class="hs-ket" style="margin:0 0 10px;text-align:left"><summary style="font-size:13px;color:var(--g4);cursor:pointer"><b>Ini titik mulainya.</b> Klik <b>Generate</b> pada satu baris untuk membuat baris kosong siap-isi di tab <b>Tabel</b>.</summary><div style="font-size:13px;color:var(--g4);line-height:1.65;margin:6px 0 0;padding-left:14px"><p style="margin:0 0 5px">Baris di bawah = RFA yang sudah ada tapi belum ada hasil analisanya. Klik <b>Generate</b> pada satu baris → pilih titik &amp; parameternya (sudah otomatis dari master) → baris kosong siap-isi langsung muncul di tab <b>Tabel</b>, tinggal ketik nilainya.</p><p style="margin:0 0 5px">Mencocokkan seluruh RFA 2026 aktif (bukan Cancel) ke Hasil Sampling by No RFA. Pasangan Normal/Duplikat/Rush yang hasilnya sudah tercatat di RFA lain (sampel fisik sama) tidak dihitung sebagai gap.</p><p style="margin:0">Sebuah RFA <b>lepas dari daftar ini</b> begitu hasilnya ada. Agar <b>completed</b>: (1) tanggal sampling terisi → (2) Draft report rilis → (3) Scan report rilis → (4) hasil lab diinput &amp; sesuai baku mutu. Kolom <b>Yang harus diisi</b> menunjukkan langkah berikutnya (yang paling atas = paling mendesak).</p></div></details>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
         ${statTile(s.total,'RFA aktif 2026')}
-        ${statTile(s.covered+s.sibling,'Sudah ada hasil','#2e7d32')}
-        ${statTile(s.lag,'Bulan belum diinput','#1565c0')}
+        ${statTile(s.covered+s.sibling,'Sudah ada hasil',_PD_AKSEN)}
+        ${statTile(s.lag,'Bulan belum diinput',_PD_AKSEN)}
         ${statTile(s.pending,'Diproses lab','#888')}
         ${statTile(s.anomaly,'Perlu ditelusuri','#c62828')}
       </div>`;
@@ -32197,13 +32197,13 @@ let _detailsOpenMem={};
 document.addEventListener('toggle',function(e){
   if(e.target&&e.target.tagName==='DETAILS'&&e.target.dataset.pdKey)_detailsOpenMem[e.target.dataset.pdKey]=e.target.open;
 },true);
-let _pdCurCat='#1565c0';
+const _PD_AKSEN='var(--teal)';let _pdCurCat=_PD_AKSEN;
 function _pdCat(label,color){
   _pdCurCat=color;
   const id='pdcat_'+String(label).replace(/[^a-z0-9]+/gi,'_').toLowerCase();
   return '<div id="'+id+'" style="display:flex;align-items:center;gap:10px;margin:24px 0 10px;scroll-margin-top:14px">'
    +'<div style="font-size:13px;font-weight:800;color:'+color+';letter-spacing:.2px;white-space:nowrap">'+label+'</div>'
-   +'<div style="flex:1;height:2px;background:linear-gradient(90deg,'+color+'66,transparent)"></div></div>';
+   +'<div style="flex:1;height:2px;background:var(--g2)"></div></div>';
 }
 function _pdJump(ev,id){
   if(ev&&ev.preventDefault)ev.preventDefault();
@@ -32214,7 +32214,7 @@ window._pdJump=_pdJump;
 function _pdSec(icon,title,inner,open){
   const key='pd_'+String(title).replace(/[^a-z0-9]+/gi,'_').toLowerCase();
   const isOpen=(_detailsOpenMem[key]!=null)?_detailsOpenMem[key]:!!open;
-  return '<details data-pd-key="'+key+'" '+(isOpen?'open ':'')+'style="background:rgba(255,255,255,.65);border:1px solid #e6e6e6;border-left:3px solid '+_pdCurCat+';border-radius:12px;padding:2px 16px;margin-bottom:10px">'
+  return '<details data-pd-key="'+key+'" '+(isOpen?'open ':'')+'style="background:var(--white);border:1px solid var(--g2);border-left:3px solid '+_pdCurCat+';border-radius:12px;padding:2px 16px;margin-bottom:10px">'
    +'<summary style="cursor:pointer;font-size:15px;font-weight:800;padding:11px 0">'+icon+' '+title+'</summary>'
    +'<div style="padding:2px 0 12px">'+inner+'</div></details>';
 }
@@ -32233,7 +32233,7 @@ function renderPanduan(){
      .map(function(c){return '<a href="javascript:void(0)" onclick="_pdJump(event,\''+c[1]+'\')" style="font-size:13px;font-weight:700;color:'+c[2]+';background:'+c[2]+'14;border:1px solid '+c[2]+'40;border-radius:20px;padding:5px 12px;text-decoration:none">'+c[0]+'</a>';}).join('')
    +'</div>';
 
-  h+=_pdCat('Mulai di Sini — Alur Kerja','#1565c0');
+  h+=_pdCat('Mulai di Sini — Alur Kerja',_PD_AKSEN);
   h+=_pdSec('','Peta Sistem — fungsi tiap tab',
     '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     +[['Scheduling','Kalender sampling, plot tanggal & PPC, kegiatan routine (tracker Monthly/Semesterly/Yearly) dan non-routine (dredging, trenching, hydrotest, drilling) lengkap dengan koordinat & peta.'],
@@ -32290,7 +32290,7 @@ function renderPanduan(){
     +_pdStep(4,'Sampling before/during/after','Lapangan','Ikuti fase yang disyaratkan (mis. dredging: before/during/after). TSS: swamp 80, offshore 20.')
     +_pdStep(5,'RFA & hasil','RFA / Hasil Sampling','Generate RFA (09 dredging / 14 non-routine), lalu proses draft-nya lewat Review Report seperti biasa. BM terdeteksi dari kode RFA + nama titik (mis. BPN berizin/tidak berizin).'));
 
-  h+=_pdCat('Prosedur & Referensi Teknis','#6a1b9a');
+  h+=_pdCat('Prosedur & Referensi Teknis',_PD_AKSEN);
   h+=_pdSec('','Alur Water Monitoring — Planning &amp; Sampling/Analysis', `
     <div style="overflow-x:auto;padding:6px 0">
     <div style="display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;min-width:760px;font-size:13px">
@@ -32352,7 +32352,7 @@ function renderPanduan(){
     +_pdStep(4,'Kompilasi dokumen','Laporan','Cover Letter → Halaman Judul → CoA → Berita Acara (opsional) → Debit &amp; pH Harian, lalu review &amp; approval sebelum submit. '+gT('laporan'))
     +'<div style="font-size:13px;color:#888;margin-top:4px">Cadence laporan: <b>Monthly</b> (PW/DWW/Drainase ke DLH), <b>Quarterly</b> (BPN), <b>Semesterly</b> (Stream Water &amp; air laut, EMF), <b>Annual</b> (PROPER Biru/Hijau, Environmental Monitoring Plan).</div>');
 
-  h+=_pdCat('Regulasi & Baku Mutu','#e65100');
+  h+=_pdCat('Regulasi & Baku Mutu',_PD_AKSEN);
   h+=_pdSec('','Regulasi Air Limbah — dasar hukum',
     '<div style="font-size:13px;color:#555;line-height:1.7">'
     +'<b>Referensi peraturan:</b>'
@@ -32384,7 +32384,7 @@ function renderPanduan(){
     +'<br><br>Ketiga kelompok punya tab hasilnya sendiri di <b>Hasil Sampling</b> (Monthly, Semesterly, Yearly).'
     +'</div>');
 
-  h+=_pdCat('Checklist, Data & Bantuan','#2e7d32');
+  h+=_pdCat('Checklist, Data & Bantuan',_PD_AKSEN);
   h+=_pdSec('✓','Apa saja yang HARUS lengkap sebelum laporan bisa terbit',
     '<ul style="font-size:13px;color:#555;line-height:1.8;margin:6px 0;padding-left:20px">'
     +'<li><b>Penandatangan</b> — nama & jabatan (sekali isi, tersimpan). Tab Laporan bagian atas.</li>'
@@ -41069,6 +41069,55 @@ function _hoverBg(light){
   html[data-theme="romer"] .mm-item{color:#e5e2e3}
 }
 
+/* Y423 -- ukuran peta & panel disesuaikan untuk desktop dan HP.
+   Diukur dulu, bukan dikira: sebelum ini peta hanya 502x420 px di layar
+   1440 (dan tidak melebar sama sekali di 1920, karena kartunya terkunci
+   760 px), sementara di HP tombol alatnya hanya 36 px -- di bawah ambang
+   sasaran sentuh 44 px. */
+
+/* Kartu Panduan Sampling boleh ikut melebar. Formulirnya sudah flex-wrap,
+   jadi melebar tidak merusak tata letaknya. */
+.et-guide-card{max-width:min(1280px,100%)!important}
+
+.guide-map-shell{display:flex;gap:10px;align-items:stretch}
+.guide-map-side{flex:0 0 232px;min-width:0;display:flex;flex-direction:column}
+.guide-map-main{flex:1;min-width:0;display:flex;flex-direction:column}
+/* Tinggi ikut tinggi layar, dengan batas bawah dan atas supaya tidak pernah
+   jadi terlalu pendek di laptop kecil maupun terlalu tinggi di monitor besar. */
+.guide-map-canvas{width:100%;height:clamp(430px,62vh,760px);
+  border:1px solid var(--g2,#E8E8E8);border-radius:10px 10px 0 0}
+.guide-map-hint{font-size:11px;color:var(--g3,#999);margin-top:8px;line-height:1.45}
+
+@media (max-width:1100px){
+  .guide-map-side{flex:0 0 200px}
+}
+@media (max-width:768px){
+  .guide-map-shell{flex-direction:column}
+  /* Peta lebih dulu, panel alat di bawahnya: di HP, menaruh panel di atas
+     berarti peta terdorong satu layar penuh ke bawah. */
+  .guide-map-main{order:1}
+  .guide-map-side{order:2;flex:1 1 auto;margin-top:10px}
+  .guide-map-canvas{height:clamp(320px,52vh,470px)}
+  .guide-map-hint{font-size:13px;margin-top:6px}
+  /* Empat kolom, bukan delapan: di lebar 390 px, delapan kolom menghasilkan
+     tombol 36 px -- lebih kecil dari ambang sasaran sentuh 44 px. */
+  .md-tools{grid-template-columns:repeat(4,1fr);gap:6px}
+  /* Tingginya SENGAJA tidak dipaksa. Tema Studio sudah menetapkan
+     `#envtools-content .et-card button{min-height:42px!important}` untuk
+     seluruh tombol ENV Tools di layar sempit. Memaksa 46 px hanya untuk
+     panel ini akan membuatnya berbeda sendiri dari setiap tombol lain di
+     tab yang sama -- dan aturan !important itu tetap menang, jadi CSS-nya
+     akan jadi aturan mati yang menyesatkan pembaca berikutnya.
+     Kenyamanan sentuh dikejar lewat LEBAR: 4 kolom memberi ~75 px per
+     tombol, dari 36 px sebelumnya. */
+  .md-tool{font-size:18px}
+  .md-btn{padding:9px 8px;font-size:13px}
+  .md-set label{font-size:13px;margin-top:8px}
+  .md-set input{font-size:13px;padding:4px 6px}
+  .md-set input[type=number]{width:78px}
+  .md-set input[type=color]{width:46px;height:28px}
+  .md-live{font-size:13px}
+}
 
 /* ===== Y426: Dashboard Utama ============================================
    Memakai var(--white)/var(--g1..g4)/var(--text) supaya ikut ke-8 tema
@@ -43409,8 +43458,8 @@ async function _emfTplCloudPull(auto){
     n++;
   }
   if(n){await _emfTplSave(m);await _emfRenderTpl();}
-  if(n)_emfCloudMsg('\u2601 '+n+' template diambil dari Cloudflare \u2014 tinggal pilih tahun/semester lalu Generate.','#2e7d32');
-  else if(!auto)_emfCloudMsg('\u2705 Template di browser ini sudah sama dengan yang di Cloudflare.','#2e7d32');
+  if(n)_emfCloudMsg('\u2601 '+n+' template diambil dari Cloudflare \u2014 tinggal pilih tahun/semester lalu Generate.',_PD_AKSEN);
+  else if(!auto)_emfCloudMsg('\u2705 Template di browser ini sudah sama dengan yang di Cloudflare.',_PD_AKSEN);
   return n;
 }
 async function _emfTplCloudPush(auto){
@@ -49176,7 +49225,12 @@ function _coordDetailMainInput(actId,q){
      1. tepat saudara BERIKUTNYA dari judul panel yang dikenali
         (.et-sec-title, <summary>, atau anak pertama .et-sec/.et-card yang
         tebal),
-     2. ukuran font <= 11.5px dan TIDAK tebal (judul & isi dikecualikan),
+     2. ukuran font <= 13px -- yaitu langkah ISI pada tangga huruf
+        (DESIGN.md bagian 5) -- dan TIDAK tebal (judul & isi dikecualikan).
+        ANGKA INI TERIKAT KE TANGGA HURUF. Dulu 11.5px, dan Y541 menaikkan
+        seluruh teks isi 10,5px -> 13px sehingga syarat ini tidak pernah lagi
+        terpenuhi: kandidatnya jatuh 19 -> 0 dan seluruh fitur ini MATI tanpa
+        satu pun WARN. Kalau tangganya berubah lagi, angka ini ikut.
      3. panjang >= 70 karakter,
      4. tidak memuat ⚠ ✔ ✗ ×,
      5. tidak di dalam <table>, dan tidak memuat kendali apa pun
@@ -49251,12 +49305,19 @@ function _coordDetailMainInput(actId,q){
       if (!e || e.dataset[TANDA] === 'ket') return;
       if (!tampak(e)) return;
       var st = getComputedStyle(e);
-      if (parseFloat(st.fontSize) > 11.5) return;
+      if (parseFloat(st.fontSize) > 13.5) return;
       if (+st.fontWeight >= 600) return;
       var txt = (e.textContent || '').replace(/\s+/g, ' ').trim();
       if (txt.length < 70) return;
       if (/[⚠✔✗×]/.test(txt)) return;   // ⚠ ✔ ✗ ×  — status, bukan keterangan
       if (e.closest('table')) return;
+      /* `querySelector` hanya melihat KETURUNAN, jadi elemen yang DIRINYA
+         sendiri sebuah kendali lolos dari saringan ini. Terukur:
+         `#cal-month-sel` -- pemilih bulan kalender Scheduling, 12 pilihan --
+         ikut disembunyikan di balik ⓘ, karena teksnya adalah gabungan nama
+         kedua belas bulannya (75 huruf, lolos syarat panjang). Jadi periksa
+         elemennya sendiri lebih dulu. */
+      if (e.matches('button,input,select,a,textarea,label')) return;
       if (e.querySelector('button,input,select,a')) return;
       /* Tiga pengecualian berikut ditemukan dengan MENYAPU seluruh tab lalu
          membaca apa saja yang jadi tersembunyi -- bukan dari membaca kode.
@@ -49288,11 +49349,12 @@ function _coordDetailMainInput(actId,q){
         if (!tampak(lanjut)) break;
         if (lanjut.dataset[TANDA]) break;
         var ls = getComputedStyle(lanjut);
-        if (parseFloat(ls.fontSize) > 11.5 || +ls.fontWeight >= 600) break;
+        if (parseFloat(ls.fontSize) > 13.5 || +ls.fontWeight >= 600) break;
         var lt = (lanjut.textContent || '').replace(/\s+/g, ' ').trim();
         if (lt.length < 70) break;
         if (/[\u26A0\u2714\u2717\u00D7]/.test(lt)) break;
         if (/ · /.test(lt)) break;
+        if (lanjut.matches('button,input,select,a,textarea,label')) break;
         if (lanjut.closest('table') || lanjut.querySelector('button,input,select,a')) break;
         out.push([pair[0], lanjut, true]);   // true = ikut induknya, tanpa ikon sendiri
         lanjut = lanjut.nextElementSibling;
