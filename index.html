@@ -4120,7 +4120,269 @@ html[data-theme="lapangan"] .mca-day.selected .mca-num{color:#FFFFFF!important}
 /* Sasaran sentuh diperbesar KELUAR, tanpa menambah tinggi barisnya. */
 .ket-info-btn::after{content:"";position:absolute;left:-16px;right:-16px;top:-16px;bottom:-16px}
 .ket-info-teks{margin-top:4px}
-</style><style id="kontras-y533">.leaflet-control-attribution a{color:#00587f!important}</style></head>
+</style><style id="kontras-y533">.leaflet-control-attribution a{color:#00587f!important}</style><style id="kontras-tema-y534">
+/* ===== Y534: kontras teks berlaku di KESEPULUH tema ======================
+   Audit antislop 2026-09-23 (anti-slop/audit-001-2026-09-23.md), aturan R-25
+   (kontras minimal WCAG AA) dan R-34 (setiap tema yang dikirim harus bekerja).
+
+   KENAPA INI ADA. Perbaikan warna sehari sebelumnya (Y533) menyasar token di
+   dalam `html[data-theme="studio"]`, jadi hanya tema yang dipakai aplikasi
+   saat pertama dibuka yang sembuh. Terukur di lima tab, kesepuluh tema:
+   studio 0 pola, sembilan tema lain 7 sampai 20 pola, terburuk 1,42.
+
+   DUA PELAJARAN YANG MEMBENTUK BERKAS INI, keduanya dari kesalahan sendiri:
+
+   1. Perbaiki TOKEN-nya, jangan tempatnya. Sebagian besar abu-abu yang gagal
+      berasal dari satu token per tema (`--g3`, tinta sekunder). Satu baris per
+      tema menyembuhkan puluhan tempat sekaligus: `sub`, `.dmain-k .l`,
+      `.dmain-k .d`, `.dmain-empty`, `th`, tautan, dan seterusnya.
+
+   2. Warna dan latarnya SELALU dipasangkan. Percobaan pertama berkas ini
+      memberi warna gelap pada pil sub-tab di tema gelap, karena pil yang
+      terukur waktu itu berlatar terang (#f0f0f0). Ternyata pil yang sama
+      berlatar GELAP (#14211e) di tab lain, jadi rasionya jatuh ke 1,2: lebih
+      buruk daripada sebelum diperbaiki. Sejak itu, tiap aturan di sini yang
+      menyentuh warna teks juga menetapkan latarnya, supaya pasangannya tidak
+      bisa lepas.                                                            */
+
+/* --- 1. tinta sekunder per tema ---------------------------------------
+   Nilai lama ada di komentar supaya bisa dibandingkan. Semua dihitung ulang
+   terhadap kertas paling gelap yang benar-benar dipakai tema itu, bukan
+   terhadap putih saja, lalu diukur di peramban. */
+/* Atributnya ditulis DUA KALI dengan sengaja. Blok tema aplikasi ini
+   ditempel SESUDAH </head>, jadi pada spesifisitas yang sama ia menang lewat
+   urutan sumber -- timpaan versi pertama di sini (satu atribut) tidak pernah
+   berlaku sama sekali, dan perbaikan yang terasa waktu itu sebenarnya datang
+   dari aturan per-selektor di bawah. Terukur: tombol Undo masih memakai
+   #7C7259, nilai lama tema lapangan. Dua atribut menaikkan bobotnya satu
+   tingkat dan menyelesaikannya tanpa perlu !important yang lebih keras. */
+html:not([data-theme]):not(#\9), html[data-theme="command"][data-theme], html[data-theme="simple"][data-theme]{
+  --g3:#5F6771!important}                    /* dari #999999, kertas #e9eef5 */
+html[data-theme="kontur"][data-theme]{  --g3:#455043!important}   /* dari #5C6B60, kertas #e9f0e7 */
+html[data-theme="lapangan"][data-theme]{--g3:#56503C!important}   /* dari #7C7259, kertas #e6e0ce */
+html[data-theme="neraca"][data-theme]{  --g3:#4D5243!important}   /* dari #68705F, kertas #eeece0 */
+html[data-theme="pasang"][data-theme]{  --g3:#43565A!important}   /* dari #5C7B80, kertas #e5f1f0 */
+
+/* --- 2. abu-abu yang ditulis sebagai GAYA INLINE -----------------------
+   `color:#999` muncul 115 kali dan `color:#bbb` 28 kali sebagai gaya inline
+   di dalam template JS, jadi token di atas tidak menjangkaunya. Tema studio,
+   romer dan anjungan sudah punya pemetaan seperti ini sejak dulu; tujuh tema
+   sisanya tidak pernah diberi, dan itulah sebabnya rasionya jatuh ke 1,9.
+   `th` dikecualikan: di tema simple kepala tabelnya BERLATAR GELAP, jadi abu
+   terang di sana justru benar (terukur: memaksanya gelap memberi 2,52). */
+html:not([data-theme]) [style*="color:#999" i]:not(th), html:not([data-theme]) [style*="color: #999" i]:not(th),
+html:not([data-theme]) [style*="color:#888" i]:not(th), html:not([data-theme]) [style*="color:#aaa" i]:not(th),
+html:not([data-theme]) [style*="color:#bbb" i]:not(th), html:not([data-theme]) [style*="color:#ccc" i]:not(th),
+html[data-theme="command"] [style*="color:#999" i]:not(th), html[data-theme="command"] [style*="color: #999" i]:not(th),
+html[data-theme="command"] [style*="color:#888" i]:not(th), html[data-theme="command"] [style*="color:#aaa" i]:not(th),
+html[data-theme="command"] [style*="color:#bbb" i]:not(th), html[data-theme="command"] [style*="color:#ccc" i]:not(th),
+html[data-theme="simple"] [style*="color:#999" i]:not(th), html[data-theme="simple"] [style*="color: #999" i]:not(th),
+html[data-theme="simple"] [style*="color:#888" i]:not(th), html[data-theme="simple"] [style*="color:#aaa" i]:not(th),
+html[data-theme="simple"] [style*="color:#bbb" i]:not(th), html[data-theme="simple"] [style*="color:#ccc" i]:not(th){
+  color:#5F6771!important}
+
+html[data-theme="kontur"] [style*="color:#999" i]:not(th), html[data-theme="kontur"] [style*="color: #999" i]:not(th),
+html[data-theme="kontur"] [style*="color:#888" i]:not(th), html[data-theme="kontur"] [style*="color:#aaa" i]:not(th),
+html[data-theme="kontur"] [style*="color:#bbb" i]:not(th), html[data-theme="kontur"] [style*="color:#ccc" i]:not(th){
+  color:#455043!important}
+html[data-theme="lapangan"] [style*="color:#999" i]:not(th), html[data-theme="lapangan"] [style*="color: #999" i]:not(th),
+html[data-theme="lapangan"] [style*="color:#888" i]:not(th), html[data-theme="lapangan"] [style*="color:#aaa" i]:not(th),
+html[data-theme="lapangan"] [style*="color:#bbb" i]:not(th), html[data-theme="lapangan"] [style*="color:#ccc" i]:not(th){
+  color:#56503C!important}
+html[data-theme="neraca"] [style*="color:#999" i]:not(th), html[data-theme="neraca"] [style*="color: #999" i]:not(th),
+html[data-theme="neraca"] [style*="color:#888" i]:not(th), html[data-theme="neraca"] [style*="color:#aaa" i]:not(th),
+html[data-theme="neraca"] [style*="color:#bbb" i]:not(th), html[data-theme="neraca"] [style*="color:#ccc" i]:not(th){
+  color:#4D5243!important}
+html[data-theme="pasang"] [style*="color:#999" i]:not(th), html[data-theme="pasang"] [style*="color: #999" i]:not(th),
+html[data-theme="pasang"] [style*="color:#888" i]:not(th), html[data-theme="pasang"] [style*="color:#aaa" i]:not(th),
+html[data-theme="pasang"] [style*="color:#bbb" i]:not(th), html[data-theme="pasang"] [style*="color:#ccc" i]:not(th){
+  color:#43565A!important}
+html[data-theme="romer"] [style*="color:#bbb" i]:not(th), html[data-theme="romer"] [style*="color:#ccc" i]:not(th){
+  color:#9A9DA3!important}
+html[data-theme="anjungan"] [style*="color:#bbb" i]:not(th), html[data-theme="anjungan"] [style*="color:#ccc" i]:not(th){
+  color:#8AA398!important}
+
+/* --- 3. lencana abu dengan tulisan putih -------------------------------
+   Terukur 117 kejadian di SEMBILAN tema: putih di atas #999999, rasio 2,85.
+   Latarnya ditulis inline, jadi yang diperbaiki latarnya, bukan tulisannya:
+   putih di atas #6B7280 memberi 4,83. Warnanya ikut ditulis supaya pasangan
+   latar-dan-tulisan tidak bisa lepas (pelajaran 2 di kepala berkas ini). */
+[style*="background:#999" i], [style*="background: #999" i],
+[style*="background:#aaa" i], [style*="background: #aaa" i]{
+  background:#6B7280!important;color:#FFFFFF!important}
+
+/* --- 4. pil sub-tab di tema gelap --------------------------------------
+   Pil yang TIDAK aktif diberi latar gelap DAN tulisan terang sekaligus. Itu
+   satu-satunya cara memastikan keduanya tidak pernah berpasangan salah:
+   sebelumnya pil yang sama berlatar terang di satu tab dan gelap di tab lain,
+   dan warna tunggal apa pun pasti salah di salah satunya. */
+html[data-theme="anjungan"] .et-sub-btn:not(.active),
+html[data-theme="anjungan"] .rfa-sub-btn:not(.active),
+html[data-theme="anjungan"] .lap-sub-btn:not(.active),
+html[data-theme="anjungan"] .drain-sub-btn:not(.active){
+  background:#14211E!important;color:#CFE0D7!important;border-color:#25362F!important}
+html[data-theme="romer"] .et-sub-btn:not(.active),
+html[data-theme="romer"] .rfa-sub-btn:not(.active),
+html[data-theme="romer"] .lap-sub-btn:not(.active),
+html[data-theme="romer"] .drain-sub-btn:not(.active){
+  background:#17181A!important;color:#D2D4DA!important;border-color:#2C2D31!important}
+
+/* --- 5. bilah notifikasi RFA di tema gelap -----------------------------
+   Y529b mengganti tulisan bilah ini jadi merah gelap #7A1717, dihitung
+   terhadap latar merah muda #fdecea. Benar untuk tema terang; di tema gelap
+   bilahnya gelap, jadi hasilnya 1,56 dan 1,66. Di sini latar DAN tulisannya
+   ditetapkan bersama, bukan tulisannya saja. */
+html[data-theme="anjungan"] #rfa-notif-bar,
+html[data-theme="romer"] #rfa-notif-bar{background:#2A1412!important}
+html[data-theme="anjungan"] #rfa-notif-bar span:not([onclick]),
+html[data-theme="anjungan"] #rfa-notif-bar b, html[data-theme="anjungan"] #rfa-notif-bar > div > button,
+html[data-theme="romer"] #rfa-notif-bar span:not([onclick]),
+html[data-theme="romer"] #rfa-notif-bar b, html[data-theme="romer"] #rfa-notif-bar > div > button{
+  color:#FFD9D4!important}
+
+/* --- 6. tombol Export di tema gelap ------------------------------------
+   Latarnya ditulis inline dan berwarna kuat (#d99a3d di anjungan, #5e6bff di
+   romer); yang diwarisi tulisannya adalah tinta sekunder tema, jadi 1,5 dan
+   2,46. Tulisannya dipatok gelap/terang mengikuti latar masing-masing. */
+html[data-theme="anjungan"] button[style*="background:#d99a3d" i],
+html[data-theme="anjungan"] button[style*="background: #d99a3d" i]{color:#241A08!important}
+html[data-theme="romer"] button[style*="background:#5e6bff" i],
+html[data-theme="romer"] button[style*="background: #5e6bff" i]{color:#FFFFFF!important}
+
+/* --- 7. peringatan oranye dan merah di atas permukaan gelap ------------
+   `#9a5b00` (dipilih Y533 untuk kertas terang) dan `#d32f2f` jatuh ke 2,65
+   dan 3,23 di tema gelap. Di sana yang benar versi terangnya. */
+html[data-theme="anjungan"] [style*="color:#9a5b00" i], html[data-theme="romer"] [style*="color:#9a5b00" i],
+html[data-theme="anjungan"] [style*="color:#b26a00" i], html[data-theme="romer"] [style*="color:#b26a00" i]{
+  color:#F0B45A!important}
+html[data-theme="anjungan"] [style*="color:#d32f2f" i], html[data-theme="romer"] [style*="color:#d32f2f" i],
+html[data-theme="anjungan"] .m[style*="color:#d32f2f" i], html[data-theme="romer"] .m[style*="color:#d32f2f" i]{
+  color:#FF8A80!important}
+
+/* --- 8. label tab aktif ------------------------------------------------
+   Tema simple memberi tulisan merah terang di atas kertas merah muda pucat
+   (3,84); romer memberi putih di atas ungu jenuh (4,18). Keduanya kurang
+   sedikit, bukan salah arah. */
+html[data-theme="simple"] .tab-btn.active .tb-label{color:#B3200B!important}
+html[data-theme="romer"] .tab-btn.active .tb-label,
+html[data-theme="romer"] .tab-btn.active .badge-count{color:#FFFFFF!important;font-weight:700!important}
+
+/* --- 9. sisa yang tidak lewat token, disebut satu per satu --------------
+   Pengukuran sesudah bagian 1 sampai 8 menyisakan 30 pola. Semuanya warna
+   yang ditulis sebagai angka mati di aturannya sendiri, jadi token `--g3`
+   tidak menjangkaunya. Tiap baris di bawah punya angka sebelum dan sesudah,
+   dan semuanya memasangkan warna dengan latarnya. */
+
+/* (a) `.brand sub` memakai #999999 harfiah, bukan token. 2,85 -> 5,7 */
+html:not([data-theme]) .brand sub, html[data-theme="command"] .brand sub,
+html[data-theme="simple"] .brand sub{color:#5F6771!important}
+html[data-theme="lapangan"] .brand sub{color:#56503C!important}   /* 3,89 */
+html[data-theme="pasang"] .brand sub{color:#43565A!important}     /* 4,14 */
+
+/* (b) kepala tabel. Dikecualikan dari pemetaan inline di bagian 2 karena di
+   tema simple kepalanya berlatar GELAP; di tema lain berlatar terang dan
+   justru perlu digelapkan. Jadi disebut per tema, bukan disapu rata. */
+html:not([data-theme]) th[style*="color:#999" i], html[data-theme="command"] th[style*="color:#999" i]{
+  color:#5F6771!important}                                        /* 2,85 */
+html[data-theme="lapangan"] th{color:#56503C!important}           /* 3,92 */
+html[data-theme="pasang"] th{color:#43565A!important}             /* 3,87 */
+html[data-theme="neraca"] th{color:#4D5243!important}             /* 4,16 */
+
+/* (c) pil sub-tab yang SEDANG AKTIF: hijau tua di atas hijau terang, 4,1 di
+   kesembilan tema. Latarnya dipertahankan (itu penanda "sedang dipilih"),
+   tulisannya digelapkan. -> 6,0 */
+.et-sub-btn.active, .rfa-sub-btn.active, .lap-sub-btn.active,
+.drain-sub-btn.active, .hs-sub-btn.active, .ds-sub-btn.active{color:#00331A!important}
+
+/* (d) lencana pencacah di bilah tab. Putih di atas merah #e53935 memberi
+   4,23; latarnya digelapkan ke #C62828 -> 5,0. Di romer latarnya ungu
+   #5e6bff (4,18) dan digelapkan ke #4A56E0 -> 5,2. */
+.badge-count[style*="background:#e53935" i], .badge-count[style*="background: #e53935" i],
+[style*="background:#e53935" i].badge-count{background:#C62828!important;color:#FFFFFF!important}
+html[data-theme="romer"] .tab-btn.active{background:#4A56E0!important}
+html[data-theme="romer"] .tab-btn.active .tb-label,
+html[data-theme="romer"] .tab-btn.active .badge-count{color:#FFFFFF!important}
+
+/* (e) `#777` dan `#666` harfiah pada kertas hampir putih, 4,25 sampai 4,48.
+   Kurang sedikit, bukan salah arah. */
+html:not([data-theme]) [style*="color:#777" i], html[data-theme="command"] [style*="color:#777" i],
+html[data-theme="simple"] [style*="color:#777" i], html[data-theme="kontur"] [style*="color:#777" i],
+html[data-theme="neraca"] [style*="color:#777" i], html[data-theme="pasang"] [style*="color:#777" i],
+html:not([data-theme]) [style*="color:#666" i], html[data-theme="command"] [style*="color:#666" i],
+html[data-theme="simple"] [style*="color:#666" i]{color:#5A606B!important}
+html[data-theme="lapangan"] [style*="color:#777" i],
+html[data-theme="lapangan"] [style*="color:#666" i]{color:#4F4A38!important}
+html[data-theme="lapangan"] [style*="color:#c62828" i]{color:#96201F!important}   /* 4,26 */
+
+/* (f) bilah alat atas di tema gelap. Percobaan pertama hanya mewarnai
+   tulisannya gelap, karena tombol Export di sana berlatar emas. Tombol
+   Import di sebelahnya berlatar GELAP, jadi tulisan gelap di atasnya jatuh
+   ke 1,19: lebih buruk daripada sebelumnya. Keduanya tidak bisa dibedakan
+   lewat selektor (latarnya datang dari token tema, bukan gaya inline), jadi
+   seluruh bilah disamakan: permukaan gelap, tulisan terang, ditetapkan
+   bersama. Harganya: di KEDUA tema gelap ini tombol Export kehilangan
+   aksen emasnya. Itu ditukar sadar dengan tulisan yang terbaca. */
+html[data-theme="anjungan"] .topbar button, html[data-theme="anjungan"] .undo-redo-bar button{
+  background:#1E2D29!important;color:#CFE0D7!important;border-color:#2B4038!important}
+html[data-theme="romer"] .topbar button, html[data-theme="romer"] .undo-redo-bar button{
+  background:#1C1E24!important;color:#D2D4DA!important;border-color:#2C2D31!important}
+
+/* (g) bilah notifikasi: aturan bertemanya berspesifisitas (0,1,3,3), jadi
+   timpaan di bagian 5 yang (0,1,2,2) kalah. Selektor di bawah menyamai
+   bentuknya lalu menambah satu penegas. Dipakai untuk SEMUA tulisan non-chip
+   di bilah itu, bukan hanya anak pertama: percobaan sebelumnya hanya
+   menyasar `span:first-child` dan melewatkan "+15 lainnya". */
+html[data-theme="anjungan"] #rfa-notif-bar > div > span:not([onclick]):not([style*="border"]),
+html[data-theme="anjungan"] #rfa-notif-bar > div > button:not([onclick-x]),
+html[data-theme="romer"] #rfa-notif-bar > div > span:not([onclick]):not([style*="border"]),
+html[data-theme="romer"] #rfa-notif-bar > div > button:not([onclick-x]){
+  color:#FFD9D4!important}
+
+/* (h) kepala tabel di tiga tema. Timpaan sebelumnya (0,1,1,1) kalah dari
+   aturan tema yang (0,1,2,2). Bentuk di bawah (0,2,3) menang tanpa perlu
+   menaikkan taruhan lebih jauh. */
+html[data-theme="lapangan"] table th:not([hidden]){color:#56503C!important}
+html[data-theme="pasang"] table th:not([hidden]){color:#43565A!important}
+html[data-theme="neraca"] table th:not([hidden]){color:#4D5243!important}
+
+/* (i) lencana pencacah di tema romer: latarnya ungu jenuh #5e6bff, putih di
+   atasnya 4,18. Latarnya digelapkan, tulisannya tetap putih. */
+html[data-theme="romer"] .badge-count{background:#4048C8!important;color:#FFFFFF!important}
+
+/* (j) dua sisa terakhir kalah SERI pada spesifisitas, lalu kalah lagi pada
+   urutan sumber karena aturan lawannya berada di blok <style> yang ditempel
+   sesudah </head>. Menaikkan taruhan dengan selektor yang lebih panjang
+   hanya memindahkan perlombaan ke ronde berikutnya (pelajaran yang sudah
+   tertulis di ui_y501.js), jadi dipakai `:not(#\9)`: sebuah id yang mustahil
+   ada, yang selalu bernilai benar tetapi menambahkan bobot id. Satu id lebih
+   banyak mengalahkan berapa pun kelas dan elemen di sisi lawan, sekali dan
+   selesai. */
+html[data-theme="anjungan"] #rfa-notif-bar > div > span:not([onclick]):not(#\9),
+html[data-theme="romer"] #rfa-notif-bar > div > span:not([onclick]):not(#\9){
+  color:#FFD9D4!important}
+html[data-theme="romer"] .badge-count:not(#\9){background:#4048C8!important;color:#FFFFFF!important}
+
+/* (k) lencana status kuning di tema GELAP. `#8a6400` dipilih Y533 untuk
+   kertas terang (#fff8e1) dan benar di sana; di tema gelap latarnya
+   #1e1a0e, jadi 3,23. Versi terangnya yang benar di sana. Ditemukan hanya
+   setelah gerbang menelusuri tema DI LEBAR HP: lapisan HP memberi lencana
+   ini latar yang berbeda, jadi memeriksa di desktop saja melewatkannya. */
+html[data-theme="anjungan"] [style*="color:#8a6400" i],
+html[data-theme="romer"] [style*="color:#8a6400" i],
+html[data-theme="anjungan"] [style*="color:#b8860b" i],
+html[data-theme="romer"] [style*="color:#b8860b" i]{color:#F0C46A!important}
+
+/* (l) tombol Undo/Redo di bilah atas, terukur 4,37 (lapangan) dan 4,19
+   (pasang) di atas #f5f5f5. Sempat dikira kendali NONAKTIF yang memang
+   dikecualikan WCAG, lalu aturan ini dicabut -- ternyata salah: gerbangnya
+   menekan banyak kendali lebih dulu, jadi tombolnya AKTIF saat diukur, dan
+   4,37 itu warna tombol yang benar-benar bisa ditekan. Aturannya dipasang
+   lagi, kali ini lewat id-nya yang pasti. Pengecualian `:disabled` di
+   gerbang tetap dipertahankan: ia benar untuk tombol yang memang mati. */
+html[data-theme="lapangan"] #btn-undo, html[data-theme="lapangan"] #btn-redo{color:#56503C!important}
+html[data-theme="pasang"] #btn-undo, html[data-theme="pasang"] #btn-redo{color:#43565A!important}
+</style>
+</head>
 <body>
 
 <script>
@@ -5270,7 +5532,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'18b5c73b'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'92326924'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
