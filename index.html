@@ -880,7 +880,7 @@ window._setTheme=_setTheme;window._reflectThemeToggle=_reflectThemeToggle;
   --ui-safe:env(safe-area-inset-bottom,0px);
   --ui-tap:44px;                 /* sasaran sentuh minimum */
   --ui-fs-body:15px; --ui-fs-sm:13px; --ui-fs-label:11px;
-  --ui-ok:#0B7A45; --ui-warn:#B26A00; --ui-bad:#B42318; --ui-muted:#6B7280;
+  --ui-ok:#0B7A45; --ui-warn:#9A5B00; --ui-bad:#B42318; --ui-muted:#6B7280;
 }
 </style>
 <style id="simple-theme">
@@ -3150,7 +3150,7 @@ window._hsGenIssue=_hsGenIssue;window._hsGenIssuePopup=_hsGenIssuePopup;
    ============================================================ */
 html[data-theme="studio"]{
   --navy:#FFFFFF;--navy2:#FFFFFF;--navy3:#F7F8FA;
-  --g1:#F7F8FA;--g2:#E4E7EC;--g3:#7C838C;--g4:#464C55;--g5:#14161A;
+  --g1:#F7F8FA;--g2:#E4E7EC;--g3:#6B7280;--g4:#464C55;--g5:#14161A;
   --text:#14161A;--white:#FFFFFF;
   --teal:#06B6D4;--teal2:#0891B2;
   --pln-bg:#F1F3F6;--pln-b:#E4E7EC;--pln-t:#5B626B;
@@ -3169,7 +3169,7 @@ html[data-theme="studio"]{
 html[data-theme="studio"] body,html[data-theme="studio"] input,html[data-theme="studio"] select,html[data-theme="studio"] textarea,html[data-theme="studio"] button{font-family:'Manrope','Outfit',system-ui,-apple-system,sans-serif}
 html[data-theme="studio"] .brand h1,html[data-theme="studio"] h1,html[data-theme="studio"] h2,html[data-theme="studio"] h3,html[data-theme="studio"] .ld-title,html[data-theme="studio"] .mo-head h3,html[data-theme="studio"] .stat .n,html[data-theme="studio"] .lp-logo-title{font-family:'Manrope','Outfit',system-ui,sans-serif;font-weight:700;letter-spacing:-.021em}
 /* quiet normal-case micro-labels (see note above) */
-html[data-theme="studio"] .ftitle,html[data-theme="studio"] .coord-lbl,html[data-theme="studio"] .mo-row label,html[data-theme="studio"] .act-table th,html[data-theme="studio"] .stat .l,html[data-theme="studio"] .lp-logo-sub,html[data-theme="studio"] .ld-stat span,html[data-theme="studio"] .ld-theme-lbl,html[data-theme="studio"] .lp-head-hint{font-family:'Manrope','Outfit',system-ui,sans-serif!important;text-transform:none!important;letter-spacing:.005em!important;color:#7C838C!important;font-weight:500!important}
+html[data-theme="studio"] .ftitle,html[data-theme="studio"] .coord-lbl,html[data-theme="studio"] .mo-row label,html[data-theme="studio"] .act-table th,html[data-theme="studio"] .stat .l,html[data-theme="studio"] .lp-logo-sub,html[data-theme="studio"] .ld-stat span,html[data-theme="studio"] .ld-theme-lbl,html[data-theme="studio"] .lp-head-hint{font-family:'Manrope','Outfit',system-ui,sans-serif!important;text-transform:none!important;letter-spacing:.005em!important;color:#6B7280!important;font-weight:500!important}
 /* ---- motion: scoped to things that actually change state. A blanket
    `*{transition}` would make every scroll of a 15k-row table repaint. ---- */
 html[data-theme="studio"] .tab-btn,html[data-theme="studio"] .fsec,html[data-theme="studio"] .stat,
@@ -3195,14 +3195,14 @@ html[data-theme="studio"] .lg-blob{display:none!important}
 /* ---- topbar: the refs' nav rail, laid flat ---- */
 html[data-theme="studio"] .topbar{background:#FFFFFF!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-bottom:1px solid #E9EBEF!important;box-shadow:0 1px 2px rgba(16,24,40,.03)!important}
 html[data-theme="studio"] .brand h1{color:#14161A}
-html[data-theme="studio"] .brand sub{color:#7C838C}
+html[data-theme="studio"] .brand sub{color:#6B7280}
 html[data-theme="studio"] .brand-pulse{background:#06B6D4!important;box-shadow:0 0 0 3px rgba(6,182,212,.18)!important}
 html[data-theme="studio"] .tab-btn{color:#5B626B!important;border-radius:9px}
 html[data-theme="studio"] .tab-btn:hover{background:#F2F4F7!important;color:#14161A!important}
 html[data-theme="studio"] .tab-btn.active{background:#121316!important;color:#FFFFFF!important;box-shadow:0 1px 2px rgba(16,24,40,.18)!important}
 html[data-theme="studio"] .tab-btn .badge-count{background:#121316!important;color:#FFFFFF!important;border-radius:999px}
 html[data-theme="studio"] .tab-btn.active .badge-count{background:rgba(255,255,255,.22)!important;color:#FFFFFF!important}
-html[data-theme="studio"] #btn-undo,html[data-theme="studio"] #btn-redo{color:#7C838C!important}
+html[data-theme="studio"] #btn-undo,html[data-theme="studio"] #btn-redo{color:#6B7280!important}
 /* ---- side panel + cards ---- */
 html[data-theme="studio"] .left-panel{background:#FFFFFF!important;backdrop-filter:none!important;border-right:1px solid #E9EBEF!important}
 html[data-theme="studio"] .lp-head{background:#FFFFFF!important;border-bottom:1px solid #E9EBEF!important}
@@ -3216,14 +3216,14 @@ html[data-theme="studio"] .fsec:hover{box-shadow:var(--st-sh2)!important}
 html[data-theme="studio"] .fsec.active-step{border-color:#121316!important;box-shadow:var(--st-sh2)!important}
 html[data-theme="studio"] .ftitle-num{background:#F1F3F6;color:#5B626B;border-radius:8px}
 html[data-theme="studio"] .active-step .ftitle-num{background:#121316;color:#FFFFFF}
-html[data-theme="studio"] .sidebar-toggle{background:#FFFFFF!important;border:1px solid #E4E7EC!important;color:#7C838C!important}
+html[data-theme="studio"] .sidebar-toggle{background:#FFFFFF!important;border:1px solid #E4E7EC!important;color:#6B7280!important}
 html[data-theme="studio"] .sidebar-toggle:hover{background:#F2F4F7!important;color:#14161A!important}
 /* ---- modals ---- */
 html[data-theme="studio"] .mo-overlay{background:rgba(16,20,28,.44)!important;backdrop-filter:blur(6px)!important;-webkit-backdrop-filter:blur(6px)!important}
 html[data-theme="studio"] .mo-box{background:#FFFFFF!important;backdrop-filter:none!important;border:1px solid #EAECF0!important;border-radius:18px!important;box-shadow:var(--st-sh3)!important}
 html[data-theme="studio"] .mo-head{background:#FFFFFF!important;border-bottom:1px solid #EAECF0!important}
 html[data-theme="studio"] .mo-head h3{color:#14161A}
-html[data-theme="studio"] .mo-close{color:#7C838C;border-radius:8px}
+html[data-theme="studio"] .mo-close{color:#6B7280;border-radius:8px}
 html[data-theme="studio"] .mo-close:hover{background:#F2F4F7;color:#14161A}
 html[data-theme="studio"] .mo-row p{color:#14161A}
 html[data-theme="studio"] .divider{background:#EAECF0}
@@ -3232,7 +3232,7 @@ html[data-theme="studio"] input[type=text],html[data-theme="studio"] input[type=
 html[data-theme="studio"] input:focus,html[data-theme="studio"] select:focus,html[data-theme="studio"] textarea:focus{border-color:#06B6D4!important;box-shadow:0 0 0 3.5px rgba(6,182,212,.16)!important}
 html[data-theme="studio"] ::placeholder{color:#9AA1AA}
 /* ---- tables ---- */
-html[data-theme="studio"] .act-table th{background:#F7F8FA!important;color:#7C838C!important;border-bottom:1px solid #E4E7EC!important;backdrop-filter:none;font-size:9.5px!important}
+html[data-theme="studio"] .act-table th{background:#F7F8FA!important;color:#6B7280!important;border-bottom:1px solid #E4E7EC!important;backdrop-filter:none;font-size:9.5px!important}
 html[data-theme="studio"] .act-table td{color:#464C55!important;border-bottom:1px solid #EEF0F3!important}
 html[data-theme="studio"] .act-table tbody tr:nth-child(even) td{background:#FAFBFC!important}
 html[data-theme="studio"] .act-table tbody tr.status-Planned td{background:#FFFFFF!important}
@@ -3260,7 +3260,7 @@ html[data-theme="studio"] .stat:hover{border-color:#DDE1E6!important;box-shadow:
 html[data-theme="studio"] .stat .n{color:#14161A!important;letter-spacing:-.022em}
 /* ---- calendar ---- */
 html[data-theme="studio"] .cal-grid{background:#FFFFFF!important;border:1px solid #EAECF0!important;border-radius:16px!important;box-shadow:var(--st-sh1)!important;overflow:hidden}
-html[data-theme="studio"] .cal-days-hdr{background:#F7F8FA!important;color:#7C838C!important;text-transform:none;letter-spacing:.005em}
+html[data-theme="studio"] .cal-days-hdr{background:#F7F8FA!important;color:#6B7280!important;text-transform:none;letter-spacing:.005em}
 html[data-theme="studio"] .cc{background:#FFFFFF!important;border-right:1px solid #EEF0F3!important;border-bottom:1px solid #EEF0F3!important;color:#464C55}
 html[data-theme="studio"] .cc.om{background:#FAFBFC!important;color:#9AA1AA}
 html[data-theme="studio"] .cc.tod{background:rgba(6,182,212,.09)!important;border:2px solid #06B6D4!important}
@@ -3273,7 +3273,7 @@ html[data-theme="studio"] .chip{background:#F1F3F6!important;border-color:#E4E7E
 html[data-theme="studio"] .chip.Monthly{background:#EEF0FF!important;border-color:#C7CCFF!important;color:#3641B8!important}
 html[data-theme="studio"] .chip.Offshore{background:#E8F4FD!important;border-color:#B6DDF5!important;color:#0F5C8C!important}
 html[data-theme="studio"] .chip.Resampling{background:#F3EEFF!important;border-color:#D8C9FA!important;color:#5B32B8!important}
-html[data-theme="studio"] .chip.Holiday,html[data-theme="studio"] .chip.Perjalanan{background:#F1F3F6!important;border-color:#E4E7EC!important;color:#7C838C!important}
+html[data-theme="studio"] .chip.Holiday,html[data-theme="studio"] .chip.Perjalanan{background:#F1F3F6!important;border-color:#E4E7EC!important;color:#6B7280!important}
 html[data-theme="studio"] .chip.Postponed{background:#F1F3F6!important;border-color:#DDE1E6!important;color:#5B626B!important}
 html[data-theme="studio"] .chip.done,html[data-theme="studio"] .chip.Monthly.done,html[data-theme="studio"] .chip.Completed{background:#E6F7F1!important;border-color:#9BE0C4!important;color:#05714C!important}
 html[data-theme="studio"] .sbadge.Planned{background:#F1F3F6!important;color:#5B626B!important;border:1px solid #E4E7EC!important;border-radius:999px}
@@ -3312,14 +3312,14 @@ html[data-theme="studio"] #landing::before{display:none!important}
 html[data-theme="studio"] .ld-logo{background:#121316!important;border:1px solid #121316!important;border-radius:16px!important}
 html[data-theme="studio"] .ld-title{color:#14161A!important;letter-spacing:-.026em}
 html[data-theme="studio"] .ld-title span{background:linear-gradient(135deg,#06B6D4,#0891B2)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}
-html[data-theme="studio"] .ld-sub{color:#7C838C!important}
+html[data-theme="studio"] .ld-sub{color:#6B7280!important}
 html[data-theme="studio"] .ld-envi{background:#FFFFFF!important;border:1px solid #EAECF0!important;color:#464C55!important;box-shadow:var(--st-sh1)!important;border-radius:999px}
 html[data-theme="studio"] .ld-stat{background:#FFFFFF!important;border:1px solid #EAECF0!important;box-shadow:var(--st-sh1)!important;border-radius:14px!important}
 html[data-theme="studio"] .ld-stat b{color:#14161A}
 html[data-theme="studio"] .ld-card{background:#FFFFFF!important;border:1px solid #EAECF0!important;box-shadow:var(--st-sh1)!important;border-radius:16px!important}
 html[data-theme="studio"] .ld-card:hover{border-color:#DDE1E6!important;box-shadow:var(--st-sh3)!important;transform:translateY(-3px)}
 html[data-theme="studio"] .ld-card b{color:#14161A}
-html[data-theme="studio"] .ld-card span{color:#7C838C}
+html[data-theme="studio"] .ld-card span{color:#6B7280}
 html[data-theme="studio"] .ld-enter{background:#121316!important;box-shadow:var(--st-sh2)!important;border-radius:12px!important}
 html[data-theme="studio"] .ld-enter:hover{background:#000000!important;box-shadow:var(--st-sh3)!important;transform:translateY(-2px)}
 html[data-theme="studio"] .ld-foot{color:#9AA1AA!important;letter-spacing:.005em}
@@ -3350,7 +3350,7 @@ html[data-theme="studio"]{
   --st-sh1:0 1px 2px rgba(16,24,40,.05),0 2px 6px rgba(16,24,40,.05);
   --st-sh2:0 2px 4px rgba(16,24,40,.05),0 8px 18px rgba(16,24,40,.08),0 18px 40px rgba(16,24,40,.05);
   --st-sh3:0 4px 8px rgba(16,24,40,.06),0 16px 32px rgba(16,24,40,.10),0 32px 72px rgba(16,24,40,.09);
-  --st-ink:#14161A;--st-mid:#5B626B;--st-soft:#7C838C;--st-faint:#9AA1AA;
+  --st-ink:#14161A;--st-mid:#5B626B;--st-soft:#6B7280;--st-faint:#9AA1AA;
   --st-fill:#F1F3F6;--st-fill2:#E7EAEF;
 }
 /* ---- 1. neutralise the accent part 1 still used ---- */
@@ -3612,7 +3612,7 @@ html[data-theme="studio"] .calx-sw{border-left-width:3px!important;border-left-s
    1. Categorical fills are flattened to near-black ink above, but the text
       colour was left at --st-mid, so a "Dredging" pill read dark grey on
       near-black (2.94:1, 385 occurrences). A dark fill needs light ink.
-   2. --g3 is the muted-label token and sat at #7C838C: 4.19:1 on white,
+   2. --g3 is the muted-label token and sat at #6B7280: 4.19:1 on white,
       just under the 4.5 small-text threshold, so every secondary label in
       the theme failed by a hair. Darkened just enough to clear it while
       keeping the same quiet character.
@@ -3620,7 +3620,7 @@ html[data-theme="studio"] .calx-sw{border-left-width:3px!important;border-left-s
       styles all over the app and cannot see a token. Matched on the inline
       style text itself and remapped, which is exact rather than a blanket
       colour change.                                                      */
-html[data-theme="studio"]{--g3:#666E77;--st-quiet:#5B626B}
+html[data-theme="studio"]{--g3:#5F6771;--st-quiet:#5B626B}
 /* literal greys in inline styles: too light on this theme's paper */
 html[data-theme="studio"] [style*="color:#ccc" i],html[data-theme="studio"] [style*="color: #ccc" i],
 html[data-theme="studio"] [style*="color:#bbb" i],html[data-theme="studio"] [style*="color: #bbb" i],
@@ -3646,7 +3646,7 @@ html[data-theme="studio"]{--st-faint:#6E7680;--can-t:#6E7680}
 html[data-theme="studio"] [style*="background:#999" i],html[data-theme="studio"] [style*="background: #999" i],
 html[data-theme="studio"] [style*="background:#9e9e9e" i]{background:var(--st-quiet)!important}
 /* the same muted grey written literally instead of through the token */
-html[data-theme="studio"] [style*="color:#7C838C" i],html[data-theme="studio"] [style*="color: #7C838C" i],
+html[data-theme="studio"] [style*="color:#6B7280" i],html[data-theme="studio"] [style*="color: #6B7280" i],
 html[data-theme="studio"] .ld-theme-lbl{color:var(--st-quiet)!important}
 /* the cancelled-row ink was written literally as #9AA1AA in several rules,
    so retuning the token alone could not reach them (2.52:1, 152 cells) */
@@ -3751,7 +3751,7 @@ html[data-theme="neraca"] #hasil-content{
   html[data-theme="studio"] .brand-pulse{display:block!important;width:10px!important;height:10px!important;flex:0 0 10px!important;background:#121316!important;border-radius:50%!important;box-shadow:none!important}
   html[data-theme="studio"] .brand h1{font-size:0!important;line-height:1.05!important;max-width:none!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#14161A!important;letter-spacing:-.03em!important}
   html[data-theme="studio"] .brand h1::before{content:attr(data-judul);display:block;font-size:22px;font-weight:800;line-height:1.05}
-  html[data-theme="studio"] .brand h1::after{content:attr(data-brand);display:block;font-size:11px;font-weight:500;line-height:1.25;letter-spacing:.01em;color:#7C838C;margin-top:3px}
+  html[data-theme="studio"] .brand h1::after{content:attr(data-brand);display:block;font-size:11px;font-weight:500;line-height:1.25;letter-spacing:.01em;color:#6B7280;margin-top:3px}
   html[data-theme="studio"] .brand sub{display:none!important}
   html[data-theme="studio"] .topbar>.tabs{display:none!important}
   html[data-theme="studio"] .topbar>div:last-child{grid-column:2!important;grid-row:1!important;display:flex!important;align-items:center!important;padding:0!important;gap:0!important}
@@ -3760,7 +3760,7 @@ html[data-theme="neraca"] #hasil-content{
   html[data-theme="studio"] #view-dashboard{padding:20px 16px 100px!important;gap:0!important;background:#EDEFF3!important}
   html[data-theme="studio"] #view-dashboard>.dash-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;grid-template-rows:auto auto auto!important;align-items:center!important;column-gap:10px!important;row-gap:10px!important;margin-bottom:16px!important}
   html[data-theme="studio"] #view-dashboard>.dash-head>h2{grid-column:1;grid-row:1!important;font-size:24px!important;line-height:1.05!important;letter-spacing:-.035em!important}
-  html[data-theme="studio"] #view-dashboard>.dash-head>span{grid-column:1;grid-row:2!important;font-size:11px!important;color:#7C838C!important}
+  html[data-theme="studio"] #view-dashboard>.dash-head>span{grid-column:1;grid-row:2!important;font-size:11px!important;color:#6B7280!important}
   html[data-theme="studio"] #view-dashboard>.dash-head>button:nth-of-type(1){grid-column:2;grid-row:1!important;margin:0!important;padding:10px 13px!important;font-size:11px!important;border-radius:10px!important;background:#fff!important;border-color:#DDE1E6!important}
   html[data-theme="studio"] #view-dashboard>.dash-head>button:nth-of-type(2){grid-column:1;grid-row:3!important;justify-self:start!important;margin:0!important;padding:9px 12px!important;font-size:11px!important;border-radius:10px!important;background:#fff!important;border-color:#DDE1E6!important}
   html[data-theme="studio"] #view-dashboard>.dash-head>button:nth-of-type(3){grid-column:2;grid-row:3!important;justify-self:end!important;margin:0!important;padding:9px 12px!important;font-size:11px!important;border-radius:10px!important;background:#fff!important;border-color:#DDE1E6!important}
@@ -3769,15 +3769,15 @@ html[data-theme="neraca"] #hasil-content{
   html[data-theme="studio"] .dash-card-head{min-height:46px!important;padding:10px 14px!important;border-bottom:1px solid #F0F1F3!important;background:#fff!important;gap:8px!important}
   html[data-theme="studio"] .dash-card-drag{display:none!important}
   html[data-theme="studio"] .dash-card-title{font-size:15px!important;font-weight:800!important;line-height:1.2!important;letter-spacing:-.015em!important;min-width:0!important}
-  html[data-theme="studio"] .dash-card-hide{width:28px!important;height:28px!important;font-size:20px!important;color:#7C838C!important}
+  html[data-theme="studio"] .dash-card-hide{width:28px!important;height:28px!important;font-size:20px!important;color:#6B7280!important}
   html[data-theme="studio"] .dash-card-body{padding:14px!important;font-size:13px!important;min-height:0!important}
   html[data-theme="studio"] .dash-card-body button{min-height:40px!important;border-radius:10px!important}
   html[data-theme="studio"] .mob-nav{height:72px!important;background:rgba(255,255,255,.97)!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;border-top:1px solid #EAECF0!important;box-shadow:0 -2px 12px rgba(16,24,40,.06)!important;padding:4px 8px env(safe-area-inset-bottom,0px)!important}
   html[data-theme="studio"] .mob-nav-item{min-width:58px!important;min-height:56px!important;padding:7px 8px!important;gap:4px!important;border-radius:12px!important}
   html[data-theme="studio"] .mob-nav-item.active{background:#121316!important}
-  html[data-theme="studio"] .mob-nav-item .mn-icon{font-size:19px!important;line-height:1!important;color:#7C838C!important}
+  html[data-theme="studio"] .mob-nav-item .mn-icon{font-size:19px!important;line-height:1!important;color:#6B7280!important}
   html[data-theme="studio"] .mob-nav-item.active .mn-icon{color:#fff!important}
-  html[data-theme="studio"] .mob-nav-item .mn-label{font-size:10px!important;font-weight:700!important;color:#7C838C!important;letter-spacing:0!important}
+  html[data-theme="studio"] .mob-nav-item .mn-label{font-size:10px!important;font-weight:700!important;color:#6B7280!important;letter-spacing:0!important}
   html[data-theme="studio"] .mob-nav-item.active .mn-label{color:#fff!important}
   html[data-theme="studio"] .mob-nav-item .mn-badge{display:none!important}
   html[data-theme="studio"] .mob-more-sheet{border-radius:18px 18px 0 0!important;box-shadow:0 -8px 26px rgba(16,24,40,.14)!important}
@@ -4120,7 +4120,7 @@ html[data-theme="lapangan"] .mca-day.selected .mca-num{color:#FFFFFF!important}
 /* Sasaran sentuh diperbesar KELUAR, tanpa menambah tinggi barisnya. */
 .ket-info-btn::after{content:"";position:absolute;left:-16px;right:-16px;top:-16px;bottom:-16px}
 .ket-info-teks{margin-top:4px}
-</style></head>
+</style><style id="kontras-y533">.leaflet-control-attribution a{color:#00587f!important}</style></head>
 <body>
 
 <script>
@@ -5270,7 +5270,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'a74da0f7'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'18b5c73b'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -13409,7 +13409,7 @@ function renderRfaList(){
           return `<button onclick="RFA_LIST_TAB=${nextTab};RFA_LIST_PAGE=0;renderRfaList()"
             class="rfa-status-tab"
             style="border:2px solid ${active?t.border:'#ddd'};border-radius:20px;padding:4px 14px;font-family:inherit;font-size:11px;cursor:pointer;background:${active?t.bg:'#fff'};color:${active?t.col:'#666'};font-weight:${active?'700':'500'};transition:.15s;white-space:nowrap">
-            ${t.dot?t.dot+' ':''}${t.label} <span style="font-size:10px;opacity:.75">(${cnt})</span>
+            ${t.dot?t.dot+' ':''}${t.label} <span style="font-size:10px;opacity:.9">(${cnt})</span>
           </button>`;
         }).join('')}
       </div>`;
@@ -15080,7 +15080,7 @@ function _bmRegBadge(rujukan){
   return '<span title="Dasar hukumnya belum diverifikasi pemilik ENV/legal.'
        +' Angka batasnya tetap dipakai, tapi belum bisa dipakai sebagai bukti kepatuhan. Persetujuan di registry ini catatan internal, BUKAN pengesahan hukum."'
        +' style="display:inline-block;margin-left:5px;padding:0 5px;border-radius:9px;'
-       +'font-size:9px;font-weight:700;background:#FFF3E0;color:#B26A00;'
+       +'font-size:9px;font-weight:700;background:#FFF3E0;color:#9A5B00;'
        +'border:1px solid #F0C8A8;vertical-align:middle">dasar hukum belum diverifikasi</span>';
 }
 function _bmRegApplyFromPack(pack){
@@ -15159,7 +15159,7 @@ function _c01EmptyHtml(beres,gaya){
         +'border:1px dashed var(--g2);border-radius:8px';
   if(!_c01RfaEmpty())return '<div style="'+g+'">'+beres+'</div>';
   return '<div data-c01="tanpa-data" style="font-size:11.5px;padding:12px 14px;'
-    +'text-align:left;border:1px solid #F0C8A8;background:#FFF8F0;color:#B26A00;'
+    +'text-align:left;border:1px solid #F0C8A8;background:#FFF8F0;color:#9A5B00;'
     +'border-radius:8px">\u26a0 <b>Belum ada data RFA yang dimuat.</b><br>'
     +'Kosongnya daftar ini <b>bukan</b> berarti tidak ada pekerjaan tertunda \u2014 '
     +'artinya aplikasi belum tahu. Muat Data Pack dulu lewat '
@@ -15185,7 +15185,7 @@ function _persStatusHtml(){
   var seed=0;try{seed=(typeof PERS_SEED!=='undefined'&&PERS_SEED)?PERS_SEED.length:0;}catch(e){}
   if(_persIsPlaceholder()){
     return '<div data-y417="status" style="font-size:10.5px;padding:8px 10px;margin-bottom:9px;'
-      +'border:1px solid #F0C8A8;background:#FFF8F0;color:#B26A00;border-radius:8px">'
+      +'border:1px solid #F0C8A8;background:#FFF8F0;color:#9A5B00;border-radius:8px">'
       +'\u26a0 <b>Daftar petugas masih nama contoh</b> (Petugas 01\u2026'+n+').<br>'
       +'Data Pack yang dimuat tidak memuat daftar petugas \u2014 kemungkinan '
       +'pack itu diekspor sebelum fitur ini ada. Muat berkas daftar petugas di '
@@ -16197,7 +16197,7 @@ function _dpLoaderRow(g,inPack,loaded){
   var has=inPack>0, ada=loaded>0, aktif=has||ada;
   var note=has?('<b>'+_dpFmtN(inPack)+'</b> di pack'):'<span style="color:var(--g3)">tidak ada di pack</span>';
   var now=ada?(' &middot; sekarang termuat <b>'+_dpFmtN(loaded)+'</b>'):' &middot; <span style="color:var(--g3)">belum termuat</span>';
-  var extra=(!has&&ada)?'<br><span style="font-size:10px;color:#b26a00">Pack ini tidak memuatnya — biarkan tercentang untuk mempertahankan yang sudah ada.</span>':'';
+  var extra=(!has&&ada)?'<br><span style="font-size:10px;color:#9a5b00">Pack ini tidak memuatnya — biarkan tercentang untuk mempertahankan yang sudah ada.</span>':'';
   return '<label style="display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border:1px solid var(--g2);'
     +'border-radius:8px;margin-bottom:6px;cursor:pointer'+(aktif?'':';opacity:.62')+'">'
     +'<input type="checkbox" id="dpg-'+g.id+'" data-dpg="1"'+(aktif?' checked':'')+(aktif?'':' disabled')+' style="margin-top:2px">'
@@ -16211,7 +16211,7 @@ function _dpLoaderBodyHtml(){
     var cfg={};try{cfg=_cfConfig();}catch(e){}
     var siap=!!(cfg.url&&cfg.readToken);
     return '<div style="font-size:11.5px;color:var(--g4);margin-bottom:12px">Ambil Data Pack dulu, lalu pilih bagian mana saja yang dimuat.</div>'
-      +(siap?'':'<div style="font-size:10.5px;color:#b26a00;background:#fff8f0;border:1px solid #f0c8a8;'
+      +(siap?'':'<div style="font-size:10.5px;color:#9a5b00;background:#fff8f0;border:1px solid #f0c8a8;'
         +'border-radius:8px;padding:8px 10px;margin-bottom:10px">\u26a0 Cloudflare belum dikonfigurasi \u2014 isi alamat Worker '
         +'dan token baca di Pengaturan Cloudflare (di kartu Data Pack). Sementara itu, bisa pakai berkas manual.</div>')
       +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -16583,7 +16583,7 @@ function _mapAttachGis(map,onDone){
 }
 function _mapGisEmptyHtml(){
   return '<div data-y419="gis-kosong" style="font-size:10.5px;padding:8px 10px;'
-    +'border:1px solid #F0C8A8;background:#FFF8F0;color:#B26A00;border-radius:8px;'
+    +'border:1px solid #F0C8A8;background:#FFF8F0;color:#9A5B00;border-radius:8px;'
     +'margin-bottom:8px">⚠ <b>Layer GIS belum dimuat.</b> Sumur, pipa, dan '
     +'platform ada di dalam Data Pack — peta ini kosong sampai Data Pack '
     +'dimuat lewat ENV Tools → Data Pack.</div>';
@@ -18403,7 +18403,7 @@ function renderEnvProgram(){
   ];
   const TAB_BTNS=TABS.map(({k,label,cnt,col,sepAfter})=>{
     const act=_epSub===k;
-    const btn=`<button onclick="_epSub='${k}';_epSite='';_epQ='';renderEnvProgram()" style="border:2px solid ${act?col:'#e0e0e0'};padding:5px 15px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;background:${act?col:'#fff'};color:${act?'#fff':'#666'};transition:none">${label}${cnt!=null?`<span style="opacity:.65;font-weight:400;font-size:9px;margin-left:4px">${cnt}</span>`:''}</button>`;
+    const btn=`<button onclick="_epSub='${k}';_epSite='';_epQ='';renderEnvProgram()" style="border:2px solid ${act?col:'#e0e0e0'};padding:5px 15px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;background:${act?col:'#fff'};color:${act?'#fff':'#666'};transition:none">${label}${cnt!=null?`<span style="opacity:1;font-weight:400;font-size:9px;margin-left:4px">${cnt}</span>`:''}</button>`;
     return sepAfter?btn+'<div style="width:1px;align-self:stretch;background:#ddd;margin:2px 4px"></div>':btn;
   }).join('');
 
@@ -19334,7 +19334,7 @@ function _gisPackCardHtml(){
   return '<div class="et-card" style="max-width:900px;margin-top:14px">'
    +'<div style="font-weight:700;font-size:12px;margin-bottom:6px">\ud83d\uddfa Peta GIS (sumur, anjungan, jalur pipa)'
    +(ready?(' <span style="font-weight:400;font-size:10px;color:#2e7d32">'+n.toLocaleString('id-ID')+' objek termuat</span>')
-          :' <span style="font-weight:400;font-size:10px;color:#b26a00">belum termuat</span>')+'</div>'
+          :' <span style="font-weight:400;font-size:10px;color:#9a5b00">belum termuat</span>')+'</div>'
    +'<div style="font-size:10.5px;color:#777;margin-bottom:10px">'
    +'Nama sumur, titik koordinat dan jalur pipa adalah data rahasia, jadi <b>tidak lagi ikut di dalam file HTML</b> yang bisa dibuka siapa saja lewat link. '
    +(ready?'Peta sekarang memakai data dari Data Pack yang sudah kamu muat.'
@@ -21687,7 +21687,7 @@ function renderSequenceView(){
       </div>
       ${_seqBtnGroup([[365,'Tahun'],[182,'Semester'],[91,'Kuartal'],[30,'Bulan'],[7,'Minggu']],Math.round(SEQ_DAYS),'seqSetPreset')}
       ${_seqBtnGroup([['type','Per Tipe'],['site','Per Site'],['well','Per Sumur']],SEQ_GROUP,'seqSetGroup')}
-      ${hiddenCount?`<span style="font-size:10.5px;color:#b26a00;background:#fff6ea;border:1px solid #ffe0b2;border-radius:8px;padding:4px 10px">👁 ${hiddenCount} disembunyikan <span onclick="seqClearGroupFilters()" style="cursor:pointer;text-decoration:underline;margin-left:4px">tampilkan semua</span></span>`:''}
+      ${hiddenCount?`<span style="font-size:10.5px;color:#9a5b00;background:#fff6ea;border:1px solid #ffe0b2;border-radius:8px;padding:4px 10px">👁 ${hiddenCount} disembunyikan <span onclick="seqClearGroupFilters()" style="cursor:pointer;text-decoration:underline;margin-left:4px">tampilkan semua</span></span>`:''}
       <span style="font-size:10.5px;color:#999;margin-left:auto;text-align:right">Ctrl+scroll untuk zoom di titik kursor · geser dua-jari/trackpad untuk gulir kiri-kanan · klik bar untuk buka detail</span>
     </div>
     <div style="display:flex;gap:8px;padding:6px 14px;font-size:10.5px;color:#777;align-items:center;flex-wrap:wrap;flex-shrink:0;background:#fcfcfc;border-bottom:1px solid #f0f0f0">
@@ -22864,6 +22864,10 @@ function _hsBuildCompletion(){
     if(r.titik)hasilOrphans.push(r); // still eligible for the titik-substring fallback too
   });
 
+  /* Y531: huruf kecil tiap titik dihitung SEKALI di sini, bukan sekali
+     per kegiatan x per baris (terukur 5,4 juta kali). */
+  const _y531rfaLow=rfaOrphans.map(r=>[r,String(r.titik||'').toLowerCase()]);
+  const _y531hasLow=hasilOrphans.map(r=>[r,String(r.titik||'').toLowerCase()]);
   return ACTS.map(act=>{
     const titikKey=_hsCompletionKey(act);
     const tLow=titikKey.toLowerCase();
@@ -22873,9 +22877,9 @@ function _hsBuildCompletion(){
     let rfaList=(rfaByAct.get(act.id)||[]).slice();
     evs.forEach(e=>{const l=rfaByCalEvent.get(e.id);if(l)rfaList.push(...l);});
     if(tLow){
-      rfaOrphans.forEach(r=>{
-        const rt=r.titik.toLowerCase();
-        if(rt.includes(tLow)||tLow.includes(rt))rfaList.push(r);
+      _y531rfaLow.forEach(p=>{
+        const rt=p[1];
+        if(rt.includes(tLow)||tLow.includes(rt))rfaList.push(p[0]);
       });
     }
     rfaList=rfaList.filter(r=>r.statusRfa!=='Cancel'&&r.statusRfa!=='Cancelled');
@@ -22884,9 +22888,9 @@ function _hsBuildCompletion(){
     const hasilSet=new Set();
     rfaList.forEach(r=>{const l=hasilByNoRfa.get(r.noRfa);if(l)l.forEach(row=>hasilSet.add(row));});
     if(tLow){
-      hasilOrphans.forEach(r=>{
-        const rt=r.titik.toLowerCase();
-        if(rt.includes(tLow)||tLow.includes(rt))hasilSet.add(r);
+      _y531hasLow.forEach(p=>{
+        const rt=p[1];
+        if(rt.includes(tLow)||tLow.includes(rt))hasilSet.add(p[0]);
       });
     }
     const hasilRows=[...hasilSet];
@@ -22902,7 +22906,7 @@ function _hsBuildCompletion(){
   }).filter(x=>x.titikKey);
 }
 function _hsCompletionColor(stage){
-  const M={tahap:['#f5f5f5','#888'],'rfa-none':['#fff8e1','#b8860b'],'rfa-scan':['#eef2ff','#3949ab'],
+  const M={tahap:['#f5f5f5','#888'],'rfa-none':['#fff8e1','#8a6400'],'rfa-scan':['#eef2ff','#3949ab'],
     'hasil-none':['#f5f5f5','#888'],'hasil-exceed':['#fdecea','#c62828'],done:['#eafaf1','#2e7d32']};
   return M[stage]||M.tahap;
 }
@@ -23209,6 +23213,40 @@ function _hsRfaBaseNo(n){
   const m=String(n||'').match(/^(\d{6}-\d{2})/);
   return m?m[1]:String(n||'');
 }
+const _HS_TRK_KOSONG=new Set();
+let _hsTrackerIdxCache=null;
+/* Y530: indeks RFA_DATA per site|tahun|bulan|sampel.
+   Menggantikan sapuan penuh RFA_DATA yang dijalankan SEKALI PER BARIS di
+   _hsRfaFromTracker -- terukur 4,56 juta putaran (1.174 baris x 3.887
+   catatan) dan 6,2 detik dari 7,9 detik layar membeku. */
+function _hsTrackerIdx(){
+  const src=(typeof RFA_DATA!=='undefined'&&RFA_DATA)?RFA_DATA:null;
+  const n=src?src.length:0;
+  if(_hsTrackerIdxCache&&_hsTrackerIdxCache.src===src&&_hsTrackerIdxCache.n===n)return _hsTrackerIdxCache.map;
+  const map=new Map();
+  if(src)src.forEach(function(x){
+    const mi=_hsMonIdx(x.bulan);
+    if(mi==null)return;                 /* di kode lama: null tidak pernah ===mi */
+    const k=_hsSiteN(x.site)+'\u0000'+String(x.year||'')+'\u0000'+mi+'\u0000'+String(x.sampel||'').toUpperCase();
+    let e=map.get(k);
+    if(!e){e={bases:new Set(),plain:null};map.set(k,e);}
+    const b=_hsRfaBaseNo(x.noRfa);
+    e.bases.add(b);
+    /* menimpa, supaya yang menang tetap catatan cocok TERAKHIR -- sama
+       persis dengan perilaku forEach yang digantikan. */
+    if(String(x.noRfa||'')===b)e.plain=x.noRfa;
+  });
+  _hsTrackerIdxCache={src:src,n:n,map:map};
+  return map;
+}
+function _hsTrackerReset(){_hsTrackerIdxCache=null;}
+window._hsTrackerReset=_hsTrackerReset;
+/* Ikut dibersihkan oleh isyarat "data RFA berubah" yang sudah ada. */
+if(typeof window._hsRfaGuessReset==='function'&&!window._hsRfaGuessReset.__y530){
+  const _y530asli=window._hsRfaGuessReset;
+  window._hsRfaGuessReset=function(){_hsTrackerIdxCache=null;return _y530asli.apply(this,arguments);};
+  window._hsRfaGuessReset.__y530=true;
+}
 function _hsRfaFromTracker(r){
   try{
     if(typeof RFA_DATA==='undefined'||!RFA_DATA||!RFA_DATA.length)return null;
@@ -23220,16 +23258,9 @@ function _hsRfaFromTracker(r){
     if(/^\d{4}-\d{2}/.test(String(d0))){yr=String(d0).slice(0,4);if(mi==null)mi=parseInt(String(d0).slice(5,7),10)-1;}
     if(!yr||mi==null||mi<0||mi>11)return null;
     const sn=_hsSiteN(r.site);
-    const bases=new Set();let plain=null;
-    RFA_DATA.forEach(function(x){
-      if(_hsSiteN(x.site)!==sn)return;
-      if(String(x.year||'')!==yr)return;
-      if(_hsMonIdx(x.bulan)!==mi)return;
-      if(String(x.sampel||'').toUpperCase()!==sm)return;
-      const b=_hsRfaBaseNo(x.noRfa);
-      bases.add(b);
-      if(String(x.noRfa||'')===b)plain=x.noRfa;
-    });
+    const _y530e=_hsTrackerIdx().get(sn+'\u0000'+yr+'\u0000'+mi+'\u0000'+sm);
+    const bases=_y530e?_y530e.bases:_HS_TRK_KOSONG;
+    const plain=_y530e?_y530e.plain:null;
     // 0 = the Tracker has nothing for this site/month/type; >1 = two genuinely
     // different RFAs cover it, so there is no single right answer -- in both
     // cases say nothing rather than guess
@@ -23284,7 +23315,7 @@ function _hsRenderCore(){
 
   const groupBtn=(g)=>{
     const act=_hsGroup===g.k;const cnt=_hsRowsFor(g.k).length;
-    return `<button onclick="_hsSetGroup('${g.k}')" style="border:2px solid ${act?g.col:'#e0e0e0'};padding:5px 15px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;background:${act?g.col:'#fff'};color:${act?'#fff':'#666'}">${g.label}<span style="opacity:.65;font-weight:400;font-size:9px;margin-left:4px">${cnt}</span></button>`;
+    return `<button onclick="_hsSetGroup('${g.k}')" style="border:2px solid ${act?g.col:'#e0e0e0'};padding:5px 15px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;background:${act?g.col:'#fff'};color:${act?'#fff':'#666'}">${g.label}<span style="opacity:1;font-weight:400;font-size:9px;margin-left:4px">${cnt}</span></button>`;
   };
   const routineBtns=HASIL_GROUPS.filter(g=>g.cat==='routine').map(groupBtn).join('');
   const nonroutineBtns=HASIL_GROUPS.filter(g=>g.cat==='nonroutine').map(groupBtn).join('');
@@ -24209,7 +24240,7 @@ function _rtGoTo(ev){
     ov.onclick=e=>{if(e.target===ov)close(onNo);};
   };
   // Re-trigger a subtle fade/slide-in on an element (tab switch, data swap...)
-  window.azAnimIn=function(el){if(!el)return;el.classList.remove('az-anim-in');void el.offsetWidth;el.classList.add('az-anim-in');};
+  window.azAnimIn=function(el){if(!el)return;el.classList.remove('az-anim-in');requestAnimationFrame(function(){requestAnimationFrame(function(){if(el.isConnected)el.classList.add('az-anim-in');});});};
   window._azAnimActiveView=function(){
     ['view-calendar','view-activities','view-log','view-rfa','view-envprog','view-hasil','view-sequence','view-panduan-sched'].forEach(function(id){
       var el=document.getElementById(id);if(el&&getComputedStyle(el).display!=='none')azAnimIn(el);
@@ -26179,7 +26210,7 @@ function _reaStatus(r){
 function _reaInduk(no){return (typeof RFA_DATA!=='undefined'?RFA_DATA:[]).find(function(r){return String(r.noRfa||'')===String(no);});}
 function _reaForRfa(no){_reaLoad();return REA_DATA.filter(function(r){return String(r.rfaInduk||'')===String(no);});}
 function _reaBadge(s){
-  const c=s==='Selesai'?'#2e7d32':(s==='Terlambat'?'#c62828':'#c77700');
+  const c=s==='Selesai'?'#2e7d32':(s==='Terlambat'?'#c62828':'#8a5200');
   const bg=s==='Selesai'?'rgba(46,125,50,.12)':(s==='Terlambat'?'rgba(198,40,40,.12)':'rgba(199,119,0,.12)');
   return '<span style="color:'+c+';background:'+bg+';border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700">'+s+'</span>';
 }
@@ -26681,7 +26712,7 @@ function _rsRecapReportHtml(res){
   var rep=res.report||[];
   if(!rep.length)return h;
   var dilewati=rep.filter(function(r){return r.status!=='ok';}).length;
-  if(dilewati)h+='<div style="font-size:10px;color:#b26a00;margin-top:3px">⚠ '+dilewati
+  if(dilewati)h+='<div style="font-size:10px;color:#9a5b00;margin-top:3px">⚠ '+dilewati
     +' sheet dilewati seluruhnya — lihat tabel di bawah.</div>';
   h+='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:5px">'
     +'<thead><tr style="color:var(--g4)"><th style="text-align:left;padding:2px 4px">Sheet</th>'
@@ -26958,7 +26989,7 @@ window._rsDrainMatchKey=_rsDrainMatchKey;
 // Kenapa sebuah berkas bisa terbaca 0 lembar. Disebutkan apa adanya, bukan
 // dibiarkan jadi angka nol yang tidak berarti apa-apa.
 function _rsDrainKenapaKosong(wbx){
-  return '<div style="font-size:10px;color:#b26a00;margin-top:4px;line-height:1.55">'
+  return '<div style="font-size:10px;color:#9a5b00;margin-top:4px;line-height:1.55">'
     +'Tidak ada satu pun lembar yang bisa dibaca. Lembar di berkas ini: <b>'
     +_ep((wbx&&wbx.SheetNames||[]).join(', ')||'(kosong)')+'</b>.<br>'
     +'Sebuah lembar hanya terbaca kalau kolom pertamanya berjudul <b>Tanggal</b> '
@@ -26973,7 +27004,7 @@ function _rsDrainReportHtml(sum){
   if(!rep.length)return h;
   var takKeluar=rep.reduce(function(a,r){return a+(r.tanpaBaris||0);},0);
   var lewat=rep.filter(function(r){return r.status!=='ok';});
-  if(takKeluar)h+='<div style="font-size:10px;color:#b26a00;margin-top:3px">⚠ <b>'+takKeluar
+  if(takKeluar)h+='<div style="font-size:10px;color:#9a5b00;margin-top:3px">⚠ <b>'+takKeluar
     +'</b> tanggal yang ada di aplikasi <b>tidak ikut keluar</b> karena berkas raw ini tidak punya barisnya. '
     +'Tambahkan barisnya dulu di Excel kalau memang harus ikut.</div>';
   if(lewat.length)h+='<div style="font-size:10px;color:#c62828;margin-top:3px">⚠ <b>'+lewat.length
@@ -27012,7 +27043,7 @@ function _rsDrainImportReportHtml(res){
     +' tanggal baru, '+res.updated+' diperbarui dari '+res.sheets+' lembar site.</div>';
   if(!rep.length)return h+_rsDrainKenapaKosong(res.wbx);
   if(res.baru&&res.baru.length){
-    h+='<div style="font-size:10px;color:#b26a00;margin-top:3px;line-height:1.55">⚠ '
+    h+='<div style="font-size:10px;color:#9a5b00;margin-top:3px;line-height:1.55">⚠ '
       +'Nama lembar <b>'+_ep(res.baru.join(', '))+'</b> tidak cocok dengan catchment mana pun, '
       +'jadi datanya masuk sebagai <b>catchment baru</b>, bukan ke catchment yang sudah ada. '
       +'Kalau itu sebenarnya site yang sama, ganti nama lembarnya di Excel agar memuat nama catchment-nya, '
@@ -27026,7 +27057,7 @@ function _rsDrainImportReportHtml(res){
     +'<th style="text-align:right;padding:2px 4px">Diperbarui</th>'
     +'<th style="text-align:right;padding:2px 4px">Bukan angka</th></tr></thead><tbody>';
   rep.forEach(function(r){
-    h+='<tr style="border-top:1px solid var(--g2)'+(r.baru?';color:#b26a00':'')+'">'
+    h+='<tr style="border-top:1px solid var(--g2)'+(r.baru?';color:#9a5b00':'')+'">'
       +'<td style="padding:2px 4px">'+_ep(r.sheet)+'</td>'
       +'<td style="padding:2px 4px">'+_ep(r.catchment)+(r.baru?' <b>(baru)</b>':'')+'</td>'
       +'<td style="text-align:right;padding:2px 4px">'+r.ditambah+'</td>'
@@ -27795,12 +27826,12 @@ function _rsShowFormulaErrors(wbx,info){
       if(info&&info.parentNode)info.parentNode.insertBefore(host,info);else return;
     }
     host.innerHTML='<div style="margin:6px 0;border:1px solid #f0c8a8;background:#fff8f0;border-radius:8px;padding:8px 10px">'
-      +'<div style="font-size:10.5px;font-weight:800;color:#b26a00">\u26a0 Pemeriksaan file: '+total+' hal perlu dilihat</div>'
-      +_rsLintBlock('sel tanggal berisi kata (Cancel/Hold/TBC/X)',lint.sentinel,'#b26a00',
+      +'<div style="font-size:10.5px;font-weight:800;color:#9a5b00">\u26a0 Pemeriksaan file: '+total+' hal perlu dilihat</div>'
+      +_rsLintBlock('sel tanggal berisi kata (Cancel/Hold/TBC/X)',lint.sentinel,'#9a5b00',
           'Kata di kolom tanggal membuat rumus di sebelahnya rusak. Tulis keterangannya di kolom catatan, biarkan kolom tanggal kosong.')
-      +_rsLintBlock('tanggal jatuh di tahun 1899/1900',lint.epoch,'#b26a00',
+      +_rsLintBlock('tanggal jatuh di tahun 1899/1900',lint.epoch,'#9a5b00',
           'Biasanya sel kosong atau berisi teks yang terbaca sebagai tanggal. Periksa isinya, jangan dipakai apa adanya.')
-      +_rsLintBlock('rumus menunjuk ke file Excel lain',lint.extlink,'#b26a00',
+      +_rsLintBlock('rumus menunjuk ke file Excel lain',lint.extlink,'#9a5b00',
           'Tautan seperti ini putus begitu file tujuannya dipindah atau diganti nama, dan nilainya berhenti diperbarui tanpa peringatan.')
       +'<div style="font-size:10px;color:#7a5a2a;margin-top:6px">Sinkron tetap bisa dijalankan \u2014 sel bermasalah dilewati, tidak diam-diam jadi angka.</div></div>';
     return;
@@ -27812,7 +27843,7 @@ function _rsShowFormulaErrors(wbx,info){
   }
   var bySheet={};errs.forEach(function(e){(bySheet[e.sheet]=bySheet[e.sheet]||[]).push(e);});
   host.innerHTML='<div style="margin:6px 0;border:1px solid #f0c8a8;background:#fff8f0;border-radius:8px;padding:8px 10px">'
-    +'<div style="font-size:10.5px;font-weight:800;color:#b26a00">\u26a0 '+errs.length
+    +'<div style="font-size:10.5px;font-weight:800;color:#9a5b00">\u26a0 '+errs.length
     +' sel di file ini berisi error rumus Excel \u2014 isinya tidak bisa dipakai</div>'
     +Object.keys(bySheet).slice(0,6).map(function(sn){
       var g=bySheet[sn];
@@ -27822,11 +27853,11 @@ function _rsShowFormulaErrors(wbx,info){
     }).join('')
     +'<div style="font-size:10px;color:#7a5a2a;margin-top:6px">Perbaiki dulu rumusnya di file Excel-nya kalau sel-sel itu memang dipakai. '
     +'Sinkron tetap bisa dijalankan \u2014 sel error dilewati, tidak diam-diam jadi angka.</div>'
-    +_rsLintBlock('sel tanggal berisi kata (Cancel/Hold/TBC/X)',lint.sentinel,'#b26a00',
+    +_rsLintBlock('sel tanggal berisi kata (Cancel/Hold/TBC/X)',lint.sentinel,'#9a5b00',
         'Ini biasanya penyebab error rumus di atas: kata di kolom tanggal. Tulis keterangannya di kolom catatan, biarkan kolom tanggal kosong.')
-    +_rsLintBlock('tanggal jatuh di tahun 1899/1900',lint.epoch,'#b26a00',
+    +_rsLintBlock('tanggal jatuh di tahun 1899/1900',lint.epoch,'#9a5b00',
         'Biasanya sel kosong atau berisi teks yang terbaca sebagai tanggal.')
-    +_rsLintBlock('rumus menunjuk ke file Excel lain',lint.extlink,'#b26a00',
+    +_rsLintBlock('rumus menunjuk ke file Excel lain',lint.extlink,'#9a5b00',
         'Tautan seperti ini putus begitu file tujuannya dipindah atau diganti nama.')
     +'</div>';
 }
@@ -28567,7 +28598,7 @@ function _rsApplyImport(){
       if(typeof _linBatchEnd==='function')_linBatchEnd({cocok:resP.matched||0,diubah:resP.updated||0,tanpaPadanan:resP.unmatched||0});
       if(typeof toast==='function')toast('✅ Program di-import: '+resP.updated+' koordinat diperbarui.');
       if(info)info.innerHTML='<span style="color:#2e7d32;font-size:10.5px;font-weight:700">✓ '+resP.matched+' titik cocok, '+resP.updated+' koordinat diperbarui, '+resP.unmatched+' tanpa padanan nama.</span>'
-        +(resP.ambigu?('<div style="font-size:10px;color:#b26a00;margin-top:3px">⚠ '+resP.ambigu+' titik <b>dilewati karena namanya ambigu</b> — lebih dari satu baris raw cocok, dan menebak koordinat lebih buruk daripada berhenti. Bedakan namanya di Konfigurasi Titik Penaatan.</div>'):'');
+        +(resP.ambigu?('<div style="font-size:10px;color:#9a5b00;margin-top:3px">⚠ '+resP.ambigu+' titik <b>dilewati karena namanya ambigu</b> — lebih dari satu baris raw cocok, dan menebak koordinat lebih buruk daripada berhenti. Bedakan namanya di Konfigurasi Titik Penaatan.</div>'):'');
       return;
     }
     if(_rsImportBuf.mode==='schedule'){
@@ -28753,9 +28784,9 @@ function _rsExpReportHtml(judul,s){
   if(s.selDibuat)baris.push(['var(--g4)',s.selDibuat+' sel dibuat baru karena di berkas aslinya sel itu memang belum ada.']);
   if(s.selGagal)baris.push(['#c62828',s.selGagal+' sel <b>gagal ditulis</b> — barisnya tidak ada di lembar itu.']);
   if(s.selRumus)baris.push(['var(--g4)',s.selRumus+' sel rumus sengaja tidak ditimpa supaya rumusnya tetap utuh.']);
-  if(s.recordTanpaBaris)baris.push(['#b26a00',s.recordTanpaBaris+' data di aplikasi <b>tidak punya baris</b> di berkas ini, jadi nilainya tidak ikut keluar.']);
+  if(s.recordTanpaBaris)baris.push(['#9a5b00',s.recordTanpaBaris+' data di aplikasi <b>tidak punya baris</b> di berkas ini, jadi nilainya tidak ikut keluar.']);
   if(s.barisTanpaRecord)baris.push(['var(--g4)',s.barisTanpaRecord+' baris di berkas tidak punya padanan di aplikasi — dibiarkan apa adanya.']);
-  if(s.ambigu)baris.push(['#b26a00',s.ambigu+' data <b>dilewati karena namanya ambigu</b> — beberapa baris cocok dan tidak ada yang bisa dipastikan. Bedakan namanya di Konfigurasi Titik Penaatan.']);
+  if(s.ambigu)baris.push(['#9a5b00',s.ambigu+' data <b>dilewati karena namanya ambigu</b> — beberapa baris cocok dan tidak ada yang bisa dipastikan. Bedakan namanya di Konfigurasi Titik Penaatan.']);
   if(s.tabrakan){
     // Y458: sebutkan yang MANA. "29 baris bentrok" tidak bisa ditindaklanjuti;
     // daftar namanya bisa langsung dicari dan diperbaiki di sumbernya.
@@ -29028,7 +29059,7 @@ function _dqRuntimeHtml(){
     {label:'Daftar Kegiatan',value:acts,ok:acts>0,detail:'kegiatan tersedia di sesi ini'}
   ];
   var active=checks.filter(function(x){return x.ok;}).length;
-  var rows=checks.map(function(x){return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--g1)"><span style="width:16px;text-align:center;font-weight:800;color:'+(x.ok?'#2e7d32':'#b26a00')+'">'+(x.ok?'✓':'!')+'</span><span style="flex:1;font-size:10.5px"><b>'+_ep(x.label)+'</b><span style="color:var(--g3);margin-left:5px">'+_ep(x.detail)+'</span></span><b style="font-size:12px;color:var(--text)">'+x.value.toLocaleString('id-ID')+'</b></div>';}).join('');
+  var rows=checks.map(function(x){return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--g1)"><span style="width:16px;text-align:center;font-weight:800;color:'+(x.ok?'#2e7d32':'#9a5b00')+'">'+(x.ok?'✓':'!')+'</span><span style="flex:1;font-size:10.5px"><b>'+_ep(x.label)+'</b><span style="color:var(--g3);margin-left:5px">'+_ep(x.detail)+'</span></span><b style="font-size:12px;color:var(--text)">'+x.value.toLocaleString('id-ID')+'</b></div>';}).join('');
   var source=window._dpLoadedInfo?'Data Pack aktif di browser ini ('+_ep(String(window._dpLoadedInfo).slice(0,10))+').':'Belum ada Data Pack aktif di browser ini.';
   return '<div style="border:1px solid var(--g2);border-radius:9px;padding:10px 12px;margin-bottom:14px;background:var(--g1)"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px"><b style="font-size:12px;color:var(--text)">Kualitas Data</b><span style="font-size:9.5px;color:var(--g3)">'+active+'/'+checks.length+' pemeriksaan sumber tersedia</span></div><div style="font-size:10px;color:var(--g3);margin:5px 0 6px">Panel ini memeriksa ketersediaan data yang sudah dimuat, bukan mengesahkan isi workbook sumber.</div>'+rows+'<div style="font-size:9.5px;color:var(--g3);margin-top:7px">Sumber sesi: '+source+'</div></div>';
 }
@@ -30967,19 +30998,19 @@ window._lapReconSetAck=_lapReconSetAck;
 function _lapReconPanelHtml(list){
   var sig=_lapReconSig(list),key=_lapReconKey();
   return '<div style="margin-top:6px;border:1px solid #f0c8a8;background:#fff8f0;border-radius:8px;padding:8px 10px">'
-    +'<div style="font-size:10px;font-weight:800;color:#b26a00;margin-bottom:4px">Angka yang belum cocok di dokumen ini</div>'
+    +'<div style="font-size:10px;font-weight:800;color:#9a5b00;margin-bottom:4px">Angka yang belum cocok di dokumen ini</div>'
     +list.slice(0,6).map(function(x){
       return '<div style="font-size:10px;margin-bottom:5px">'
         +'<b>'+_ep(x.site)+(x.titik?' · '+_ep(x.titik):'')+' · '+_ep(x.mon)+'</b><br>'
         +'&nbsp;&nbsp;'+_ep(x.a.label)+': <b>'+_lapReconFmt(x.a.v)+'</b> '+x.unit+'<br>'
         +'&nbsp;&nbsp;'+_ep(x.b.label)+': <b>'+_lapReconFmt(x.b.v)+'</b> '+x.unit+'<br>'
-        +'&nbsp;&nbsp;<span style="color:#b26a00">selisih '+_lapReconFmt(x.gap)+' '+x.unit+'</span></div>';
+        +'&nbsp;&nbsp;<span style="color:#9a5b00">selisih '+_lapReconFmt(x.gap)+' '+x.unit+'</span></div>';
     }).join('')
     +(list.length>6?'<div style="font-size:10px">… dan '+(list.length-6)+' selisih lagi</div>':'')
     +'<div style="font-size:10px;color:#7a5a2a;margin-top:6px">Perbaiki angkanya di sumbernya (Recording Debit &amp; pH atau Data Produksi) supaya cocok, '
     +'atau kalau memang sudah benar dan selisihnya bisa dijelaskan, tekan tombol di bawah — keputusan itu ikut tercatat.</div>'
     +'<button onclick="_lapReconSetAck(\''+key+'\',\''+sig.replace(/\\/g,'').replace(/'/g,'')+'\')" '
-    +'style="margin-top:7px;border:1px solid #b26a00;background:#fff;color:#b26a00;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">'
+    +'style="margin-top:7px;border:1px solid #9a5b00;background:#fff;color:#9a5b00;border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">'
     +'Saya sudah tinjau — selisih ini memang benar</button></div>';
 }
 function _lapChecklist(){
@@ -34128,11 +34159,11 @@ function _shDaysAgo(iso){
     return Math.floor((Date.now()-d.getTime())/86400000);}catch(e){return null;}
 }
 function _shStatus(k,ent,packAt){
-  if(!ent&&!packAt)return {t:'Belum pernah',c:'#b26a00',
+  if(!ent&&!packAt)return {t:'Belum pernah',c:'#9a5b00',
     why:'Belum pernah disinkron dari workbook, dan belum ada Data Pack yang dimuat di browser ini.'};
   if(!ent)return {t:'Dari Data Pack',c:'#1565c0',
     why:'Isinya berasal dari Data Pack. Belum pernah disinkron langsung dari workbook di browser ini.'};
-  if(packAt&&ent.at&&packAt>ent.at)return {t:'Data Pack lebih baru',c:'#b26a00',
+  if(packAt&&ent.at&&packAt>ent.at)return {t:'Data Pack lebih baru',c:'#9a5b00',
     why:'Data Pack dimuat SETELAH sinkron terakhir dari workbook, jadi isi sekarang mengikuti Data Pack. Kalau workbook-nya sudah berubah, sinkron ulang.'};
   return {t:'Dari workbook',c:'#2e7d32',
     why:'Isi sekarang berasal dari sinkron workbook terakhir.'};
@@ -34174,7 +34205,7 @@ function _dqHealthHtml(nDeb,nPh){
   var rows=[];
   var pill=function(ok,label,detail,act){
     return '<div style="display:flex;align-items:flex-start;gap:7px;font-size:10.5px;padding:3px 0">'
-      +'<span style="flex-shrink:0;color:'+(ok?'#2e7d32':'#b26a00')+';font-weight:800">'+(ok?'\u2714':'\u26a0')+'</span>'
+      +'<span style="flex-shrink:0;color:'+(ok?'#2e7d32':'#9a5b00')+';font-weight:800">'+(ok?'\u2714':'\u26a0')+'</span>'
       +'<span style="flex:1"><b>'+label+'</b>'+(detail?(' \u2014 '+detail):'')+'</span>'
       +(act||'')+'</div>';
   };
@@ -34220,7 +34251,7 @@ function _hsQuarantineCardHtml(){
   var n=(typeof HS_QUARANTINE!=='undefined'&&HS_QUARANTINE)?HS_QUARANTINE.length:0;
   return '<div class="et-card" style="max-width:900px;margin-top:14px">'
    +'<div style="font-weight:700;font-size:12px;margin-bottom:6px">\ud83d\uddc3 Karantina Baris Dobel'
-   +(n?(' <span style="font-weight:400;font-size:10px;color:#b26a00">'+n.toLocaleString('id-ID')+' baris</span>'):'')+'</div>'
+   +(n?(' <span style="font-weight:400;font-size:10px;color:#9a5b00">'+n.toLocaleString('id-ID')+' baris</span>'):'')+'</div>'
    +'<div style="font-size:10.5px;color:#777">'
    +(n?('Ada <b>'+n.toLocaleString('id-ID')+'</b> baris hasil sampling yang disingkirkan sistem karena dianggap pengulangan. Datanya utuh dan bisa dikembalikan.')
       :'Belum ada baris yang dikarantina.')
@@ -34381,7 +34412,7 @@ function _etRenderRecon(c){
   }
   h+='<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">'
    +'<div style="background:var(--g1);border:1px solid var(--g2);border-radius:9px;padding:8px 14px">'
-   +'<div style="font-size:19px;font-weight:800;color:'+(open.length?'#b26a00':'#2e7d32')+'">'+open.length+'</div>'
+   +'<div style="font-size:19px;font-weight:800;color:'+(open.length?'#9a5b00':'#2e7d32')+'">'+open.length+'</div>'
    +'<div style="font-size:9.5px;color:#888">belum ditinjau</div></div>'
    +'<div style="background:var(--g1);border:1px solid var(--g2);border-radius:9px;padding:8px 14px">'
    +'<div style="font-size:19px;font-weight:800;color:#2e7d32">'+shut.length+'</div>'
@@ -34394,7 +34425,7 @@ function _etRenderRecon(c){
     var g=RECON_GROUP[k];
     h+='<div style="margin-bottom:16px">'
      +'<div style="font-weight:700;font-size:11.5px;margin-bottom:2px">'+g.judul
-     +' <span style="font-weight:400;color:#b26a00">'+list.length+'</span></div>'
+     +' <span style="font-weight:400;color:#9a5b00">'+list.length+'</span></div>'
      +'<div style="font-size:10px;color:#888;margin-bottom:6px">'+g.ket+'</div>'
      +'<div style="max-height:300px;overflow:auto;border:1px solid #eee;border-radius:7px">'
      +'<table style="width:100%;border-collapse:collapse"><tbody>';
@@ -34525,7 +34556,7 @@ function _etRenderDataPack(host){
    +'<button onclick="_dpExport()" style="background:#2e7d32;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">⬇ Export Data Pack</button></div>'
    +'<div class="et-card" style="flex:1;min-width:240px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">⬆ Muat Data Pack</div>'
    +'<div style="font-size:10.5px;color:#777;margin-bottom:10px">Satu pintu: ambil dari Cloudflare atau pilih berkas sendiri, lalu centang bagian mana saja yang dimuat. Yang tidak dicentang bisa sekalian dikeluarkan dari perangkat ini.</div>'
-   +((function(){try{var _c=_cfConfig();return (_c.url&&_c.readToken)?'':'<div data-y414="cf-belum-siap" style="font-size:10.5px;color:#b26a00;background:#fff8f0;border:1px solid #f0c8a8;border-radius:8px;padding:7px 9px;margin-bottom:10px">⚠ Cloudflare belum dikonfigurasi — isi alamat Worker dan token baca di Pengaturan Cloudflare di bawah. Berkas manual tetap bisa dipakai.</div>';}catch(e){return '';}})())
+   +((function(){try{var _c=_cfConfig();return (_c.url&&_c.readToken)?'':'<div data-y414="cf-belum-siap" style="font-size:10.5px;color:#9a5b00;background:#fff8f0;border:1px solid #f0c8a8;border-radius:8px;padding:7px 9px;margin-bottom:10px">⚠ Cloudflare belum dikonfigurasi — isi alamat Worker dan token baca di Pengaturan Cloudflare di bawah. Berkas manual tetap bisa dipakai.</div>';}catch(e){return '';}})())
    +'<button onclick="_dpOpenLoader()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">⬆ Muat / Kelola Data Pack</button></div>'
    +'</div>'
    +'<div class="et-card" style="margin-top:12px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">👥 Daftar Petugas (PPC)</div>'
@@ -37679,7 +37710,7 @@ function _pcRenderRfaList(){
     else if(!rfa)statusHtml='<span style="color:#c62828">RFA tak terbaca</span>';
     else{
       const hit=idx[rfa]||idx[_pcRfaCore(rfa)];
-      statusHtml=hit?'<span style="color:#2e7d32">✓ '+_ep(hit.name)+(hit.fromDir?' <span style="color:var(--g3)">(folder)</span>':'')+'</span>':'<span style="color:#c77700">scan belum ada</span>';
+      statusHtml=hit?'<span style="color:#2e7d32">✓ '+_ep(hit.name)+(hit.fromDir?' <span style="color:var(--g3)">(folder)</span>':'')+'</span>':'<span style="color:#8a5200">scan belum ada</span>';
     }
     const info=_pcCoaLabel(au.name);
     return '<tr><td style="padding:3px 8px;border-bottom:1px solid var(--g1);max-width:230px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_ep(au.name)+'</div>'+(info?'<div style="font-size:9px;color:var(--g3)">'+_ep(info)+'</div>':'')+'</td>'
@@ -43122,14 +43153,14 @@ function _emfRenderTpl(){
       var per=(nm.sem?('S'+nm.sem):'')+(nm.year?(' '+nm.year):'');
       var badge,bcol,btip;
       if(r.ok===false){badge='\u26d4 bukan dokumen EMF';bcol='#c62828';btip=r.note||'Tidak ada tabel EMF yang dikenali.';}
-      else if(changed){badge='\u26a0 berubah';bcol='#b26a00';btip='Isi file berbeda dari yang terakhir diperiksa. Klik "Periksa ulang".';}
+      else if(changed){badge='\u26a0 berubah';bcol='#9a5b00';btip='Isi file berbeda dari yang terakhir diperiksa. Klik "Periksa ulang".';}
       else if(r.ok===true){badge='\u2713 siap';bcol='#2e7d32';btip=(r.tables||[]).length+' tabel EMF ditemukan.';}
       else {badge='belum diperiksa';bcol='var(--g3)';btip='Klik "Periksa ulang" untuk mendaftarkannya.';}
       return '<div style="display:flex;align-items:center;gap:8px;font-size:10.5px;padding:4px 0;border-top:1px dashed var(--g2)">'
         +'<span style="min-width:0;flex:1">\ud83d\udcd8 '+_ep(n)
         +'<span style="color:var(--g3)"> ('+Math.round((r.size||0)/1024)+' KB)</span>'
         +'<br><span style="color:var(--g4);font-size:9.5px">'
-        +(site?('site <b>'+_ep(site)+'</b>'+(r.site?' (dari isi dokumen)':' (dari nama file)')):'<span style="color:#b26a00">site belum terbaca</span>')
+        +(site?('site <b>'+_ep(site)+'</b>'+(r.site?' (dari isi dokumen)':' (dari nama file)')):'<span style="color:#9a5b00">site belum terbaca</span>')
         +(per?(' \u00b7 periode '+_ep(per.trim())+' (dari nama file)'):'')
         +((r.tables&&r.tables.length)?(' \u00b7 '+r.tables.length+' tabel EMF'):'')
         +(fpNow?(' \u00b7 sidik jari '+_ep(fpNow.split('-')[0])):'')
