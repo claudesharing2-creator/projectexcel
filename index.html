@@ -5633,7 +5633,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'0e498c88'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'7d11a9c2'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -13001,7 +13001,7 @@ function exportCalPDF(){
   var doc;
   try{doc=_calxBuildDoc();}catch(e){toast('\u274c Gagal menyusun dokumen: '+e.message);return;}
   document.body.appendChild(doc);
-  if(typeof _enviMood==='function')_enviMood('loading_50',6000);
+  /*Y553b*/
   var cs=getComputedStyle(doc), bg=cs.backgroundColor, fg=cs.color;
   _calxFreezeChips(doc);
   doc.style.position='static';doc.style.left='0';doc.style.top='0';
@@ -13032,7 +13032,7 @@ function exportCalPDF(){
    +'\ud83d\udda8 Simpan PDF</button></div>'
    +body+'</body></html>');
   w.document.close();
-  if(typeof _enviMood==='function')_enviMood('done',3000);
+  /*Y553c*/
   toast('\ud83d\udcc4 Dibuka di tab baru \u2014 klik Simpan PDF di sana');
 }
 window.exportCalPDF=exportCalPDF;
@@ -13842,10 +13842,10 @@ function rfaListRow(r){
   else if(st==='Pending')bg='background:rgba(212,160,23,.20);border-left:4px solid #a67908';
   else if(st==='On Progress')bg='background:rgba(190,140,60,.16);border-left:4px solid #a3701f';
   const td=(v,extra)=>`<td style="padding:5px 8px;white-space:nowrap${extra||''}">${v}</td>`;
-  const tdE=(v,extra)=>td(_esc(v||''),extra);
+  const tdE=(v,extra)=>td(_esc(v||'-'),extra);
   const _SCLBL={'BL':'Before Leveling','DL':'During Leveling','AL':'After Leveling','BD':'Before Dredging','DD':'During Dredging','AD':'After Dredging','BT':'Before Trenching','DT':'During Trenching','AT':'After Trenching','DR':'During Drilling','HT':'During Hydrotest','ADR':'After Drilling','DDR':'During Drilling','PW':'Produced Water','INLET':'Inlet Produced Water','DWW':'Domestic Wastewater','DRAIN':'Drain Water','SW':'Stream Water','SMW':'Semesterly Water/Sediment','SMG':'Semesterly Ground Water','SMM':'Semesterly Material Keruk','YR':'Yearly','HYD':'Hydrotest','NR':'Non-Routine'};
   const _SCCOL={'BL':'#1565c0','DL':'#1976d2','AL':'#0d47a1','BD':'#e65100','DD':'#e65100','AD':'#bf360c','BT':'#6a1b9a','DT':'#7b1fa2','AT':'#4a148c','DR':'#37474f','HT':'#00695c','ADR':'#455a64','DDR':'#546e7a','PW':'#1565c0','INLET':'#0d47a1','DWW':'#6a1b9a','DRAIN':'#37474f','SW':'#2e7d32','SMW':'#6a1b9a','SMG':'#00695c','SMM':'#795548','YR':'#b71c1c','HYD':'#00796b','NR':'#757575'};
-  const sampelBadge=s=>{const u=(s||'').toUpperCase();const lbl=_SCLBL[u];const col=_SCCOL[u]||'#555';return lbl?`<span style="background:${col};color:#fff;border-radius:4px;padding:1px 5px;font-size:11px;font-weight:700;letter-spacing:.3px" title="${lbl}">${u}</span>&thinsp;<span style="font-size:11px;color:#666">${lbl}</span>`:_esc(s||'');};
+  const sampelBadge=s=>{const u=(s||'').toUpperCase();const lbl=_SCLBL[u];const col=_SCCOL[u]||'#555';return lbl?`<span style="background:${col};color:#fff;border-radius:4px;padding:1px 5px;font-size:11px;font-weight:700;letter-spacing:.3px" title="${lbl}">${u}</span>&thinsp;<span style="font-size:11px;color:#666">${lbl}</span>`:_esc(s||'-');};
   const tdD=(v)=>td(rfaCellDShort(v));
   const tdX=(v)=>{if(v==='X')return td('<span style="color:var(--g3)">✕</span>');if(_pd(v))return tdD(v);return td(v?_esc(v):'<span style="color:#e0a800">–</span>');};
   const noRfaCell=r.noRfa?`<b>${_esc(r.noRfa)}</b>`:`<span style="color:#bbb;font-style:italic">pending...</span>`;
@@ -13856,7 +13856,7 @@ function rfaListRow(r){
     ${tdE(r.jenis)}
     ${td(sampelBadge(r.sampel))}
     ${tdE(r.site)}
-    <td style="padding:5px 8px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_esc(r.titik||'')}">${_esc(r.titik||'')}</td>
+    <td style="padding:5px 8px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_esc(r.titik||'')}">${_esc(r.titik||'-')}</td>
     ${tdE(r.coc)}
     ${tdE(r.analysis)}
     ${tdE(r.tipeSuffix)}
@@ -13869,7 +13869,7 @@ function rfaListRow(r){
     ${tdX(r.draftB)}
     ${tdX(r.scanA)}
     ${tdX(r.scanB)}
-    <td style="padding:5px 8px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap${r.keterangan?';background:#fffbe6':''}" title="${_esc(r.keterangan||'')}">${r.keterangan?`<span style="color:#b9530c">${_esc(r.keterangan)}</span>`:''}</td>
+    <td style="padding:5px 8px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap${r.keterangan?';background:#fffbe6':''}" title="${_esc(r.keterangan||'')}">${r.keterangan?`<span style="color:#b9530c">${_esc(r.keterangan)}</span>`:'-'}</td>
     <td style="padding:5px 8px;white-space:nowrap;text-align:right" onclick="event.stopPropagation();rfaPriceBreakdown('${r.id}')">${(function(){const pr=rfaCalcPrice(r);const txt='Rp '+Number(pr.total||0).toLocaleString('id-ID');const est=pr.estimated?' <span title="Estimasi (parameter wajib)" style="color:#b9530c">~</span>':'';return `<span style="cursor:pointer;color:#1565c0;font-weight:600;text-decoration:underline dotted" title="Klik untuk lihat rincian">${txt}${est}</span>`;})()}</td>
   </tr>`;
 }
@@ -18872,7 +18872,7 @@ function renderEnvProgram(){
       <td style="${TD}min-width:110px">${fmtParam(r.parameter)}</td>
       <td style="${TD}text-align:center;white-space:nowrap">${fmtAnalysis(r.analysis)}</td>
       <td style="${TD}min-width:120px">${fmtInfo(r.info||r.remarks)}</td>
-      <td style="${TD}font-size:11px;min-width:130px">${_ep(r.penulisan)}</td>
+      <td style="${TD}font-size:11px;min-width:130px">${_ep(r.penulisan||'-')}</td>
       <td style="${TD}min-width:100px">${fmtRfa(r.kodeRfa)}</td>
     </tr>`).join('')}</tbody></table>`;
 
@@ -18910,7 +18910,7 @@ function renderEnvProgram(){
       <td style="${TD}text-align:center;width:32px">${_ep(r.qty)}</td>
       <td style="${TD}text-align:center;white-space:nowrap">${fmtAnalysis(r.analysis)}</td>
       <td style="${TD}min-width:120px">${(r.infos&&r.infos.length>1)?r.infos.map(inf=>`<div>${fmtInfo(inf)}</div>`).join(''):fmtInfo(r.info)}</td>
-      <td style="${TD}font-size:11px;min-width:130px">${_ep(r.penulisan)}</td>
+      <td style="${TD}font-size:11px;min-width:130px">${_ep(r.penulisan||'-')}</td>
       <td style="${TD}min-width:100px">${fmtRfa(r.rfa)}</td>
     </tr>`;}).join('')}</tbody></table>`;
 
@@ -18927,7 +18927,7 @@ function renderEnvProgram(){
       <td style="${TD}text-align:center;width:32px">${_ep(r.qty)}</td>
       <td style="${TD}text-align:center;white-space:nowrap">${fmtAnalysis(r.analysis)}</td>
       <td style="${TD}min-width:120px">${fmtInfo(r.info)}</td>
-      <td style="${TD}font-size:11px;min-width:130px">${_ep(r.penulisan)}</td>
+      <td style="${TD}font-size:11px;min-width:130px">${_ep(r.penulisan||'-')}</td>
       <td style="${TD}min-width:100px">${fmtRfa(r.noRfa)}</td>
     </tr>`).join('')}</tbody></table>`;
 
@@ -22121,13 +22121,14 @@ function _hsRowsFor(group){
     _hsNormalizeRfaLists(HS_GROUPS_DATA[group]);
     _hsNormalizeRfaLists(HASIL_MANUAL);
   }
+  /*Y551b*/_hsFixBulanan(HS_GROUPS_DATA[group]);_hsFixBulanan(HASIL_MANUAL);
   const base=(HS_GROUPS_DATA[group]||[]).concat(HASIL_MANUAL.filter(r=>r.group===group));
   return base.map(r=>{
     if(r.extra&&r.extra.manualId)return r;   // manual rows edit HASIL_MANUAL directly, not via override
     const key=_hsRowKey(group,r);
     const ov=HASIL_OVERRIDE[key];
     if(!ov)return r;
-    const ev=_hsEvalCompliance(ov.nilai,r.bakuMutu==null?null:r.bakuMutu);
+    const ev=_hsEvalCompliance(ov.nilai,r.bakuMutu==null?null:r.bakuMutu,{satuan:r.satuan,satuanBaku:r.satuanBakuMutu,tanggal:r.tanggal});
     return Object.assign({},r,{nilai:ov.nilai,status:ev.status,nilaiNum:ev.nilaiNum,
       extra:Object.assign({},r.extra,{overridden:true,overriddenAt:ov.ts})});
   });
@@ -22147,7 +22148,44 @@ function _hsParseNum(v){
 }
 // JS port of the Python ETL's evaluate_compliance(), kept in sync so a
 // manually-typed row is graded exactly like a seeded one.
-function _hsEvalCompliance(nilai,baku){
+/*Y551a*/function _hsBulanVsHari(satuan,satuanBaku){
+  return /\/\s*bulan/i.test(String(satuan||''))&&/\/\s*hari/i.test(String(satuanBaku||''));
+}
+function _hsHariDalamBulan(tanggal){
+  const t=Array.isArray(tanggal)?tanggal[0]:tanggal;
+  const m=/^(\d{4})-(\d{2})/.exec(String(t||''));
+  if(!m)return null;
+  const y=+m[1],mo=+m[2];
+  return (mo>=1&&mo<=12)?new Date(y,mo,0).getDate():null;
+}
+// ctx = {satuan,satuanBaku,tanggal} (opsional). Tanpa ctx perilakunya sama persis dengan dulu.
+function _hsEvalCompliance(nilai,baku,ctx){
+  if(ctx&&_hsBulanVsHari(ctx.satuan,ctx.satuanBaku)&&baku!=null&&String(baku).trim()!==''){
+    const hari=_hsHariDalamBulan(ctx.tanggal),nv=_hsParseNum(nilai);
+    if(hari&&nv!=null){
+      const ns=String(nilai==null?'':nilai).trim(),op=/^[<>]/.test(ns)?ns.charAt(0):'';
+      const ev=_hsEvalComplianceCore(op+(nv/hari),baku);
+      return {status:ev.status,nilaiNum:nv};
+    }
+  }
+  return _hsEvalComplianceCore(nilai,baku);
+}
+// Baris lama yang satuannya /bulan tetapi bakunya /hari dan belum dikonversi oleh ETL:
+// nilai ulang statusnya sekali per kelompok (idempoten: setelah dinilai ulang ada catatannya).
+function _hsFixBulanan(rows){
+  if(!rows)return;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i];
+    if(!r||!_hsBulanVsHari(r.satuan,r.satuanBakuMutu))continue;
+    if(/rata-rata harian/i.test(String(r.catatan||'')))continue;
+    const hari=_hsHariDalamBulan(r.tanggal),nv=_hsParseNum(r.nilai);
+    if(!hari||nv==null||r.bakuMutu==null||r.bakuMutu==='')continue;
+    const ev=_hsEvalCompliance(r.nilai,r.bakuMutu,{satuan:r.satuan,satuanBaku:r.satuanBakuMutu,tanggal:r.tanggal});
+    r.status=ev.status;r.nilaiNum=ev.nilaiNum;
+    r.catatan=(r.catatan?r.catatan+' ':'')+'(BM dibandingkan thd rata-rata harian: '+(nv/hari).toFixed(1)+' m3/hari, dari total '+nv.toFixed(1)+' m3/bulan ÷ '+hari+' hari)';
+  }
+}
+function _hsEvalComplianceCore(nilai,baku){
   if(baku==null||(typeof baku==='string'&&!baku.trim()))return {status:'no_standard',nilaiNum:_hsParseNum(nilai)};
   const nv=_hsParseNum(nilai);
   if(nv==null)return {status:'non_numeric',nilaiNum:null};
@@ -22531,7 +22569,7 @@ function _hsSubmitManual(){
   if(!titik||!parameter||!nilai){azAlert('Titik, Parameter, dan Nilai wajib diisi.');return;}
   const rfaRow=(noRfa&&typeof RFA_DATA!=='undefined')?RFA_DATA.find(r=>r.noRfa===noRfa):null;
   const site=site0||(rfaRow&&rfaRow.site)||'';
-  const {status,nilaiNum}=_hsEvalCompliance(nilai,bakuMutu||null);
+  const {status,nilaiNum}=_hsEvalCompliance(nilai,bakuMutu||null,{satuan:satuan,satuanBaku:satuanBakuMutu,tanggal:tanggal?[tanggal]:[]});
   HASIL_MANUAL.push({
     group,category:(HASIL_GROUPS.find(g=>g.k===group)||{}).cat||'routine',
     noRfa:noRfa?[noRfa]:[],site,titik,tanggal:tanggal?[tanggal]:[],
@@ -22558,7 +22596,7 @@ function _hsDeleteManual(manualId){
 function _hsSetManualNilai(manualId,val){
   const r=HASIL_MANUAL.find(x=>x.extra&&x.extra.manualId===manualId);if(!r)return;
   r.nilai=val;
-  const ev=_hsEvalCompliance(val,r.bakuMutu==null?null:r.bakuMutu);
+  const ev=_hsEvalCompliance(val,r.bakuMutu==null?null:r.bakuMutu,{satuan:r.satuan,satuanBaku:r.satuanBakuMutu,tanggal:r.tanggal});
   r.status=ev.status;r.nilaiNum=ev.nilaiNum;
   _hsSaveManual();renderHasilSampling();
 }
@@ -23799,11 +23837,11 @@ function _hsRenderCore(){
     const blocks=titikList.map(g=>{
       const rfaCells=periods.map(per=>{
         let v='';for(const p of g.params.values()){const c=p.byPeriod.get(per);if(c&&c.noRfa){v=c.noRfa;break;}}
-        return `<td style="${TD}text-align:center;font-family:monospace;font-size:11px;color:#1a237e;white-space:nowrap">${_ep(v)}</td>`;
+        return `<td style="${TD}text-align:center;font-family:monospace;font-size:11px;color:#1a237e;white-space:nowrap">${_ep(v||'-')}</td>`;
       }).join('');
       const tglCells=periods.map(per=>{
         let v='';for(const p of g.params.values()){const c=p.byPeriod.get(per);if(c&&c.tanggal){v=c.tanggal;break;}}
-        return `<td style="${TD}text-align:center;font-size:11px;white-space:nowrap">${_ep(v)}</td>`;
+        return `<td style="${TD}text-align:center;font-size:11px;white-space:nowrap">${_ep(v||'-')}</td>`;
       }).join('');
       const paramRows=[...g.params.entries()].map(([pname,p],pi)=>{
         const cells=periods.map(per=>{
@@ -23811,15 +23849,15 @@ function _hsRenderCore(){
           const exceed=c&&c.status==='exceed';
           const isBebanClick=pname==='Beban Pencemar'&&c&&c.tanggal;
           const clickAttr=isBebanClick?` onclick="_hsBebanDetail('${_ep(g.titik).replace(/'/g,"\\'")}','${_ep(c.tanggal).replace(/'/g,"\\'")}')"`:'';
-          return `<td style="${TD}text-align:center;${exceed?'color:#c62828;font-weight:700;background:#fdecea':''}${isBebanClick?'cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px':''}"${clickAttr}>${c&&c.nilai!=null?_ep(String(c.nilai)):'<span style="color:#ddd">–</span>'}</td>`;
+          return `<td style="${TD}text-align:center;${exceed?'color:#c62828;font-weight:700;background:#fdecea':''}${isBebanClick?'cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px':''}"${clickAttr}>${c&&c.nilai!=null?_ep(String(c.nilai)):'<span style="color:#aaa">-</span>'}</td>`;
         }).join('');
         return `<tr>
           ${pi===0?`<td style="${TD}font-weight:700;background:#f7f9fc;vertical-align:middle" rowspan="${g.params.size}"><span style="cursor:pointer;color:#1565c0" onclick="_hsOpenTitik('${_ep(g.titik).replace(/'/g,"\'")}')">${_ep(g.titik)}</span><div style="font-size:11px;color:#888;font-weight:400">${_ep(g.site)}</div></td>`:''}
           <td style="${TD}">${_ep(pname)}</td>
           ${cells}
-          <td style="${TD}text-align:center;white-space:nowrap">${_ep(p.bakuMutu||'')}</td>
-          <td style="${TD}text-align:center;white-space:nowrap">${_ep(p.satuanBakuMutu||'')}</td>
-          <td style="${TD}font-size:11px;min-width:140px">${_ep(p.peraturan||'')}${typeof _bmRegBadge==='function'?_bmRegBadge(p.peraturan):''}</td>
+          <td style="${TD}text-align:center;white-space:nowrap">${_ep(p.bakuMutu||'-')}</td>
+          <td style="${TD}text-align:center;white-space:nowrap">${_ep(p.satuanBakuMutu||'-')}</td>
+          <td style="${TD}font-size:11px;min-width:140px">${_ep(p.peraturan||'-')}${typeof _bmRegBadge==='function'?_bmRegBadge(p.peraturan):''}</td>
         </tr>`;
       }).join('');
       return `<tr style="background:#eef3fa"><td style="${TD}font-weight:700;color:#1565c0" colspan="2">RFA</td>${rfaCells}<td style="${TD}" colspan="3"></td></tr>
@@ -23862,7 +23900,7 @@ function _hsRenderCore(){
         <td style="${TD}">${_hsRfaLinks(r.noRfa,r.titik,_rfaIdx,r)}</td>
         <td style="${TD}">${_ep(r.site||'')}</td>
         <td style="${TD};max-width:220px">${_ep(r.titik||'')}</td>
-        <td style="${TD};white-space:nowrap">${_ep(tgl)}</td>
+        <td style="${TD};white-space:nowrap">${_ep(tgl||'-')}</td>
         <td style="${TD}">${_ep(r.parameter||'')}</td>
         <td style="${TD};white-space:nowrap">${manualId?`<input value="${_ep(r.nilai==null?'':r.nilai)}" onchange="_hsSetManualNilai('${manualId}',this.value)" placeholder="isi nilai" style="width:78px;border:1px solid #ddd;border-radius:4px;padding:2px 5px;font-family:inherit;font-size:13px">${r.satuan&&r.satuan!=='-'?` <span style="color:#999;font-size:11px">${_ep(r.satuan)}</span>`:''}`:_hsNilai(r)}</td>
         <td style="${TD};white-space:nowrap">${_hsBaku(r)}</td>
@@ -23895,7 +23933,7 @@ function _hsRenderCore(){
       return `<tr style="${d.completed?'':'background:#fffdf5'}">
         <td style="${TD}"><b>${_ep(d.titikKey)}</b></td>
         <td style="${TD}">${_ep(d.act.type||'')}</td>
-        <td style="${TD}">${_ep(d.act.sra||'')}</td>
+        <td style="${TD}">${_ep(d.act.sra||'-')}</td>
         <td style="${TD}">${evBadges}</td>
         <td style="${TD};white-space:nowrap">${_ep(rfaText)}</td>
         <td style="${TD};white-space:nowrap">${_ep(hasilText)}</td>
@@ -24346,13 +24384,15 @@ function _hsRenderCore(){
   // Historical parameter chart — always over the full titik history (not
   // limited by the "hanya melebihi BM" filter), so the trend is complete.
   const histRows=rowsAll.filter(r=>_cIsNR?(_hsTitikKeyLite(r.titik||'(tanpa titik)')===_hsTitikKeyLite(_hsTitik)):(_hsTitikKey(r.titik||'(tanpa titik)')===_hsTitikKey(_hsTitik)));
-  const chartParams=[...new Set(histRows.map(r=>r.parameter))].sort();
+  /*Y550a*/const _pkOf=r=>_hsParamKey(r.parameter);
+  const _pkLabel=_hsParamLabels(histRows);
+  const chartParams=[...new Set(histRows.map(r=>_pkLabel[_pkOf(r)]))].sort();
   const exceedCountByParam={};
-  histRows.forEach(r=>{if(r.status==='exceed')exceedCountByParam[r.parameter]=(exceedCountByParam[r.parameter]||0)+1;});
+  histRows.forEach(r=>{if(r.status==='exceed'){const _l=_pkLabel[_pkOf(r)];exceedCountByParam[_l]=(exceedCountByParam[_l]||0)+1;}});
   if(!_hsChartParam||!chartParams.includes(_hsChartParam)){
     _hsChartParam=chartParams.slice().sort((a,b)=>(exceedCountByParam[b]||0)-(exceedCountByParam[a]||0))[0]||'';
   }
-  const chartRows=histRows.filter(r=>r.parameter===_hsChartParam)
+  const chartRows=histRows.filter(r=>_pkLabel[_pkOf(r)]===_hsChartParam)
     .slice().sort((a,b)=>_hsPeriodSort(_hsPeriodKey(a),_hsPeriodKey(b)));
   const chartSection=chartParams.length?`<div class="hs-chart-card" style="border:1px solid #e0e0e0;border-radius:12px;padding:14px 18px;margin-bottom:14px;background:linear-gradient(180deg,#fbfdff,#ffffff)">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -24393,10 +24433,30 @@ function _hsRenderCore(){
 // Inline SVG bar chart: one bar per period, red = melebihi BM, blue = sesuai,
 // gray = tanpa baku mutu/non-numerik; dashed orange line = baku mutu (only
 // drawn when the standard is a single flat number across all periods shown).
+function _hsParamKey(n){
+  return String(n==null?'':n).toLowerCase().replace(/\*+\s*$/,'').replace(/[^a-z0-9]/g,'');
+}
+// Nama yang ditampilkan untuk satu kunci: ejaan tanpa penanda "**" dan paling
+// sering dipakai menang; seri sama -> urutan abjad (hasilnya selalu sama).
+function _hsParamLabels(rows){
+  const cnt={};
+  rows.forEach(r=>{
+    const n=String(r.parameter==null?'':r.parameter),k=_hsParamKey(n);
+    (cnt[k]=cnt[k]||{})[n]=(cnt[k][n]||0)+1;
+  });
+  const out={};
+  Object.keys(cnt).forEach(k=>{
+    out[k]=Object.keys(cnt[k]).sort((a,b)=>{
+      const ma=/\*\s*$/.test(a)?1:0,mb=/\*\s*$/.test(b)?1:0;
+      return (ma-mb)||(cnt[k][b]-cnt[k][a])||(a<b?-1:a>b?1:0);
+    })[0];
+  });
+  return out;
+}
 function _hsParamChartSvg(rows){
   const vals=rows.map(r=>r.nilaiNum).filter(v=>typeof v==='number'&&isFinite(v));
   if(!rows.length||!vals.length)return '<div style="padding:14px;color:#999;font-size:13px">Parameter ini tidak memiliki nilai numerik untuk digrafikkan.</div>';
-  const bmNums=rows.map(r=>r.bakuMutu).filter(v=>typeof v==='number');
+  const bmNums=rows.filter(r=>!_hsBulanVsHari(r.satuan,r.satuanBakuMutu)/*Y551c*/).map(r=>r.bakuMutu).filter(v=>typeof v==='number');
   const bmConst=bmNums.length&&bmNums.every(v=>v===bmNums[0])?bmNums[0]:null;
   const maxV=Math.max(...vals,bmConst||0)*1.15||1;
   const W=Math.max(380,rows.length*58),H=200,padL=34,padR=14,padT=14,padB=34;
@@ -28400,7 +28460,7 @@ function _linShowRow(idx){
   box.style.cssText='max-width:520px;width:92vw;text-align:left;padding:0';
   var rules=[];
   if(String(r.parameter||'').indexOf('Beban Pencemar')===0)rules.push('WMR-NONDETECT-LOAD-001');
-  if(typeof _ruleIsNondetect==='function'&&_ruleIsNondetect(r.nilai))rules.push('WMR-NONDETECT-LOAD-001');
+  /*Y553d*/
   box.innerHTML='<div class="mo-head" style="display:flex;align-items:center;gap:8px;padding:12px 16px">'
     +'<h3 style="margin:0;font-size:15px;flex:1;text-align:left">Dari mana angka ini</h3>'
     +'<button aria-label="Tutup" class="mo-close" onclick="document.getElementById(\'lin-ov\').remove()" '
@@ -29602,7 +29662,7 @@ function _gmcSectionHtml(){var s=_gmcState();var lbl='font-size:13px;color:var(-
    +'</div>';}
 function _gmcWire(){var dp=document.getElementById('gmc-drop');if(dp){dp.ondragover=function(e){e.preventDefault();dp.classList.add('dragover');};dp.ondragleave=function(){dp.classList.remove('dragover');};
     dp.ondrop=function(e){e.preventDefault();dp.classList.remove('dragover');var f=e.dataTransfer.files;if(f&&f[0]){var inp=document.getElementById('gmc-file');inp.files=f;_gmcHandleCsv(inp);}};}
-  if(typeof _gtPointsWire==='function')try{_gtPointsWire();}catch(e){}}
+  /*Y553e*/}
 function _gtModeSwitcherHtml(mode){var chip=function(m,l){var on=mode===m;return '<button onclick="_gtSetMode(\''+m+'\')" style="border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;padding:6px 16px;border-radius:7px;background:'+(on?'#111':'transparent')+';color:'+(on?'#fff':'var(--g4)')+'">'+l+'</button>';};
   return '<div style="padding:14px 16px 0"><div style="font-size:15px;font-weight:800;margin-bottom:2px">Geotag Foto</div>'
     +'<div style="font-size:13px;color:var(--g4);margin-bottom:10px">Stempel foto lapangan, atau buat overlay transparan ala GPS Map Camera dari CSV.</div>'
@@ -32235,7 +32295,7 @@ function renderPanduan(){
 
   h+=_pdCat('Mulai di Sini — Alur Kerja',_PD_AKSEN);
   h+=_pdSec('','Peta Sistem — fungsi tiap tab',
-    '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th class="y554-th" style="padding:5px 8px;text-align:left;font-weight:700;color:#666;border-bottom:1px solid #e0e0e0">Tab</th><th class="y554-th" style="padding:5px 8px;text-align:left;font-weight:700;color:#666;border-bottom:1px solid #e0e0e0">Fungsi</th></tr></thead><tbody>'
     +[['Scheduling','Kalender sampling, plot tanggal & PPC, kegiatan routine (tracker Monthly/Semesterly/Yearly) dan non-routine (dredging, trenching, hydrotest, drilling) lengkap dengan koordinat & peta.'],
       ['RFA Tracker','Semua RFA: status otomatis (On Progress → Draft Selesai → Scan Selesai), tanggal kirim CBT/RFA (bisa batch), tanggal terima Draft A/B & Scan A/B, RFA Form siap cetak.'],
       ['ENV Mon Program','Master titik sampling (koordinat, matriks, parameter, penulisan RFA) + peta offline dengan layer GIS ArcGIS.'],
@@ -32244,7 +32304,7 @@ function renderPanduan(){
       ['Laporan','Generate laporan Authority (5 jenis) + export CoA Auth XLSX + input CoA PDF lab + SIMPEL + tracking status kirim.'],
       ['Log','Riwayat semua perubahan + Trash untuk memulihkan item terhapus.']]
       .map(function(r){return '<tr><td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;white-space:nowrap;font-weight:700">'+r[0]+'</td><td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;color:#555">'+r[1]+'</td></tr>';}).join('')
-    +'</table>',true);
+    +'</tbody></table>',true);
 
   h+=_pdSec('','Alur Kerja Keseluruhan (Flowchart)', `
     <div style="overflow-x:auto;padding:6px 0">
@@ -34362,11 +34422,10 @@ var SH_DOMAINS=[
   {k:'izin',     label:'Titik & izin',      raw:'ENV Mon Program'},
   {k:'gis',      label:'Peta GIS',          raw:'Data Pack'}
 ];
-function _binGoto(){
+function _quarGoto(){
   try{
-    var btn=Array.from(document.querySelectorAll('.tab-btn')).find(function(b){return (b.getAttribute('onclick')||'').indexOf("'log'")>=0;});
-    if(typeof switchTab==='function')switchTab('log',btn||document.querySelector('.tab-btn'));
-    setTimeout(function(){if(typeof switchLogTab==='function')switchLogTab('trash');},150);
+    if(typeof switchTab==='function')switchTab('envtools',document.getElementById('tb-envtools'));
+    setTimeout(function(){if(typeof _etSwitchSub==='function')_etSwitchSub('recon');},150);
   }catch(e){}
 }
 function _hsQuarSig(r){
@@ -34615,8 +34674,8 @@ function _hsQuarantineCardHtml(){
    +'<div style="font-size:13px;color:#777">'
    +(n?('Ada <b>'+n.toLocaleString('id-ID')+'</b> baris hasil sampling yang disingkirkan sistem karena dianggap pengulangan. Datanya utuh dan bisa dikembalikan.')
       :'Belum ada baris yang dikarantina.')
-   +' Daftarnya sekarang jadi satu dengan Recycle Bin. '
-   +'<a href="javascript:void(0)" onclick="_binGoto()" style="color:#1565c0;font-weight:700">Buka Recycle Bin &amp; Karantina</a></div></div>';
+   +' Daftarnya ada di ENV Tools, bagian Antrian Rekonsiliasi (bukan Recycle Bin), lengkap dengan tombol Pulihkan. '
+   +'<a href="javascript:void(0)" onclick="_quarGoto()" style="color:#1565c0;font-weight:700">Buka Antrian Rekonsiliasi</a></div></div>';
 }
 function _hsQuarPutBack(entry){
   var r=entry&&entry.row;if(!r)return false;
@@ -34788,7 +34847,7 @@ function _etRenderRecon(c){
      +' <span style="font-weight:400;color:#9a5b00">'+list.length+'</span></div>'
      +'<div style="font-size:13px;color:#888;margin-bottom:6px">'+g.ket+'</div>'
      +'<div style="max-height:300px;overflow:auto;border:1px solid #eee;border-radius:7px">'
-     +'<table style="width:100%;border-collapse:collapse"><tbody>';
+     +'<table style="width:100%;border-collapse:collapse"><thead><tr><th class="y554-th" style="padding:5px 8px;text-align:left;font-size:11px;font-weight:700;color:#666;border-bottom:1px solid #e0e0e0;background:#fafafa;position:sticky;top:0">Temuan</th><th class="y554-th" style="padding:5px 8px;text-align:left;font-size:11px;font-weight:700;color:#666;border-bottom:1px solid #e0e0e0;background:#fafafa;position:sticky;top:0;text-align:right">Tindakan</th></tr></thead><tbody>';
     list.slice(0,200).forEach(function(x){
       h+='<tr>'
        +'<td style="'+TD+'"><b>'+_ep(x.judul)+'</b>'
@@ -34805,7 +34864,7 @@ function _etRenderRecon(c){
   if(shut.length){
     h+='<div style="margin-top:8px"><div style="font-weight:700;font-size:13px;margin-bottom:5px">\u2714 Sudah dicek ('+shut.length+')</div>'
      +'<div style="max-height:220px;overflow:auto;border:1px solid #eee;border-radius:7px">'
-     +'<table style="width:100%;border-collapse:collapse"><tbody>';
+     +'<table style="width:100%;border-collapse:collapse"><thead><tr><th class="y554-th" style="padding:5px 8px;text-align:left;font-size:11px;font-weight:700;color:#666;border-bottom:1px solid #e0e0e0;background:#fafafa;position:sticky;top:0">Temuan (sudah dicek)</th><th class="y554-th" style="padding:5px 8px;text-align:left;font-size:11px;font-weight:700;color:#666;border-bottom:1px solid #e0e0e0;background:#fafafa;position:sticky;top:0;text-align:right">Tindakan</th></tr></thead><tbody>';
     shut.slice(0,200).forEach(function(x){
       var d=done[x.id]||{};
       h+='<tr><td style="'+TD+';color:#888">'+_ep(x.judul)+' \u2014 '+_ep(x.detail||'')
@@ -43721,46 +43780,6 @@ function _emfPKey(s){
 function _emfCanonParam(s){
   var k=_emfSq(s).toLowerCase();
   for(var a in EMF_PARAM){if(_emfSq(a).toLowerCase()===k)return EMF_PARAM[a];}
-  // The pack has been through _paramCanon (Salinity ** -> Salinitas); the
-  // document still prints the old spelling. This function is called on both
-  // sides of the index, so canonicalising here is what makes them meet --
-  // and it is idempotent for names that are already canonical.
-  if(typeof _paramCanon==='function'){
-    var _pc=_paramCanon(_emfSq(s));
-    if(_pc&&_pc!==_emfSq(s))return _pc;
-  }
-  // The pack has been through _paramCanon (Salinity ** -> Salinitas); the
-  // document still prints the old spelling. This function is called on both
-  // sides of the index, so canonicalising here is what makes them meet --
-  // and it is idempotent for names that are already canonical.
-  if(typeof _paramCanon==='function'){
-    var _pc=_paramCanon(_emfSq(s));
-    if(_pc&&_pc!==_emfSq(s))return _pc;
-  }
-  // The pack has been through _paramCanon (Salinity ** -> Salinitas); the
-  // document still prints the old spelling. This function is called on both
-  // sides of the index, so canonicalising here is what makes them meet --
-  // and it is idempotent for names that are already canonical.
-  if(typeof _paramCanon==='function'){
-    var _pc=_paramCanon(_emfSq(s));
-    if(_pc&&_pc!==_emfSq(s))return _pc;
-  }
-  // The pack has been through _paramCanon (Salinity ** -> Salinitas); the
-  // document still prints the old spelling. This function is called on both
-  // sides of the index, so canonicalising here is what makes them meet --
-  // and it is idempotent for names that are already canonical.
-  if(typeof _paramCanon==='function'){
-    var _pc=_paramCanon(_emfSq(s));
-    if(_pc&&_pc!==_emfSq(s))return _pc;
-  }
-  // The pack has been through _paramCanon (Salinity ** -> Salinitas); the
-  // document still prints the old spelling. This function is called on both
-  // sides of the index, so canonicalising here is what makes them meet --
-  // and it is idempotent for names that are already canonical.
-  if(typeof _paramCanon==='function'){
-    var _pc=_paramCanon(_emfSq(s));
-    if(_pc&&_pc!==_emfSq(s))return _pc;
-  }
   if(_EMF_PACK_PARAMS){
     var kk=_emfPKey(s);
     for(var i=0;i<_EMF_PACK_PARAMS.length;i++)if(_emfPKey(_EMF_PACK_PARAMS[i])===kk)return _EMF_PACK_PARAMS[i];
@@ -44546,6 +44565,27 @@ function _emfPatchManual(doc,year,sem){
 // Anything left over that still names another period. Only two shapes are
 // checked, both impossible for a regulation number to take: a full date, and
 // the "January-25" month labels the waste logbook uses.
+// Y549d: jejak periode lama di dalam SEL tabel air. `_emfAuditPeriode` hanya
+// membaca kalimat dan hanya mengenali "December-25"; blok "Dec-25" di sel
+// tabel hidrostatik lolos bahkan di mode penuh. Di mode Bagian Air penyidik
+// itu dimatikan seluruhnya, jadi tidak ada peringatan sama sekali. Hanya
+// tabel yang memang dianggap bagian air yang diperiksa -- tabel emisi,
+// kebisingan dan sejenisnya sengaja dibiarkan membawa tanggal aslinya.
+function _emfAuditTabelAir(tc,year){
+  var yy=String(year).slice(2), out=[], seen={};
+  var re=/^(?:\d{1,2}-)?(?:Jan|Feb|Mar|Apr|May|Mei|Jun|Jul|Aug|Agu|Sep|Oct|Okt|Nov|Dec|Des)[a-z]*-(\d{2})$/i;
+  for(var i=0;i<tc.length;i++){
+    var cap=String(tc[i].caption||'');
+    if(!(_emfIsTargetCaption(cap)||_emfIsHydroCaption(cap)||_emfDredgeJenis(cap)))continue;
+    var cells=tc[i].tbl.getElementsByTagNameNS(EMF_W,'tc');
+    for(var j=0;j<cells.length;j++){
+      var t=String(_emfCellText(cells[j])||'').trim(), m=re.exec(t);
+      if(m&&m[1]!==yy&&!seen[t]){seen[t]=1;out.push({apa:t,konteks:'Tabel air: '+cap.slice(0,110)});}
+      if(out.length>=20)return out;
+    }
+  }
+  return out;
+}
 function _emfAuditPeriode(doc,year){
   var yy=String(year).slice(2), out=[], seen={};
   var reMon=/\b(January|February|March|April|May|June|July|August|September|October|November|December)-(\d{2})\b/g;
@@ -45778,7 +45818,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
         report.push({caption:tc[i].caption+' \u2014 '+rl.rows+' titik dari data izin',filled:rl.filled,empty:0,log:rl.log});}
       continue;
     }
-    if(!waterOnly&&_emfIsHydroCaption(tc[i].caption)){
+    if(/*Y549a:hidrostatik termasuk bagian air*/_emfIsHydroCaption(tc[i].caption)){
       var rh=_emfPatchHydro(tc[i].tbl,year,months,siteOverride?[siteOverride]:_emfDocSites(file.name));
       if(rh){tot+=rh.filled;hydroDone+=rh.rows;
              report.push({caption:tc[i].caption+' \u2014 '+rh.rows+' baris',filled:rh.filled,empty:0,log:rh.log});}
@@ -45964,6 +46004,21 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
           }
           dibuat.push('tabel hasil uji hidrostatik');
           hydro=0;   // peringatan merahnya tidak berlaku lagi
+          // Y549c: tabel hasil hidrostatik LAMA yang tidak bisa diisi tidak
+          // boleh ikut tinggal -- isinya periode lain, dan judulnya sudah
+          // diganti jadi periode ini oleh penulis ulang kata-kata.
+          try{
+            for(var _tl=0;_tl<tc.length;_tl++){
+              var _cl=String(tc[_tl].caption||'');
+              if(tc[_tl].tbl===_h.tbl||!_emfIsHydroCaption(_cl))continue;
+              var _pCap=_emfPSebelum(tc[_tl].tbl);
+              var _pLead=_pCap?_emfPSebelum(_pCap):null;
+              var _buang=[tc[_tl].tbl,_pCap];
+              if(_pLead&&/^\s*Berikut/i.test(String(_pLead.textContent||''))&&/hidrostatik/i.test(String(_pLead.textContent||'')))_buang.push(_pLead);
+              _emfCabut(_buang);
+              report.push({caption:'Tabel hasil uji hidrostatik lama dicabut — tidak bisa diisi, dan tabel baru sudah dibuat dari data periode ini',filled:0,empty:0,log:[]});
+            }
+          }catch(_eLm){}
         }else{
           _emfCabut([_h.tbl,_h.pCap,_h.pLead]);
           tabelGagal.push('hasil uji hidrostatik: datanya tercatat, tapi tidak ada satu pun bacaan yang cocok dengan kolom tabelnya');
@@ -45971,7 +46026,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
       }
     }
   }catch(_eBuat){}
-  if(!waterOnly&&!hydroDone&&!hydro)_emfPatchNoHydro(doc,year,sem);
+  if(/*Y549b*/!hydroDone&&!hydro)_emfPatchNoHydro(doc,year,sem);
   if(!waterOnly&&!dredgeRows)_emfPatchNoDredge(doc,year,sem);
   // Y469: kalimat "kecuali untuk parameter ..." disusun ulang dari data
   // periode ini, bukan digeser tahunnya.
@@ -45985,7 +46040,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   var nWord=waterOnly?_emfWaterOnlyWording(doc,year,sem,months):_emfPatchWording(doc,year,sem);
   var manual=waterOnly?{done:[],left:[]}:_emfPatchManual(doc,year,sem);
   if(siteOverride&&!waterOnly)_emfPatchSite(doc,_emfDetectSite(doc),siteOverride);
-  var sisaPeriode=waterOnly?[]:_emfAuditPeriode(doc,year);
+  var sisaPeriode=waterOnly?_emfAuditTabelAir(tc,year):_emfAuditPeriode(doc,year);
   // Y479: sapuan terakhir — sel yang merupakan lanjutan merge dikosongkan.
   // Word tidak pernah menampilkan isinya, tapi teks yang tertinggal di sana
   // akan muncul berulang begitu merge-nya diubah atau tabelnya dikonversi.
