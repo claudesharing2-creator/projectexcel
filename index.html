@@ -5633,7 +5633,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'aa831c43'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'7fd22b98'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -18790,13 +18790,13 @@ function renderEnvProgram(){
     if(izinOpts.length<2)return '';
     const bad=s=>/belum|tanpa/i.test(s);
     return `<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-    <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px">Status Izin:</span>
+    <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Status Izin:</span>
     <button onclick="_epIzin='';renderEnvProgram()" style="border:1px solid ${!_epIzin?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_epIzin?'#444':'#fff'};color:${!_epIzin?'#fff':'#555'}">Semua</button>
     ${izinOpts.map(s=>`<button data-s="${_ep(s)}" onclick="_epIzin=this.dataset.s;renderEnvProgram()" style="border:1px solid ${_epIzin===s?(bad(s)?'#c62828':'#2e7d32'):'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_epIzin===s?(bad(s)?'#c62828':'#2e7d32'):'#fff'};color:${_epIzin===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
   </div>`;
   })():'';
   const siteBtns=(hasSites?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-    <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px">Site:</span>
+    <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Site:</span>
     <button onclick="_epSite='';renderEnvProgram()" style="border:1px solid ${!_epSite?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_epSite?'#444':'#fff'};color:${!_epSite?'#fff':'#555'}">Semua</button>
     ${sites.map(SBTN).join('')}
   </div>`:'')+izinBtns;
@@ -23730,25 +23730,25 @@ function _hsRenderCore(){
   // sheet names (PW, DWW, Drainase, BPN...) only confused what the filter
   // was even for — those rows still show under "Semua", just without a
   // dedicated isolating chip.
-  const sheets=[...new Set(rowsAll.map(r=>r.extra&&r.extra.sumberSheet).filter(Boolean))].filter(s=>s!=='Manual Input').sort();
+  const sheets=[...new Set(rowsAll.map(r=>r.extra&&r.extra.sumberSheet&&String(r.extra.sumberSheet).trim()).filter(Boolean))].filter(s=>s!=='Manual Input').sort();
   const qLow=_hsQ.toLowerCase();
   const matchQ=r=>!_hsQ||[r.titik,r.parameter,r.catatan,...(r.noRfa||[])].some(v=>String(v||'').toLowerCase().includes(qLow));
   const rows=rowsAll.filter(r=>{
     if(_hsSite&&_hsSiteN(r.site)!==_hsSite)return false;
-    if(_hsSheet&&(!r.extra||r.extra.sumberSheet!==_hsSheet))return false;
+    if(_hsSheet&&(!r.extra||String(r.extra.sumberSheet).trim()!==_hsSheet))return false;
     if(_hsOnlyExceed&&r.status!=='exceed')return false;
     if(_hsGroup==='Monthly'&&_hsIzin&&(_hsIzinStatus(r.titik)||'Tanpa Status')!==_hsIzin)return false;
     return matchQ(r);
   });
 
   const sheetBtns=sheets.length>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:8px 0">
-    <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px">Sheet:</span>
+    <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Sheet:</span>
     <button onclick="_hsSheet='';_hsTitik='';renderHasilSampling()" style="border:1px solid ${!_hsSheet?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_hsSheet?'#444':'#fff'};color:${!_hsSheet?'#fff':'#555'}">Semua</button>
     ${sheets.map(s=>`<button data-s="${_ep(s)}" onclick="_hsSheet=this.dataset.s;_hsTitik='';renderHasilSampling()" style="border:1px solid ${_hsSheet===s?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_hsSheet===s?'#444':'#fff'};color:${_hsSheet===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
   </div>`:'';
 
   const siteBtns=(sites.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:8px 0">
-    <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px">Site:</span>
+    <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Site:</span>
     <button onclick="_hsSite='';_hsTitik='';renderHasilSampling()" style="border:1px solid ${!_hsSite?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_hsSite?'#444':'#fff'};color:${!_hsSite?'#fff':'#555'}">Semua</button>
     ${sites.map(s=>`<button data-s="${_ep(s)}" onclick="_hsSite=this.dataset.s;_hsTitik='';renderHasilSampling()" style="border:1px solid ${_hsSite===s?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_hsSite===s?'#444':'#fff'};color:${_hsSite===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
   </div>`:'')+(_hsGroup==='Monthly'?(()=>{
@@ -23756,7 +23756,7 @@ function _hsRenderCore(){
     if(izinOpts.length<2)return '';
     const bad=s=>/belum|tanpa/i.test(s);
     return `<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:8px 0">
-    <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px">Status Izin:</span>
+    <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Status Izin:</span>
     <button onclick="_hsIzin='';_hsTitik='';renderHasilSampling()" style="border:1px solid ${!_hsIzin?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_hsIzin?'#444':'#fff'};color:${!_hsIzin?'#fff':'#555'}">Semua</button>
     ${izinOpts.map(s=>`<button data-s="${_ep(s)}" onclick="_hsIzin=this.dataset.s;_hsTitik='';renderHasilSampling()" style="border:1px solid ${_hsIzin===s?(bad(s)?'#c62828':'#2e7d32'):'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_hsIzin===s?(bad(s)?'#c62828':'#2e7d32'):'#fff'};color:${_hsIzin===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
   </div>`;
@@ -23866,7 +23866,7 @@ function _hsRenderCore(){
     }).join('');
 
     el.innerHTML=controls+sheetBtns+siteBtns+
-      `<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px;flex-wrap:wrap">${yearBtns?`<span style="font-size:13px;color:#888;font-weight:600">Tahun:</span>${yearBtns}`:''}</div>
+      `<div style="display:flex;align-items:center;gap:4px;margin:8px 0;flex-wrap:wrap">${yearBtns?`<span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Tahun:</span>${yearBtns}`:''}</div>
       <div style="font-size:13px;color:#888;margin-bottom:10px">Layout mengikuti recap Excel asli — titik × periode, satu blok per titik penaatan. Baris Debit/Beban Pencemar/Produksi (dari alat Debit Harian, bukan Hasil Sampling) tidak termasuk di sini — klik nama titik untuk buka detailnya di Per Titik.</div>
       <div style="overflow:auto;border:1px solid #e0e0e0;border-radius:8px;max-height:70vh">
         <table style="border-collapse:collapse;width:100%;font-family:inherit">
@@ -34967,7 +34967,7 @@ function _etRenderDataPack(host){
   const nDeb=Object.keys(HASIL_DEBIT_DAILY).length,nPh=Object.keys(HASIL_PH_DAILY).length;
   let years={};
   Object.values(HASIL_DEBIT_DAILY).forEach(function(d){Object.keys(d).forEach(function(k){years[k.slice(0,4)]=1;});});
-  host.innerHTML='<div style="padding:14px 16px;max-width:900px;margin:0 auto">'
+  host.innerHTML='<div style="padding:14px 0;max-width:900px;margin:0 auto">'
    +'<div style="font-size:13px;color:#666;margin-bottom:12px">File HTML ini adalah <b>sistem murni</b> — semua data bisa disimpan terpisah sebagai satu file <b>Data Pack (.json)</b> lalu dimuat kembali kapan pun (pindah komputer, backup, atau berbagi data). Pack berisi: recording debit/pH harian semua tahun, dan seluruh isian aplikasi (kegiatan kalender, tracking laporan, data produksi manual, hasil review, pengaturan).</div>'
    +'<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">'
    +'<div class="et-card" style="flex:1;min-width:240px"><div style="font-weight:700;font-size:13px;margin-bottom:6px">Export / Backup</div>'
@@ -34978,7 +34978,7 @@ function _etRenderDataPack(host){
    +((function(){try{var _c=_cfConfig();return (_c.url&&_c.readToken)?'':'<div data-y414="cf-belum-siap" style="font-size:13px;color:#9a5b00;background:#fff8f0;border:1px solid #f0c8a8;border-radius:8px;padding:7px 9px;margin-bottom:10px">⚠ Cloudflare belum dikonfigurasi — isi alamat Worker dan token baca di Pengaturan Cloudflare di bawah. Berkas manual tetap bisa dipakai.</div>';}catch(e){return '';}})())
    +'<button onclick="_dpOpenLoader()" style="background:#1565c0;color:#fff;border:none;border-radius:7px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700">Muat / Kelola Data Pack</button></div>'
    +'</div>'
-   +'<div class="et-card" style="margin-top:12px"><div style="font-weight:700;font-size:13px;margin-bottom:6px">Daftar Petugas (PPC)</div>'
+   +'<div class="et-card" style="max-width:none;margin-left:0;margin-right:0;margin-top:12px"><div style="font-weight:700;font-size:13px;margin-bottom:6px">Daftar Petugas (PPC)</div>'
    +(typeof _persStatusHtml==='function'?_persStatusHtml():'')
    +'<div style="font-size:13px;color:#777;margin-bottom:10px">Berkas yang dishare di internet sengaja memakai nama contoh \u2014 nama asli tidak pernah ikut ke dalamnya. Nama asli masuk lewat berkas di bawah, dan (kalau Anda mau) disimpan sekali di Cloudflare pribadi Anda supaya perangkat lain mengambilnya sendiri.</div>'
    +'<input type="file" id="pers-file" accept=".json,application/json" style="display:none" onchange="if(this.files[0])_persImportFile(this.files[0]);this.value=\'\'">'
@@ -39542,82 +39542,121 @@ function _drainExportRaw(){
   if(missing.length)_drainAskFillMissing(missing.length,jalan);
   else jalan(null);
 }
-function _drainDoExportRaw(cats,startYm,endYm,fillMode){
+/*Y559*/const DRAIN_RAW_STYLES="<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><numFmts count=\"1\"><numFmt numFmtId=\"164\" formatCode=\"yyyy\\-mm\\-dd;@\"/></numFmts><fonts count=\"5\"><font><sz val=\"11\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><sz val=\"11\"/><color rgb=\"FFFFFFFF\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><sz val=\"12\"/><color rgb=\"FFFFFFFF\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><b/><sz val=\"9\"/><color indexed=\"81\"/><name val=\"Tahoma\"/><family val=\"2\"/></font><font><sz val=\"9\"/><color indexed=\"81\"/><name val=\"Tahoma\"/><family val=\"2\"/></font></fonts><fills count=\"9\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF8497B0\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFC00000\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF002060\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFF00\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF375623\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF7F6000\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFC55A11\"/><bgColor indexed=\"64\"/></patternFill></fill></fills><borders count=\"10\"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style=\"medium\"><color indexed=\"64\"/></left><right/><top style=\"medium\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left/><right/><top style=\"medium\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color indexed=\"64\"/></right><top style=\"medium\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left style=\"medium\"><color indexed=\"64\"/></left><right/><top/><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color indexed=\"64\"/></right><top/><bottom/><diagonal/></border><border><left style=\"medium\"><color indexed=\"64\"/></left><right/><top/><bottom style=\"medium\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right/><top/><bottom style=\"medium\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color indexed=\"64\"/></right><top/><bottom style=\"medium\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right/><top/><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"32\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\"/><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"3\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"4\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"2\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"164\" fontId=\"0\" fillId=\"5\" borderId=\"0\" xfId=\"0\" quotePrefix=\"1\" applyNumberFormat=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"5\" borderId=\"0\" xfId=\"0\" quotePrefix=\"1\" applyNumberFormat=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"5\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"5\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"164\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" quotePrefix=\"1\" applyNumberFormat=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyNumberFormat=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"164\" fontId=\"0\" fillId=\"0\" borderId=\"1\" xfId=\"0\" quotePrefix=\"1\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"3\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"164\" fontId=\"0\" fillId=\"0\" borderId=\"4\" xfId=\"0\" quotePrefix=\"1\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"5\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"164\" fontId=\"0\" fillId=\"0\" borderId=\"6\" xfId=\"0\" quotePrefix=\"1\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"8\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"6\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"7\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"8\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"5\" borderId=\"0\" xfId=\"0\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"164\" fontId=\"0\" fillId=\"0\" borderId=\"9\" xfId=\"0\" quotePrefix=\"1\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"9\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"2\" fontId=\"0\" fillId=\"0\" borderId=\"9\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf></cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles><dxfs count=\"0\"/><tableStyles count=\"0\" defaultTableStyle=\"TableStyleMedium2\" defaultPivotStyle=\"PivotStyleLight16\"/></styleSheet>";
+const DRAIN_RAW_WARNA={SPS:3,BKP:4,CPU:25,NPU:26,SPU:27};
+function _drainRawGaya(pt){
+  for(var s in DRAIN_SITES){if(DRAIN_SITES[s].indexOf(pt)>=0)return DRAIN_RAW_WARNA[s]||2;}
+  return 2;
+}
+function _drainRawEsc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function _drainRawKol(i){var s='';i++;while(i>0){var m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
+function _drainRawSheet(cat,months,fillMode,idx){
+  var pts=Object.keys(DRAIN_AREAS[cat]), samboja=(cat==='Samboja'), K=_drainRawKol;
+  var str=function(r,c,s,t){return '<c r="'+K(c)+r+'" s="'+s+'" t="inlineStr"><is><t xml:space="preserve">'+_drainRawEsc(t)+'</t></is></c>';};
+  var num=function(r,c,s,v,f){return '<c r="'+K(c)+r+'" s="'+s+'">'+(f?'<f>'+f+'</f>':'')+'<v>'+v+'</v></c>';};
+  var rows=[], hari=0, terisi=0;
+  var seri=function(y,m,d){return Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000);};
+  rows.push('<row r="1">'+str(1,3,1,'C')+str(1,4,1,samboja?'Ketetapan':'Koef')+'</row>');
+  rows.push('<row r="2">'+num(2,3,1,DRAIN_C)+num(2,4,1,DRAIN_K)+'</row>');
+  var r3=str(3,2,2,samboja?'Catchment Area (A)':'Catchment Area');
+  pts.forEach(function(pt,i){r3+=num(3,3+i,_drainRawGaya(pt),DRAIN_AREAS[cat][pt]);});
+  rows.push('<row r="3" ht="'+(samboja?'43.2':'28.8')+'" customHeight="1">'+r3+'</row>');
+  var r4=str(4,0,5,'TANGGAL (YYYY-MM-DD)')+str(4,1,5,'CURAH HUJAN (MM)')+str(4,2,2,'INTENSITAS CURAH HUJAN (I)');
+  pts.forEach(function(pt,i){r4+=str(4,3+i,_drainRawGaya(pt),pt);});
+  rows.push('<row r="4" ht="57.6" customHeight="1">'+r4+'</row>');
+  var r=5;
+  months.forEach(function(ym){
+    var bagi=ym.split('-'), y=Number(bagi[0]), m=Number(bagi[1]), lastDay=new Date(y,m,0).getDate();
+    for(var d=1;d<=lastDay;d++){
+      var key=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      var mm=DRAIN_DATA[cat][key];
+      if(!(mm!=null&&isFinite(mm))){
+        mm=(fillMode==='avg')?_drainMonthAvg(cat,ym):(fillMode==='zero'?0:null);
+        if(mm!=null)terisi++;
+      }
+      var I=(mm==null)?0:mm/24, cells=num(r,0,10,seri(y,m,d));
+      if(mm!=null)cells+=num(r,1,12,mm);
+      cells+=num(r,2,12,I,'B'+r+'/24');
+      pts.forEach(function(pt,i){
+        var kol='$'+K(3+i)+'$3';
+        cells+=num(r,3+i,12,DRAIN_C*DRAIN_K*DRAIN_AREAS[cat][pt]*I,
+          samboja?'$D$2*$E$2*'+kol+'*C'+r:'$E$2*$D$2*$C'+r+'*'+kol);
+      });
+      rows.push('<row r="'+r+'">'+cells+'</row>');
+      r++; hari++;
+    }
+  });
+  var xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+    +'<dimension ref="A1:'+K(2+pts.length)+(r-1)+'"/>'
+    +'<sheetViews><sheetView'+(idx===0?' tabSelected="1"':'')+' workbookViewId="0"><pane xSplit="1" ySplit="4" topLeftCell="B5" activePane="bottomRight" state="frozen"/>'
+    +'<selection pane="topRight" activeCell="B1" sqref="B1"/><selection pane="bottomLeft" activeCell="A5" sqref="A5"/><selection pane="bottomRight" activeCell="B5" sqref="B5"/></sheetView></sheetViews>'
+    +'<sheetFormatPr defaultRowHeight="14.4"/>'
+    +'<cols><col min="1" max="1" width="14" customWidth="1"/><col min="2" max="2" width="14" customWidth="1"/><col min="3" max="3" width="16" customWidth="1"/>'
+    +'<col min="4" max="'+(3+pts.length)+'" width="18" customWidth="1"/></cols>'
+    +'<sheetData>'+rows.join('')+'</sheetData>'
+    +'<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/><legacyDrawing r:id="rId1"/></worksheet>';
+  return {xml:xml,hari:hari,terisi:terisi};
+}
+function _drainRawKomentar(){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><authors><author>ENV Dashboard</author></authors><commentList>'
+    +'<comment ref="C4" authorId="0" shapeId="0"><text><r><rPr><b/><sz val="9"/><color indexed="81"/><rFont val="Tahoma"/><family val="2"/></rPr><t>ENV Dashboard:</t></r>'
+    +'<r><rPr><sz val="9"/><color indexed="81"/><rFont val="Tahoma"/><family val="2"/></rPr><t xml:space="preserve">\nasumsi waktu hujan 24 jam</t></r></text></comment></commentList></comments>';
+}
+function _drainRawVml(n){
+  return '<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">\n'
+    +' <o:shapelayout v:ext="edit"><o:idmap v:ext="edit" data="'+n+'"/></o:shapelayout><v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202" path="m,l,21600r21600,l21600,xe">'
+    +'<v:stroke joinstyle="miter"/><v:path gradientshapeok="t" o:connecttype="rect"/></v:shapetype>'
+    +'<v:shape id="_x0000_s'+(n*1024+1)+'" type="#_x0000_t202" style=\'position:absolute;margin-left:153pt;margin-top:51.6pt;width:103.2pt;height:60.6pt;z-index:1;visibility:hidden\' fillcolor="infoBackground [80]" strokecolor="none [81]" o:insetmode="auto">'
+    +'<v:fill color2="infoBackground [80]"/><v:shadow color="none [81]" obscured="t"/><v:path o:connecttype="none"/><v:textbox style=\'mso-direction-alt:auto\'><div style=\'text-align:left\'></div></v:textbox>'
+    +'<x:ClientData ObjectType="Note"><x:MoveWithCells/><x:SizeWithCells/><x:Anchor>3, 12, 2, 30, 5, 21, 3, 72</x:Anchor><x:AutoFill>False</x:AutoFill><x:Row>3</x:Row><x:Column>2</x:Column></x:ClientData></v:shape></xml>';
+}
+async function _drainDoExportRaw(cats,startYm,endYm,fillMode){
   var statusEl=document.getElementById('et-drain-export-status');
-  if(typeof XLSX==='undefined'||!XLSX.utils||!XLSX.write){
-    if(statusEl)statusEl.textContent='⚠ Pustaka Excel belum siap — muat ulang halaman lalu coba lagi.';
+  if(typeof _emfZipWrite!=='function'){
+    if(statusEl)statusEl.textContent='⚠ Penulis berkas belum siap — muat ulang halaman lalu coba lagi.';
     return;
   }
-  var months=_drainMonthsInRange(startYm,endYm);
-  var seri=function(y,m,d){return Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000);};
-  var wb=XLSX.utils.book_new(), hari=0, terisi=0;
-  cats.forEach(function(cat){
-    var pts=Object.keys(DRAIN_AREAS[cat]), samboja=(cat==='Samboja');
-    var ws={}, rng={s:{r:0,c:0},e:{r:3,c:pts.length+2}};
-    var set=function(r,c,cell){
-      ws[XLSX.utils.encode_cell({r:r,c:c})]=cell;
-      if(r>rng.e.r)rng.e.r=r;
-      if(c>rng.e.c)rng.e.c=c;
-    };
-    set(0,3,{t:'s',v:'C'});
-    set(0,4,{t:'s',v:samboja?'Ketetapan':'Koef'});
-    set(1,3,{t:'n',v:DRAIN_C});
-    set(1,4,{t:'n',v:DRAIN_K});
-    set(2,2,{t:'s',v:samboja?'Catchment Area (A)':'Catchment Area'});
-    pts.forEach(function(pt,i){
-      set(2,3+i,{t:'n',v:DRAIN_AREAS[cat][pt]});
-      set(3,3+i,{t:'s',v:pt});
+  try{
+    var months=_drainMonthsInRange(startYm,endYm), enc=new TextEncoder(), parts={}, order=[], hari=0, terisi=0;
+    var put=function(name,text){parts[name]={data:enc.encode(text)};order.push(name);};
+    var XM='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n', REL='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    var ct=XM+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="vml" ContentType="application/vnd.openxmlformats-officedocument.vmlDrawing"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>';
+    var sheetsXml='', wbRels='', lembar=[];
+    cats.forEach(function(cat,i){
+      var sh=_drainRawSheet(cat,months,fillMode,i);
+      hari=sh.hari; terisi+=sh.terisi;
+      lembar.push({cat:cat,i:i+1,sh:sh});
+      ct+='<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/comments'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"/>';
+      sheetsXml+='<sheet name="'+cat+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>';
+      wbRels+='<Relationship Id="rId'+(i+1)+'" Type="'+REL+'/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>';
     });
-    set(3,0,{t:'s',v:'TANGGAL (YYYY-MM-DD)'});
-    set(3,1,{t:'s',v:'CURAH HUJAN (MM)'});
-    set(3,2,{t:'s',v:'INTENSITAS CURAH HUJAN (I)'});
-    var r=4;
-    months.forEach(function(ym){
-      var bagi=ym.split('-'), y=Number(bagi[0]), m=Number(bagi[1]);
-      var lastDay=new Date(y,m,0).getDate();
-      for(var d=1;d<=lastDay;d++){
-        var key=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-        var mm=DRAIN_DATA[cat][key];
-        if(!(mm!=null&&isFinite(mm))){
-          mm=(fillMode==='avg')?_drainMonthAvg(cat,ym):(fillMode==='zero'?0:null);
-          if(mm!=null)terisi++;
-        }
-        var baris=r+1;
-        set(r,0,{t:'n',v:seri(y,m,d),z:'yyyy-mm-dd'});
-        if(mm==null){
-          set(r,2,{t:'n',v:0,f:'B'+baris+'/24'});
-          pts.forEach(function(pt,i){
-            var kol=XLSX.utils.encode_col(3+i);
-            set(r,3+i,{t:'n',v:0,f:(samboja?'$D$2*$E$2*$'+kol+'$3*C'+baris:'$E$2*$D$2*$C'+baris+'*$'+kol+'$3')});
-          });
-        }else{
-          var I=mm/24;
-          set(r,1,{t:'n',v:mm});
-          set(r,2,{t:'n',v:I,f:'B'+baris+'/24'});
-          pts.forEach(function(pt,i){
-            var kol=XLSX.utils.encode_col(3+i);
-            set(r,3+i,{t:'n',v:DRAIN_C*DRAIN_K*DRAIN_AREAS[cat][pt]*I,
-              f:(samboja?'$D$2*$E$2*$'+kol+'$3*C'+baris:'$E$2*$D$2*$C'+baris+'*$'+kol+'$3')});
-          });
-        }
-        r++;
-        hari++;
-      }
+    ct+='</Types>';
+    wbRels+='<Relationship Id="rId'+(cats.length+1)+'" Type="'+REL+'/styles" Target="styles.xml"/>';
+    put('[Content_Types].xml',ct);
+    put('_rels/.rels',XM+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="'+REL+'/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+    put('xl/workbook.xml',XM+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="'+REL+'"><bookViews><workbookView xWindow="0" yWindow="0" windowWidth="23256" windowHeight="12456"/></bookViews><sheets>'+sheetsXml+'</sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>');
+    put('xl/_rels/workbook.xml.rels',XM+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+wbRels+'</Relationships>');
+    put('xl/styles.xml',DRAIN_RAW_STYLES);
+    lembar.forEach(function(L){
+      put('xl/worksheets/sheet'+L.i+'.xml',L.sh.xml);
+      put('xl/worksheets/_rels/sheet'+L.i+'.xml.rels',XM+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId2" Type="'+REL+'/comments" Target="../comments'+L.i+'.xml"/><Relationship Id="rId1" Type="'+REL+'/vmlDrawing" Target="../drawings/vmlDrawing'+L.i+'.vml"/></Relationships>');
+      put('xl/comments'+L.i+'.xml',_drainRawKomentar());
+      put('xl/drawings/vmlDrawing'+L.i+'.vml',_drainRawVml(L.i));
     });
-    ws['!ref']=XLSX.utils.encode_range(rng);
-    ws['!cols']=[{wch:22},{wch:18},{wch:28}].concat(pts.map(function(pt){return {wch:Math.max(14,Math.min(28,String(pt).length+4))};}));
-    XLSX.utils.book_append_sheet(wb,ws,cat);
-  });
-  var out=XLSX.write(wb,{type:'array',bookType:'xlsx'});
-  var outName='Debit_Drainase_'+startYm.replace('-','')+'_'+endYm.replace('-','')+'.xlsx';
-  var url=URL.createObjectURL(new Blob([out],{type:'application/octet-stream'}));
-  var a=document.createElement('a');
-  a.href=url;a.download=outName;
-  document.body.appendChild(a);a.click();a.remove();
-  setTimeout(function(){URL.revokeObjectURL(url);},4000);
-  if(statusEl)statusEl.textContent='✓ '+outName+' diunduh — lembar '+cats.join(' + ')+', '+(hari/cats.length)+' hari per lembar. '
-    +'Rumus masih hidup: ubah C, Koef/Ketetapan, Catchment Area (baris atas) atau curah hujan (kolom B), debit ikut berubah.'
-    +(terisi?' '+terisi+' hari kosong diisi dengan pilihan Anda.':'');
+    var zip=await _emfZipWrite(parts,order);
+    var blob=new Blob([zip],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var outName='Debit_Drainase_'+startYm.replace('-','')+'_'+endYm.replace('-','')+'.xlsx';
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download=outName;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},4000);
+    if(statusEl)statusEl.textContent='✓ '+outName+' diunduh — lembar '+cats.join(' + ')+', '+hari+' hari per lembar, format sama dengan Excel asli. '
+      +'Rumus masih hidup: ubah C, Koef/Ketetapan, Catchment Area (baris atas) atau curah hujan (kolom B), debit ikut berubah.'
+      +(terisi?' '+terisi+' hari kosong diisi dengan pilihan Anda.':'');
+  }catch(e){
+    if(statusEl)statusEl.textContent='⚠ Gagal menyusun berkas: '+(e&&e.message?e.message:e);
+  }
 }
 function _drainExport(mode){
   const startYm=document.getElementById('et-drain-start').value;
