@@ -2667,7 +2667,13 @@ h1,h2,h3,h4,.card-title,.dash-card-title,.et-sec-title,.mo-head h3,
 }
 </style>
 
-<style id="x51-polish">
+<style id="y561-tampilan">/* Y561 */
+html:root .et-sub-btn:not(.active),html:root .rfa-sub-btn:not(.active),html:root .lap-sub-btn:not(.active),html:root .drain-sub-btn:not(.active),html:root .hs-sub-btn:not(.active),html:root .ds-sub-btn:not(.active){border:2px solid var(--g3)!important}
+html:root .et-sub-btn.active,html:root .rfa-sub-btn.active,html:root .lap-sub-btn.active,html:root .drain-sub-btn.active,html:root .hs-sub-btn.active,html:root .ds-sub-btn.active{border:2px solid #1b5e20!important}
+html:root .et-card,html:root .et-card-solo{max-width:none!important;margin-left:0!important;margin-right:0!important}
+/* pil Monthly/Drilling (Hasil Sampling) dan Bulanan/Semesteran (ENV Program) memakai garis inline #e0e0e0 yang nyaris tak terlihat */
+html:root button[style*="border:2px solid #e0e0e0"]{border-color:var(--g3)!important}
+</style><style id="x51-polish">
 /* 2 — clearer, more visible outlines on every panel/menu */
 .et-sec,.et-card,.fsec,.mo-box{border-width:1px!important;border-color:rgba(20,32,60,.20)!important}
 .stat{border-color:rgba(20,32,60,.16)!important}
@@ -5633,7 +5639,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'3cfbf59e'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'7b001625'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -16178,7 +16184,23 @@ function _emfSkalaNilai(ds){
 // Y510: tata letak area plot dihitung dari TINGGI BINGKAI yang sebenarnya.
 // Bingkai diwarisi dari gambar yang digantikan dan berbeda-beda per dokumen,
 // jadi pecahan tetap akan menggepengkan plot di bingkai yang pendek.
-function _emfTataLetakPlot(tinggiInci,adaJudulSumbu){
+function _emfJudulUkuran(baris,lebarInci){
+  var W=parseFloat(lebarInci);if(!(W>1))W=3.6;
+  var pilih=[1200,1100,1000,900],pakai=null;
+  for(var i=0;i<pilih.length&&!pakai;i++){
+    var sz=pilih[i],cw=(sz/100)*0.6/72,cpl=Math.max(8,Math.floor((W*0.92)/cw)),n=0;
+    baris.forEach(function(t){n+=Math.max(1,Math.ceil(String(t).length/cpl));});
+    if(n<=baris.length)pakai={sz:sz,lines:n};
+  }
+  if(!pakai){
+    var cw2=(1000/100)*0.6/72,cpl2=Math.max(8,Math.floor((W*0.92)/cw2)),n2=0;
+    baris.forEach(function(t){n2+=Math.max(1,Math.ceil(String(t).length/cpl2));});
+    pakai={sz:1000,lines:n2};
+  }
+  pakai.tinggi=pakai.lines*(pakai.sz/100)*1.2/72+0.14;
+  return pakai;
+}
+function _emfTataLetakPlot(tinggiInci,adaJudulSumbu,judulInci){
   var H=parseFloat(tinggiInci);
   var x=adaJudulSumbu?0.175:0.125, w=adaJudulSumbu?0.795:0.845;
   if(!(H>0.5)){
@@ -16187,12 +16209,28 @@ function _emfTataLetakPlot(tinggiInci,adaJudulSumbu){
     return {x:0.17959161424662312,y:0.20646473721652264,
             w:0.78994843393984326,h:0.52437316846054827};
   }
-  var JUDUL=0.46, LEGENDA=0.24, LABEL=0.24;   // inci, diukur dari gambar acuan
+  var JUDUL=(judulInci>0.46)?judulInci:0.46, LEGENDA=0.24, LABEL=0.24;   // inci, diukur dari gambar acuan
   var y=JUDUL/H, h=(H-JUDUL-LEGENDA-LABEL)/H;
   if(h<0.30)h=0.30;
   if(h>0.72)h=0.72;
   if(y+h>0.95)y=Math.max(0.08,0.95-h);
   return {x:x,y:y,w:w,h:h};
+}
+/*Y561*/function _emfCantSplit(tc){
+  var n=0;
+  for(var i=0;i<tc.length;i++){
+    var cap=String(tc[i].caption||'');
+    if(!(_emfIsTargetCaption(cap)||_emfIsHydroCaption(cap)||_emfDredgeJenis(cap)||_emfIsBadanAirCaption(cap)))continue;
+    var trs=tc[i].tbl.getElementsByTagNameNS(EMF_W,'tr');
+    for(var j=0;j<trs.length;j++){
+      var tr=trs[j];if(tr.parentNode!==tc[i].tbl)continue;
+      var pr=null;for(var c=tr.firstChild;c;c=c.nextSibling){if(c.nodeType===1&&c.localName==='trPr'){pr=c;break;}}
+      if(!pr){pr=tr.ownerDocument.createElementNS(EMF_W,'w:trPr');var first=null;for(var d=tr.firstChild;d;d=d.nextSibling){if(d.nodeType===1&&d.localName==='tc'){first=d;break;}}tr.insertBefore(pr,first);}
+      var has=false;for(var e=pr.firstChild;e;e=e.nextSibling){if(e.nodeType===1&&e.localName==='cantSplit'){has=true;break;}}
+      if(!has){pr.insertBefore(tr.ownerDocument.createElementNS(EMF_W,'w:cantSplit'),pr.firstChild);n++;}
+    }
+  }
+  return n;
 }
 function _emfChartXml(spec){
   var d=_emfChartDeret(spec), cats=d.cats, ds=d.deret, n=cats.length;
@@ -16253,11 +16291,12 @@ function _emfChartXml(spec){
     grup+='<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>'+line.join('')
         +'<c:marker val="1"/><c:axId val="'+AX1+'"/><c:axId val="'+AX2+'"/></c:lineChart>';
   var baris=[spec.title,spec.subtitle].filter(function(x){return x;});
+  var tj=_emfJudulUkuran(baris,spec.lebarInci);
   var judul=baris.length
     ?('<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/>'
       +baris.map(function(t){
-        return '<a:p><a:pPr algn="ctr"><a:defRPr sz="1200" b="1"/></a:pPr>'
-              +'<a:r><a:rPr lang="id-ID" sz="1200" b="1"/><a:t>'+_emfXmlEsc(t)+'</a:t></a:r></a:p>';
+        return '<a:p><a:pPr algn="ctr"><a:defRPr sz="'+tj.sz+'" b="1"/></a:pPr>'
+              +'<a:r><a:rPr lang="id-ID" sz="'+tj.sz+'" b="1"/><a:t>'+_emfXmlEsc(t)+'</a:t></a:r></a:p>';
       }).join('')
       +'</c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>')
     :'<c:autoTitleDeleted val="1"/>';
@@ -16276,7 +16315,7 @@ function _emfChartXml(spec){
       +'<a:r><a:rPr lang="id-ID" sz="900" b="1"/><a:t>'+_emfXmlEsc(spec.axisTitle)+'</a:t></a:r>'
       +'</a:p></c:rich></c:tx><c:overlay val="0"/></c:title>')
     :'';
-  var L=_emfTataLetakPlot(spec.tinggiInci,!!spec.axisTitle);
+  var L=_emfTataLetakPlot(spec.tinggiInci,!!spec.axisTitle,tj.lines>baris.length?tj.tinggi:0);
   var tataLetak='<c:layout><c:manualLayout><c:layoutTarget val="inner"/>'
     +'<c:xMode val="edge"/><c:yMode val="edge"/>'
     +'<c:x val="'+L.x+'"/><c:y val="'+L.y+'"/>'
@@ -28734,7 +28773,7 @@ function _lapReconcile(){
 }
 function _lapDocBytes(html){
   return html.replace('<html>','<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">')
-    .replace('</head>','<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]--><style>@page{size:210mm 297mm;margin:14mm}</style></head>');
+    .replace('</head>','<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]--><style>@page{size:210mm 297mm;margin:14mm}@page WordSection2{size:297mm 210mm;mso-page-orientation:landscape;margin:12mm}.pg.wide{page:WordSection2}</style></head>');
 }
 function _lapChecksum(str){
   var h=0x811c9dc5;
@@ -31099,11 +31138,15 @@ function _lapPemantauanTableHtml(def,period,site,matrix,sec){
   const monLab=function(m){return semester?(m+'-'+String(yr).slice(-2)):(_LAP_MON_EN[m]+'-'+String(yr).slice(-2));};
   const showBebanCol=!!def.bebanPencemar&&!semester;
   const totalCols=3+mons.length+2+(showBebanCol?1:0)+1;
-  let h='<table class="sa"><thead><tr><th style="width:24px">No</th><th style="width:120px">Titik Penaatan (Outlet)</th><th style="width:140px">Parameter yang Dipantau</th>';
-  mons.forEach(function(m){h+='<th>'+monLab(m)+'</th>';});
-  h+='<th style="width:64px">Baku Mutu<br>Konsentrasi</th><th style="width:48px">Satuan Baku</th>';
-  if(showBebanCol)h+='<th style="width:64px">Beban Pencemar<br>(kg/day)</th>';
-  h+='<th style="width:140px">Peraturan Baku Mutu yang Diacu</th></tr></thead><tbody>';
+  /*Y562*/const _pc562=semester?{no:3,ti:10,pa:13,bm:8,sb:5,bb:0,pe:16}:{no:4,ti:15,pa:19,bm:10,sb:8,bb:showBebanCol?9:0,pe:0};
+  const _pt562=_pc562.no+_pc562.ti+_pc562.pa+_pc562.bm+_pc562.sb+_pc562.bb+_pc562.pe;
+  const _pm562=semester?((100-_pt562)/mons.length):14;
+  const _pp562=semester?_pc562.pe:(100-_pt562-_pm562);
+  let h='<table class="sa"><thead><tr><th style="width:'+_pc562.no+'%">No</th><th style="width:'+_pc562.ti+'%">Titik Penaatan (Outlet)</th><th style="width:'+_pc562.pa+'%">Parameter yang Dipantau</th>';
+  mons.forEach(function(m){h+='<th style="width:'+_pm562.toFixed(2)+'%">'+monLab(m)+'</th>';});
+  h+='<th style="width:'+_pc562.bm+'%">Baku Mutu<br>Konsentrasi</th><th style="width:'+_pc562.sb+'%">Satuan Baku</th>';
+  if(showBebanCol)h+='<th style="width:'+_pc562.bb+'%">Beban Pencemar<br>(kg/day)</th>';
+  h+='<th style="width:'+_pp562.toFixed(2)+'%">Peraturan Baku Mutu yang Diacu</th></tr></thead><tbody>';
   h+='<tr class="grp"><td colspan="'+totalCols+'">'+_ep(site)+'</td></tr>';
   let no=0;
   for(const entry of matrix){
@@ -31265,7 +31308,17 @@ function _lapDailyPages(def,period,site,matrix,sec){
   });
   return pages;
 }
+function _lapWideKelas(pagesHtml){
+  /* Y562: halaman tabel lebar (>= 8 kolom) jadi lanskap */
+  return String(pagesHtml).split('<div class="pg').map(function(ch,i){
+    if(!i||ch.indexOf('">')!==0||ch.indexOf('<table class="sa"')<0)return ch;
+    var kepala=(ch.match(/<thead>[\s\S]*?<\/thead>/)||[''])[0];
+    var th=kepala.match(/<th[ >]/g);
+    return (th&&th.length>=8)?' wide'+ch:ch;
+  }).join('<div class="pg');
+}
 function _lapDocWrap(pagesHtml){
+  pagesHtml=_lapWideKelas(pagesHtml);
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Laporan</title><style>'
   +'*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#000;background:#9aa0a6}'
   +'.pg{background:#fff;width:794px;min-height:1122px;margin:12px auto;padding:70px 80px;page-break-after:always;box-shadow:0 1px 6px rgba(0,0,0,.35)}'
@@ -31282,8 +31335,13 @@ function _lapDocWrap(pagesHtml){
   +'.sa td.c{text-align:center}'
   +'h3.tt{text-align:center;font-size:15px;margin:0 0 10px}'
   +'.pg.scanpg{padding:0;display:flex;align-items:center;justify-content:center}.pg.scanpg img{width:100%;height:auto;display:block}'
-  +'@media print{body{background:#fff}.pg{margin:0;width:auto;min-height:auto;box-shadow:none;padding:0}}'
-  +'@page{size:A4;margin:14mm}'
+  +'.pg.wide{width:1122px;min-height:794px;padding:44px 52px;page:wide}'
+  +'.pg.wide table.sa{table-layout:fixed;font-size:11px}'
+  +'.pg.wide table.sa th,.pg.wide table.sa td{padding:3px 4px;overflow-wrap:anywhere}'
+  +'table.sa thead{display:table-header-group}table.sa tr{page-break-inside:avoid}'
+  +'.sa td span[style*="border-radius:9px"]{display:block!important;margin:3px 0 0!important;width:fit-content;max-width:100%;padding:1px 6px!important;font-size:11px!important;line-height:1.25;white-space:normal;border-radius:6px!important}'
+  +'@media print{body{background:#fff}.pg{margin:0;width:auto;min-height:auto;box-shadow:none;padding:0}.pg.wide{width:auto;min-height:auto;padding:0}}'
+  +'@page{size:A4;margin:14mm}@page wide{size:A4 landscape;margin:12mm}'
   +'</style></head><body>'+pagesHtml+'</body></html>';
 }
 let _lapDocCtx=null;
@@ -31744,7 +31802,7 @@ function _lapWordDoc(){
   // Word opens HTML .doc natively and keeps the exact same layout
   // (letterhead images, tables, page breaks) as the print/PDF output
   const doc=html.replace('<html>','<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">')
-    .replace('</head>','<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]--><style>@page{size:210mm 297mm;margin:14mm}</style></head>');
+    .replace('</head>','<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]--><style>@page{size:210mm 297mm;margin:14mm}@page WordSection2{size:297mm 210mm;mso-page-orientation:landscape;margin:12mm}.pg.wide{page:WordSection2}</style></head>');
   const bomEsc=String.fromCharCode(0xFEFF);
   const blob=new Blob([bomEsc,doc],{type:'application/msword'});
   const a=document.createElement('a');
@@ -43205,6 +43263,7 @@ async function _emfProbe(buf){
       for(var k=0;k<EMF_TABLE_KEYS.length;k++){
         if(low.indexOf(EMF_TABLE_KEYS[k])>=0)seen[EMF_TABLE_KEYS[k]]=1;
       }
+      /*Y561*/if(_emfDredgeJenis(t)||_emfIsHydroCaption(t))seen['kegiatan pengerukan/uji hidrostatik']=1;
     }
     out.tables=Object.keys(seen);
     out.ok=out.tables.length>0;
@@ -43627,10 +43686,11 @@ function _eaBuildDoc(site,year,sem,monthsOverride){
   return {html:html,ctx:ctx,kosong:!body};
 }
 var EA_WATER_SHEETS=['DWW','BPN','Drainase','PW'];
+/*Y561*/function _emfSiteCanon(s){var u=String(s==null?'':s).toUpperCase().trim();return (u==='CPA'||u==='HDL')?'HCA':u;}
 function _eaSites(){
   var G=_eaGroups(), s={};
   (G.Monthly||[]).forEach(function(r){
-    var v=String(r.site||'').toUpperCase().trim();
+    var v=_emfSiteCanon(r.site);
     if(v&&EA_WATER_SHEETS.indexOf((r.extra||{}).sumberSheet)>=0)s[v]=1;
   });
   return Object.keys(s).sort();
@@ -43655,11 +43715,15 @@ function _eaRenderPicker(){
   if(!box)return;
   var sites=_eaSites();
   if(!sites.length){box.innerHTML='<span style="font-size:13px;color:#c62828">Data Hasil Sampling kosong — muat Data Pack dulu.</span>';return;}
-  box.innerHTML=sites.map(function(s){
+  box.innerHTML='<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;margin:0 14px 4px 0;cursor:pointer;font-weight:700"><input type="checkbox" id="emf-air-all" checked onchange="_eaSiteAll(this.checked)"> Select All</label>'
+    +sites.map(function(s){
     return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;margin:0 10px 4px 0;cursor:pointer">'
-      +'<input type="checkbox" class="emf-air-site" value="'+_ep(s)+'" checked> '+_ep(s)+'</label>';
+      +'<input type="checkbox" class="emf-air-site" value="'+_ep(s)+'" checked onchange="_eaSiteSync()"> '+_ep(s)+'</label>';
   }).join('');
 }
+function _eaSiteSync(){var all=document.querySelectorAll('.emf-air-site'),n=0;for(var i=0;i<all.length;i++)if(all[i].checked)n++;var a=document.getElementById('emf-air-all');if(!a)return;a.checked=(n===all.length&&n>0);a.indeterminate=(n>0&&n<all.length);}
+function _eaSiteAll(on){document.querySelectorAll('.emf-air-site').forEach(function(c){c.checked=on;});_eaSiteSync();}
+window._eaSiteAll=_eaSiteAll;window._eaSiteSync=_eaSiteSync;
 async function _eaGenerate(){
   var out=document.getElementById('emf-air-result');
   var year=parseInt((document.getElementById('emf-year')||{}).value,10);
@@ -43698,11 +43762,6 @@ function _etRenderEmf(host){
    +'<option value="1"'+(sem===1?' selected':'')+'>Semester 1 (Jan–Jun)</option>'
    +'<option value="2"'+(sem===2?' selected':'')+'>Semester 2 (Jul–Des)</option></select></label>'
    +'</div>'
-   +'<details id="emf-manual" style="margin:0 0 14px;border:1px solid var(--g2);border-radius:9px;padding:9px 13px">'
-   +'<summary style="font-size:13px;font-weight:700;cursor:pointer">\ud83d\uddd3 Isian manual \u2014 hanya untuk tambal EMF utuh (non-air)</summary>'
-   +'<div style="font-size:13px;color:var(--g4);margin:7px 0 9px;line-height:1.55">Bagian ini hanya dipakai untuk alternatif <b>tambal dokumen EMF utuh</b>. Tombol <b>Generate Bagian Air</b> tidak membaca isian ini: emisi, udara ambien, kebisingan, kebauan, getaran, dan bagian non-air lainnya tetap memakai wording serta tanggal asli template.</div>'
-   +'<div id="emf-manual-fields" style="display:flex;gap:11px;flex-wrap:wrap"></div>'
-   +'</details>'
    +'<details id="emf-iplc" style="margin:0 0 14px;border:1px solid var(--g2);border-radius:9px;padding:9px 13px">'
    +'<summary style="font-size:13px;font-weight:700;cursor:pointer">\ud83d\udcc8 Debit tertinggi 2019 (IPLC) \u2014 garis pembanding di grafik debit</summary>'
    +'<div style="font-size:13px;color:var(--g4);margin:7px 0 9px;line-height:1.55">Naskah EMF menyebut debit dibandingkan dengan <b>debit tertinggi tahun 2019</b> menurut dokumen IPLC. Angkanya tidak ada di data sampling, jadi harus diisi di sini sekali saja \u2014 tersimpan di peramban dan ikut terbawa saat Data Pack diekspor. Titik yang dibiarkan kosong tetap digambar, tetapi <b>tanpa garis pembanding</b>, dan akan disebut di laporan hasil generate.</div>'
@@ -45337,7 +45396,7 @@ function _emfTitikIzin(site,kind){
     var want=(kind==='drainase')?'DRAIN':'DWW';
     for(var k in tm){
       var v=tm[k];
-      if(String(v.lapangan||'').toUpperCase()!==String(site||'').toUpperCase())continue;
+      if(_emfSiteCanon(v.lapangan)!==_emfSiteCanon(site))continue;
       var sk=kindOf[norm(v.nama)];
       if(sk!==want)continue;
       // saniter is the domestic set without the laundry outlet -- that is how
@@ -45944,15 +46003,17 @@ function _emfPatchSite(doc,from,to){
 // Pull the water-only base document: a site may have its own, otherwise the
 // shared one is used and its site name is rewritten to the target.
 async function _eaBaseFor(site){
-  var keys=['emfbase:air:'+site,'emfbase:air'];
+  /*Y561*/site=_emfSiteCanon(site);
+  var keys=['emfbase:air:'+site].concat(site==='HCA'?['emfbase:air:CPA']:[],['emfbase:air']);
+  var nOwn=(site==='HCA')?2:1;
   for(var i=0;i<keys.length;i++){
     var rec=null;
     try{rec=await _dpIdbGet('emfbase|'+keys[i]);}catch(e){}
-    if(rec&&rec.buf)return {buf:rec.buf,name:rec.name,own:i===0};
+    if(rec&&rec.buf)return {buf:rec.buf,name:rec.name,own:i<nOwn};
     try{rec=await _cfFetchRawTemplate(keys[i]);}catch(e){}
     if(rec){
       try{await _dpIdbSet('emfbase|'+keys[i],{buf:rec.arr,name:rec.name});}catch(e){}
-      return {buf:rec.arr,name:rec.name,own:i===0};
+      return {buf:rec.arr,name:rec.name,own:i<nOwn};
     }
   }
   return null;
@@ -46002,6 +46063,7 @@ async function _eaGenerateDocx(){
 }
 window._eaGenerateDocx=_eaGenerateDocx;window._eaBaseFor=_eaBaseFor;
 async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsOverride){
+  /*Y561*/siteOverride=siteOverride?_emfSiteCanon(siteOverride):siteOverride;
   var buf=await file.arrayBuffer();
   var z=await _emfZipRead(buf);
   var docName='word/document.xml';
@@ -46024,7 +46086,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   // other site's numbers to protect against.
   if(siteOverride&&!ownBase){
     var docSite=_emfDetectSite(doc);
-    if(docSite&&docSite.toUpperCase()!==String(siteOverride).toUpperCase()){
+    if(docSite&&_emfSiteCanon(docSite)!==_emfSiteCanon(siteOverride)){
       var haveD=_emfTitikIzin(siteOverride,'domestik').length;
       var haveR=_emfTitikIzin(siteOverride,'drainase').length;
       if(!haveD&&!haveR)
@@ -46052,7 +46114,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
     // than carried: a blank cell is visibly missing, a wrong coordinate is not.
     if(/lokasi pemantauan badan air/i.test(String(tc[i].caption||''))
        &&siteOverride&&_emfDetectSite(doc)
-       &&_emfDetectSite(doc).toUpperCase()!==String(siteOverride).toUpperCase()){
+       &&_emfSiteCanon(_emfDetectSite(doc))!==_emfSiteCanon(siteOverride)){
       var btrs=[],ball=tc[i].tbl.getElementsByTagNameNS(EMF_W,'tr');
       for(var bi=0;bi<ball.length;bi++)if(ball[bi].parentNode===tc[i].tbl)btrs.push(ball[bi]);
       for(var br=1;br<btrs.length;br++){
@@ -46294,7 +46356,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   var nWord=waterOnly?_emfWaterOnlyWording(doc,year,sem,months):_emfPatchWording(doc,year,sem);
   var manual=waterOnly?{done:[],left:[]}:_emfPatchManual(doc,year,sem);
   if(siteOverride&&!waterOnly)_emfPatchSite(doc,_emfDetectSite(doc),siteOverride);
-  var sisaPeriode=waterOnly?_emfAuditTabelAir(tc,year):_emfAuditPeriode(doc,year);
+  try{_emfCantSplit(tc);}catch(_eCS){}var sisaPeriode=waterOnly?_emfAuditTabelAir(tc,year):_emfAuditPeriode(doc,year);
   // Y479: sapuan terakhir — sel yang merupakan lanjutan merge dikosongkan.
   // Word tidak pernah menampilkan isinya, tapi teks yang tertinggal di sana
   // akan muncul berulang begitu merge-nya diubah atau tabelnya dikonversi.
@@ -48689,6 +48751,231 @@ function _coordDetailMainInput(actId,q){
     return n;
   }
 
+  /* ---- Excel berformat Form SA (Y562) ------------------------------------
+     Sebelumnya setiap halaman hanya dibaca jadi kisi nilai polos: tanpa garis,
+     tanpa sel gabungan, kolom sempit, angka rata kanan. Pemilik minta formatnya
+     SAMA dengan Form SA yang tercetak. Jadi satu <table> dibaca bersama
+     tampilannya: baris judul (th), baris kelompok (tr.grp), sel rata tengah
+     (td.c), rowspan/colspan menjadi sel gabungan, garis tipis di semua sel
+     (termasuk sel yang tertutup gabungan, kalau tidak garisnya putus), lebar
+     kolom dan tinggi baris dihitung dari isinya, dan angka memakai format
+     desimal yang sama dengan yang tercetak ("0.00" tetap "0.00", bukan "0"). */
+  var _LAP_HITAM = { style: 'thin', color: { rgb: '000000' } };
+  function _lapGayaSel(o) {
+    var s = {
+      font: { name: 'Arial', sz: o.sz || 10, bold: !!o.tebal },
+      alignment: { horizontal: o.h || 'left', vertical: o.v || 'center', wrapText: o.bungkus !== false }
+    };
+    if (o.warna) s.font.color = { rgb: o.warna };
+    if (o.garis !== false) s.border = { top: _LAP_HITAM, bottom: _LAP_HITAM, left: _LAP_HITAM, right: _LAP_HITAM };
+    if (o.isi) s.fill = { patternType: 'solid', fgColor: { rgb: o.isi } };
+    return s;
+  }
+  /* Teks sel dengan baris baru dipertahankan: <br> dan lencana "dasar hukum
+     belum diverifikasi" masing-masing mulai di baris sendiri, seperti di
+     dokumen cetak. */
+  function _lapSelBaris(el) {
+    var out = '';
+    (function jalan(n) {
+      for (var i = 0; i < n.childNodes.length; i++) {
+        var c = n.childNodes[i];
+        if (c.nodeType === 3) out += c.nodeValue;
+        else if (c.nodeType === 1) {
+          if (c.tagName === 'BR') { out += '\n'; continue; }
+          var lencana = /border-radius:9px/.test(c.getAttribute('style') || '');
+          if (lencana) out += '\n';
+          jalan(c);
+          if (lencana) out += '\n';
+        }
+      }
+    })(el);
+    return out.replace(/ /g, ' ').split('\n')
+      .map(function (b) { return b.replace(/\s+/g, ' ').trim(); })
+      .filter(function (b) { return b !== ''; }).join('\n');
+  }
+  function _lapFormatAngka(t) {
+    var m = /[.,](\d+)\s*$/.exec(String(t).trim());
+    return (m && m[1].length > 0 && m[1].length <= 6) ? ('0.' + new Array(m[1].length + 1).join('0')) : null;
+  }
+  /* Satu <table> -> {sel, gabung, lebar, tinggi, baris, kolom}. */
+  function _lapTblKeKisi(tbl) {
+    var kisi = [], gabung = [], trs = tbl.querySelectorAll('tr'), maxC = 0;
+    for (var r = 0; r < trs.length; r++) {
+      kisi[r] = kisi[r] || [];
+      var c = 0, tds = trs[r].children;
+      var grp = /(^|\s)grp(\s|$)/.test(trs[r].getAttribute('class') || '');
+      for (var i = 0; i < tds.length; i++) {
+        while (kisi[r][c] !== undefined) c++;
+        var el = tds[i];
+        var cs = parseInt(el.getAttribute('colspan') || '1', 10) || 1;
+        var rs = parseInt(el.getAttribute('rowspan') || '1', 10) || 1;
+        var teks = _lapSelBaris(el), plain = teks.replace(/\n/g, ' ');
+        var v = _lapSelKeNilai(el);
+        var st = el.getAttribute('style') || '', kls = el.getAttribute('class') || '';
+        var th = el.tagName === 'TH';
+        var tebal = th || grp || /font-weight:\s*(600|700|bold)/.test(st);
+        var o = { tebal: tebal };
+        if (th) { o.h = 'center'; o.isi = 'EEEEEE'; }
+        else if (grp) { o.isi = 'FAFAFA'; }
+        else if (/(^|\s)c(\s|$)/.test(kls) || /text-align:\s*center/.test(st)) o.h = 'center';
+        if (/vertical-align:\s*top/.test(st)) o.v = 'top';
+        var cel;
+        if (v.t === 'n') {
+          cel = { t: 'n', v: v.v };
+          var z = _lapFormatAngka(plain); if (z) cel.z = z;
+        } else cel = { t: 's', v: teks };
+        cel.s = _lapGayaSel(o);
+        cel._len = teks;
+        for (var dr = 0; dr < rs; dr++) {
+          kisi[r + dr] = kisi[r + dr] || [];
+          for (var dc = 0; dc < cs; dc++) {
+            kisi[r + dr][c + dc] = (dr === 0 && dc === 0) ? cel : { t: 's', v: '', s: cel.s, _fill: true };
+          }
+        }
+        if (cs > 1 || rs > 1) gabung.push({ s: { r: r, c: c }, e: { r: r + rs - 1, c: c + cs - 1 } });
+        c += cs;
+        if (c > maxC) maxC = c;
+      }
+    }
+    return { kisi: kisi, gabung: gabung, kolom: maxC };
+  }
+  function _lapHalamanKeSheet(halaman, tbl) {
+    var k = _lapTblKeKisi(tbl), n = k.kolom;
+    var judulEl = halaman.querySelector('.tt,h3,h4');
+    var judul = judulEl ? (judulEl.textContent || '').trim() : '';
+    /* lebar kolom (karakter): isi terpanjang per baris, dibatasi supaya teks
+       panjang (dasar hukum) membungkus alih-alih melebarkan kolom */
+    var lebar = [];
+    for (var c = 0; c < n; c++) {
+      var mx = 0, kata = 0;
+      for (var r = 0; r < k.kisi.length; r++) {
+        var cel = (k.kisi[r] || [])[c];
+        if (!cel || cel._fill || cel._len == null) continue;
+        var bar = String(cel._len).split('\n');
+        for (var b = 0; b < bar.length; b++) {
+          if (bar[b].length > mx) mx = bar[b].length;
+          bar[b].split(' ').forEach(function (w) { if (w.length > kata) kata = w.length; });
+        }
+      }
+      var cap = (c === n - 1) ? 44 : (c === 0 ? 5 : 30);
+      var w = Math.min(cap, Math.max(c === 0 ? 4 : 8, Math.ceil(mx * 1.0) + 2));
+      lebar.push(Math.max(w, Math.min(kata + 2, cap)));
+    }
+    /* sel gabungan colspan memakai jumlah lebar kolom yang dilintasinya */
+    var tinggi = [];
+    for (var r2 = 0; r2 < k.kisi.length; r2++) {
+      var baris = 1;
+      for (var c2 = 0; c2 < n; c2++) {
+        var ce = (k.kisi[r2] || [])[c2];
+        if (!ce || ce._fill || ce._len == null || ce._len === '') continue;
+        var lb = lebar[c2];
+        for (var g = 0; g < k.gabung.length; g++) {
+          var gm = k.gabung[g];
+          if (gm.s.r === r2 && gm.s.c === c2) {
+            if (gm.e.r > gm.s.r) { lb = -1; }          /* rowspan: tingginya dibagi baris-baris yang digabung */
+            else { lb = 0; for (var q = gm.s.c; q <= gm.e.c; q++) lb += lebar[q]; }
+          }
+        }
+        if (lb < 0) continue;
+        var tot = 0;
+        String(ce._len).split('\n').forEach(function (bar2) { tot += Math.max(1, Math.ceil(bar2.length / Math.max(1, lb - 1))); });
+        if (tot > baris) baris = tot;
+      }
+      tinggi.push(Math.max(15, baris * 12.5 + 3));
+    }
+    var aoa = [], rowsInfo = [], gab = [], off = 0;
+    var ws = {}, maxR = 0;
+    function taruh(r, c, cel) { ws[XLSX.utils.encode_cell({ r: r, c: c })] = cel; if (r > maxR) maxR = r; }
+    if (judul) {
+      taruh(0, 0, { t: 's', v: judul, s: _lapGayaSel({ tebal: true, sz: 12, h: 'center', garis: false }) });
+      for (var j = 1; j < n; j++) taruh(0, j, { t: 's', v: '', s: _lapGayaSel({ garis: false }) });
+      gab.push({ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(0, n - 1) } });
+      rowsInfo[0] = { hpt: 22 }; rowsInfo[1] = { hpt: 8 };
+      off = 2;
+    }
+    for (var rr = 0; rr < k.kisi.length; rr++) {
+      for (var cc = 0; cc < n; cc++) {
+        var x = (k.kisi[rr] || [])[cc];
+        if (!x) x = { t: 's', v: '', s: _lapGayaSel({}) };
+        var o2 = { t: x.t, v: x.v, s: x.s };
+        if (x.z) o2.z = x.z;
+        taruh(rr + off, cc, o2);
+      }
+      rowsInfo[rr + off] = { hpt: tinggi[rr] };
+    }
+    k.gabung.forEach(function (m) { gab.push({ s: { r: m.s.r + off, c: m.s.c }, e: { r: m.e.r + off, c: m.e.c } }); });
+    /* catatan di bawah tabel (mis. "Note: (*) = ..."): satu baris per kalimat,
+       tanpa garis, "Note:" tebal */
+    var r3 = k.kisi.length + off + 1;
+    var sib = tbl.nextElementSibling;
+    while (sib) {
+      var tk = _lapSelBaris(sib);
+      if (tk) tk.split('\n').forEach(function (bar3) {
+        taruh(r3, 0, { t: 's', v: bar3, s: _lapGayaSel({ tebal: /^note:?$/i.test(bar3), garis: false, bungkus: false, sz: 9 }) });
+        r3++;
+      });
+      sib = sib.nextElementSibling;
+    }
+    ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(maxR, r3 - 1), c: Math.max(0, n - 1) } });
+    ws['!cols'] = lebar.map(function (w) { return { wch: w }; });
+    ws['!rows'] = rowsInfo;
+    ws['!merges'] = gab;
+    return { ws: ws, judul: judul };
+  }
+
+  window._lapHalamanKeSheet = _lapHalamanKeSheet;   /* diuji langsung */
+
+  /* Halaman cetak: lanskap, muat satu halaman lebarnya, kepala tabel tidak
+     diatur di sini (SheetJS tidak menulisnya). Disisipkan langsung ke XML
+     lembar karena pustaka Excel di aplikasi tidak punya pilihan itu. */
+  async function _lapAturCetak(bytes) {
+    try {
+      if (typeof _emfZipRead !== 'function' || typeof _emfZipWrite !== 'function' || typeof _emfBagianTeks !== 'function') return bytes;
+      var ab = (bytes instanceof ArrayBuffer) ? bytes : bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      var z = await _emfZipRead(ab);
+      for (var i = 0; i < z.order.length; i++) {
+        var nm = z.order[i];
+        if (!/^xl\/worksheets\/sheet\d+\.xml$/.test(nm)) continue;
+        var xml = await _emfBagianTeks(z.parts, nm);
+        if (xml == null) continue;
+        if (xml.indexOf('<pageSetup') < 0) {
+          var ps = '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>';
+          if (/<pageMargins[^>]*\/>/.test(xml)) xml = xml.replace(/(<pageMargins[^>]*\/>)/, function (m) { return m + ps; });
+          else xml = xml.replace('</worksheet>', ps + '</worksheet>');
+        }
+        if (xml.indexOf('fitToPage') < 0) {
+          if (/<sheetPr\s*\/>/.test(xml)) xml = xml.replace(/<sheetPr\s*\/>/, '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+          else if (xml.indexOf('<sheetPr') < 0) xml = xml.replace(/(<worksheet[^>]*>)/, function (m) { return m + '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>'; });
+        }
+        z.parts[nm] = { data: new TextEncoder().encode(xml) };
+      }
+      for (var q = 0; q < z.order.length; q++) {
+        var pp = z.parts[z.order[q]];
+        if (pp.data) continue;
+        if (pp.crc === undefined) {
+          var plain = pp.method === 8 ? await _emfInflate(pp.raw) : pp.raw;
+          pp.crc = _emfCrc32(plain); pp.usize = plain.length;
+        }
+      }
+      var hasil = await _emfZipWrite(z.parts, z.order);
+      /* _emfZipWrite bisa mengembalikan Blob; yang dibutuhkan penyimpan dan
+         pengujinya byte mentah */
+      if (hasil && typeof hasil.arrayBuffer === 'function') hasil = new Uint8Array(await hasil.arrayBuffer());
+      return hasil;
+    } catch (e) { return bytes; }
+  }
+  window._lapAturCetak = _lapAturCetak;
+
+  function _lapSimpanXlsx(bytes, nama) {
+    var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = nama + '.xlsx';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  }
+  window._lapSimpanXlsx = _lapSimpanXlsx;
+
   function _lapExcelBagian() {
     if (typeof XLSX === 'undefined' || !XLSX.utils) {
       if (typeof toast === 'function') toast('⚠ Library Excel belum siap.');
@@ -48726,6 +49013,7 @@ function _coordDetailMainInput(actId,q){
       }
       var wsD = XLSX.utils.aoa_to_sheet(baris);
       wsD['!cols'] = [{ wch: 70 }];
+      if (wsD.A1) wsD.A1.s = { font: { name: 'Arial', sz: 14, bold: true, color: { rgb: 'C62828' } } };
       XLSX.utils.book_append_sheet(wb, wsD, _lapNamaSheet('DRAF', dipakai));
     }
     for (var i = 0; i < halaman.length; i++) {
@@ -48735,7 +49023,8 @@ function _coordDetailMainInput(actId,q){
       var judul = judulEl ? (judulEl.textContent || '').trim() : ('Tabel ' + (n + 1));
       var aoa = _lapTblKeAoa(tbl);
       if (!aoa.length) continue;
-      XLSX.utils.book_append_sheet(wb, _lapAoaKeSheet(aoa), _lapNamaSheet(judul, dipakai));
+      var sh = _lapHalamanKeSheet(halaman[i], tbl);
+      XLSX.utils.book_append_sheet(wb, sh.ws, _lapNamaSheet(judul, dipakai));
       n++;
     }
     if (!n) {
@@ -48745,9 +49034,18 @@ function _coordDetailMainInput(actId,q){
     var nama = (_lapNamaBerkas() + ' - '                                  /* Y518 */
       + _lapBagianAktif().map(function (b) { return b.label; }).join(', '))
       .replace(/[\\/:*?"<>|]/g, '-').slice(0, 120);
-    XLSX.writeFile(wb, nama + '.xlsx');
-    if (typeof toast === 'function')
-      toast('✓ ' + n + ' lembar tersimpan ke Excel — angkanya dibaca dari tabel laporan yang sama.');
+    /* XLSXS = xlsx-js-style: satu-satunya build yang MENULIS gaya sel (garis,
+       isi, rata, huruf). Build polos (XLSX) tidak, jadi dipakai hanya sebagai
+       cadangan kalau yang bergaya tidak termuat. Aturan 6v: build bergaya
+       hanya untuk MENULIS. */
+    var penulis = (window.XLSXS && window.XLSXS.write) ? window.XLSXS : XLSX;
+    var selesai = function (bytes) {
+      window._lapSimpanXlsx(bytes, nama);
+      if (typeof toast === 'function')
+        toast('✓ ' + n + ' lembar tersimpan ke Excel — format dan angkanya dari tabel laporan yang sama.');
+    };
+    var mentah = penulis.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });
+    _lapAturCetak(mentah).then(selesai, function () { selesai(mentah); });
   }
   window._lapExcelBagian = _lapExcelBagian;
 })();
