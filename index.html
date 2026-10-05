@@ -5647,7 +5647,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'50a43ad1'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'aef3dbfc'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -16193,7 +16193,7 @@ function _emfSkalaNilai(ds){
 // jadi pecahan tetap akan menggepengkan plot di bingkai yang pendek.
 function _emfJudulUkuran(baris,lebarInci){
   var W=parseFloat(lebarInci);if(!(W>1))W=3.6;
-  var pilih=[1200,1100,1000,900],pakai=null;
+  var pilih=[1100,1000,900],pakai=null;
   for(var i=0;i<pilih.length&&!pakai;i++){
     var sz=pilih[i],cw=(sz/100)*0.6/72,cpl=Math.max(8,Math.floor((W*0.92)/cw)),n=0;
     baris.forEach(function(t){n+=Math.max(1,Math.ceil(String(t).length/cpl));});
@@ -16204,7 +16204,7 @@ function _emfJudulUkuran(baris,lebarInci){
     baris.forEach(function(t){n2+=Math.max(1,Math.ceil(String(t).length/cpl2));});
     pakai={sz:1000,lines:n2};
   }
-  pakai.tinggi=pakai.lines*(pakai.sz/100)*1.2/72+0.14;
+  pakai.tinggi=pakai.lines*(pakai.sz/100)*1.2/72+0.2;
   return pakai;
 }
 function _emfTataLetakPlot(tinggiInci,adaJudulSumbu,judulInci){
@@ -16303,7 +16303,7 @@ function _emfChartXml(spec){
     ?('<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/>'
       +baris.map(function(t){
         return '<a:p><a:pPr algn="ctr"><a:defRPr sz="'+tj.sz+'" b="1"/></a:pPr>'
-              +'<a:r><a:rPr lang="id-ID" sz="'+tj.sz+'" b="1"/><a:t>'+_emfXmlEsc(t)+'</a:t></a:r></a:p>';
+              +'<a:r><a:rPr lang="id-ID" sz="'+tj.sz+'" b="1"><a:latin typeface="Calibri"/></a:rPr><a:t>'+_emfXmlEsc(t)+'</a:t></a:r></a:p>';
       }).join('')
       +'</c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>')
     :'<c:autoTitleDeleted val="1"/>';
@@ -16322,7 +16322,7 @@ function _emfChartXml(spec){
       +'<a:r><a:rPr lang="id-ID" sz="900" b="1"/><a:t>'+_emfXmlEsc(spec.axisTitle)+'</a:t></a:r>'
       +'</a:p></c:rich></c:tx><c:overlay val="0"/></c:title>')
     :'';
-  var L=_emfTataLetakPlot(spec.tinggiInci,!!spec.axisTitle,tj.lines>baris.length?tj.tinggi:0);
+  var L=_emfTataLetakPlot(spec.tinggiInci,!!spec.axisTitle,tj.tinggi);
   var tataLetak='<c:layout><c:manualLayout><c:layoutTarget val="inner"/>'
     +'<c:xMode val="edge"/><c:yMode val="edge"/>'
     +'<c:x val="'+L.x+'"/><c:y val="'+L.y+'"/>'
@@ -43207,7 +43207,7 @@ async function _emfTplAdd(files){
       read[q].fp=_emfFingerprint(read[q].buf);
       read[q].site=pr.site;read[q].tables=pr.tables;
       read[q].ok=pr.ok;read[q].note=pr.note;
-      read[q].checkedAt=new Date().toISOString();
+      read[q].checkedAt=new Date().toISOString();read[q].pv=EMF_PROBE_V;
     }
     var m=await _emfTplLoad();
     read.forEach(function(r){m[r.name]=r;});
@@ -43286,7 +43286,7 @@ async function _emfRegisterAll(){
     var r=m[names[i]];if(!r||!r.buf)continue;
     var p=await _emfProbe(r.buf);
     r.fp=_emfFingerprint(r.buf);
-    r.site=p.site;r.tables=p.tables;r.ok=p.ok;r.note=p.note;
+    r.site=p.site;r.tables=p.tables;r.ok=p.ok;r.note=p.note;r.pv=EMF_PROBE_V;
     r.checkedAt=new Date().toISOString();n++;
   }
   await _emfTplSave(m);
@@ -43294,12 +43294,28 @@ async function _emfRegisterAll(){
   if(typeof toast==='function')toast('\u2713 '+n+' template diperiksa ulang.');
 }
 window._emfRegisterAll=_emfRegisterAll;
+/*Y566*/var EMF_PROBE_V=3;
+async function _emfSegarkanProbe(m){
+  var n=0,names=Object.keys(m||{});
+  for(var i=0;i<names.length;i++){
+    var r=m[names[i]];
+    if(!r||!r.buf||r.pv===EMF_PROBE_V)continue;
+    try{
+      var p=await _emfProbe(r.buf);
+      r.fp=_emfFingerprint(r.buf);r.site=p.site;r.tables=p.tables;r.ok=p.ok;r.note=p.note;
+      r.pv=EMF_PROBE_V;r.checkedAt=new Date().toISOString();n++;
+    }catch(e){}
+  }
+  return n;
+}
+window._emfSegarkanProbe=_emfSegarkanProbe;
 function _emfTplAsFile(rec){
   try{return new File([rec.buf],rec.name,{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});}
   catch(e){var b=new Blob([rec.buf]);b.name=rec.name;return b;}
 }
 async function _emfGenerateSaved(){
   var m=await _emfTplLoad(), names=Object.keys(m).sort();
+  /*Y566*/try{if(await _emfSegarkanProbe(m))await _emfTplSave(m);}catch(_eSG){}
   if(!names.length){
     await _emfTplCloudPull(true);
     m=await _emfTplLoad();names=Object.keys(m).sort();
@@ -43869,7 +43885,8 @@ window._emfTplCloudPull=_emfTplCloudPull;window._emfTplCloudPush=_emfTplCloudPus
 function _emfRenderTpl(){
   var box=document.getElementById('emf-tpl');
   if(!box)return;
-  return _emfTplLoad().then(function(m){
+  return _emfTplLoad().then(async function(m){
+    /*Y566*/try{if(await _emfSegarkanProbe(m))await _emfTplSave(m);}catch(_eSP){}
     var names=Object.keys(m).sort();
     if(!names.length){
       box.innerHTML='<div style="border-top:1px solid var(--g2);padding-top:9px">'
@@ -44742,7 +44759,7 @@ function _emfTitikDebit(year){
       if(q.length!==3||q[2]!==y)continue;
       if(_emfPKey(q[1])!=='debit')continue;
       var t=_emfCanonTitik(q[0]);
-      if(t&&!seen[t]){seen[t]=1;out.push(t);}
+      /*Y566*/if(t&&!seen[t]&&!/^(Disposal Tube|Bekapai Disposal|Drainase|Saluran Kanal|Outlet Senipah Lake)/i.test(t)){seen[t]=1;out.push(t);}
     }
     out.sort();
   }catch(_){}
@@ -49288,22 +49305,69 @@ function _coordDetailMainInput(actId,q){
     });
   }
 
-  /* ---- CSV: fungsi bawaan layar kalau ada, kalau tidak tabel terbesar --- */
-  function csvTabel(viewSel, nama) {
-    var v = document.querySelector(viewSel) || document;
-    var ts = [].slice.call(v.querySelectorAll('table')).filter(function (t) { return t.rows.length > 1 && t.getClientRects().length; });
-    if (!ts.length) { if (typeof toast === 'function') toast('Tidak ada tabel di layar ini untuk diekspor.'); return false; }
-    ts.sort(function (a, b) { return b.rows.length - a.rows.length; });
-    var t = ts[0], out = [];
+  /* ---- CSV ---------------------------------------------------------------
+     Pemilik (2026-10-05): "Tidak semua tab ada export CSV-nya". Sekarang tiap
+     layar punya CSV dari DATA-nya sendiri, bukan dari tabel yang kebetulan
+     sedang tampil (ENV Program membuka "Peta" dulu: tidak ada tabel -> dulu
+     tombolnya diam). Cadangan terakhir tetap tabel terbesar di layar. */
+  function unduhCsv(nama, kepala, baris) {
     var q = function (x) { x = String(x == null ? '' : x).replace(/\s+/g, ' ').trim(); return /[",\n;]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
-    [].slice.call(t.rows).forEach(function (r) { out.push([].slice.call(r.cells).map(function (c) { return q(c.textContent); }).join(',')); });
+    var out = [kepala.map(q).join(',')];
+    baris.forEach(function (r) { out.push(r.map(q).join(',')); });
     var blob = new Blob(['﻿' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
     a.download = nama.replace(/[\\/:*?"<>|]/g, '-') + '_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.csv';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    if (typeof toast === 'function') toast('✓ ' + baris.length + ' baris diekspor ke CSV.');
     return true;
+  }
+  var CSV_DATA = {
+    'rfa-rea': function () {
+      var r = []; try { r = JSON.parse(localStorage.getItem('env26_rea') || '[]') || []; } catch (e) { }
+      var k = ['rfaInduk', 'bulan', 'sampel', 'site', 'jenisAnalisa', 'parameter', 'titik', 'iterasi', 'tglKirimUlang', 'tglDraftSelesai', 'scanRea', 'nilaiAwal', 'nilaiRea', 'catatan'];
+      return { k: k, b: r.map(function (x) { return k.map(function (c) { return x[c]; }); }) };
+    },
+    'hasil': function () {
+      var k = ['grup', 'site', 'titik', 'parameter', 'nilai', 'satuan', 'bakuMutu', 'satuanBakuMutu', 'status', 'tanggal', 'noRfa', 'peraturan'], b = [];
+      if (typeof HS_GROUPS_DATA === 'undefined') return { k: k, b: b };
+      Object.keys(HS_GROUPS_DATA).forEach(function (g) {
+        (HS_GROUPS_DATA[g] || []).forEach(function (x) {
+          b.push([g, x.site, x.titik, x.parameter, x.nilai, x.satuan, x.bakuMutu, x.satuanBakuMutu, x.status,
+            Array.isArray(x.tanggal) ? x.tanggal.join(' ') : x.tanggal, Array.isArray(x.noRfa) ? x.noRfa.join(' ') : x.noRfa, x.peraturan]);
+        });
+      });
+      return { k: k, b: b };
+    },
+    'program': function () {
+      var sp = null; try { sp = JSON.parse(localStorage.getItem('env26_sampling_points') || 'null'); } catch (e) { }
+      if (!sp && typeof SAMPLING_POINTS !== 'undefined') sp = SAMPLING_POINTS;
+      var k = ['kategori', 'site', 'position', 'sampleName', 'matrix', 'parameter', 'analysis', 'info', 'penulisan', 'kodeRfa', 'sampel', 'lat', 'lng', 'lat_d', 'lng_d', 'remarks'], b = [];
+      ['monthly', 'semesterly', 'yearly', 'nonRoutine'].forEach(function (cat) {
+        ((sp && sp[cat]) || []).forEach(function (x) { b.push([cat].concat(k.slice(1).map(function (c) { return x[c]; }))); });
+      });
+      return { k: k, b: b };
+    },
+    'jadwal': function () {
+      var ev = []; try { ev = (typeof _rsSchedEvents === 'function') ? _rsSchedEvents() : JSON.parse(localStorage.getItem('env26_cal') || '[]'); } catch (e) { }
+      var k = ['date', 'type', 'tahap', 'text', 'ppc', 'site', 'status', 'sra', 'source'];
+      return { k: k, b: (ev || []).map(function (x) { return k.map(function (c) { return x[c]; }); }) };
+    },
+    'drain': function () {
+      var st = {}; try { st = (typeof _rsDrainStore === 'function') ? _rsDrainStore() : {}; } catch (e) { }
+      var b = [];
+      Object.keys(st).forEach(function (site) { Object.keys(st[site] || {}).sort().forEach(function (t) { b.push([site, t, st[site][t]]); }); });
+      return { k: ['site', 'tanggal', 'curah_hujan_mm'], b: b };
+    }
+  };
+  function csvTabel(viewSel, nama) {
+    var v = document.querySelector(viewSel) || document;
+    var ts = [].slice.call(v.querySelectorAll('table')).filter(function (t) { return t.rows.length > 1 && t.getClientRects().length; });
+    if (!ts.length) { if (typeof toast === 'function') toast('Tidak ada tabel di layar ini untuk diekspor.'); return false; }
+    ts.sort(function (a, b) { return b.rows.length - a.rows.length; });
+    var rows = [].slice.call(ts[0].rows).map(function (r) { return [].slice.call(r.cells).map(function (c) { return c.textContent; }); });
+    return unduhCsv(nama, rows[0], rows.slice(1));
   }
   var VIEW_KTX = { 'rfa-list': '#view-rfa', 'rfa-rea': '#view-rfa', 'hasil': '#view-hasil', 'program': '#view-envprog', 'jadwal': 'body', 'drain': '#view-laporan' };
 
@@ -49348,17 +49412,31 @@ function _coordDetailMainInput(actId,q){
       + tomb('sinkron-exp', 'Export Excel Raw', '_sinkronExport()', false, '#2e7d32')
       + tomb('sinkron-imp', 'Impor Excel Raw', '_sinkronImpor()', false, '#1565c0')
       + '</div>'
+      /* Hasil tepat di bawah tiga tombol. Sebelumnya ia di dasar jendela,
+         di bawah kotak mode dan keterangan: di layar yang tidak tinggi, pesan
+         "Belum ada format tersimpan..." / hasil impor ada di luar pandangan
+         dan tombolnya tampak tidak berfungsi. */
+      + '<div id="sinkron-hasil" style="margin-bottom:10px">'
+      + '<div id="sinkron-status" style="font-size:13px;color:var(--g4)"></div>'
+      + '<input type="file" id="rs-imp-file" accept=".xlsx,.xlsm,.xls" onchange="_rsPickImport(this)" style="display:none">'
+      + '<div id="rs-imp-info"></div><div id="rs-exp-info"></div></div>'
       + '<div style="font-size:13px;color:var(--g4);margin-bottom:10px;line-height:1.5"><b>' + esc(fi.label) + '</b> — ' + esc(fi.note || '') + '</div>'
-      + '<div id="sinkron-mode" style="border:2px solid var(--g3);border-radius:9px;padding:8px 10px;margin-bottom:10px">'
+      + '<div id="sinkron-mode" style="display:none;border:2px solid var(--g3);border-radius:9px;padding:8px 10px;margin-bottom:10px">'
       + '<div style="font-size:13px;font-weight:700;color:var(--g4);margin-bottom:5px">MODE IMPOR (untuk record yang sudah ada)</div>'
       + '<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;margin-right:14px;cursor:pointer"><input type="radio" name="rs-mode" value="fillblank"' + (modeBawaan === 'fillblank' ? ' checked' : '') + ' onchange="_rsSetMode(this.value)"> Fill Blank Only</label>'
       + '<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="radio" name="rs-mode" value="replace"' + (modeBawaan === 'replace' ? ' checked' : '') + ' onchange="_rsSetMode(this.value)"> Replace All</label>'
       + '<div id="rs-mode-note" style="font-size:13px;color:var(--g4);margin-top:5px;line-height:1.5">' + ((typeof _rsModeNote === 'function') ? _rsModeNote() : '') + '</div></div>'
-      + '<input type="file" id="rs-imp-file" accept=".xlsx,.xlsm,.xls" onchange="_rsPickImport(this)" style="display:none">'
-      + '<div id="rs-imp-info"></div><div id="rs-exp-info"></div>'
       + '<div style="font-size:13px;color:var(--g4);margin-top:12px;padding-top:10px;border-top:1px solid var(--g2)">Belum ada format tersimpan untuk Export? Unggah file raw-mu <b>sekali</b>:'
       + ' <input type="file" id="rs-exp-file" accept=".xlsx,.xlsm,.xls" onchange="_rsPickExport(this)" style="font-size:13px;margin-left:6px"></div>'
       + '</div></div>';
+    /* Tombol di dalam hasil (mis. "Isi Schedule dari app & unduh" butuh ~30 detik
+       untuk 1.900 event) tidak punya penanda proses: beri tahu bahwa ia bekerja. */
+    ov.addEventListener('click', function (ev) {
+      var b = ev.target && ev.target.closest && ev.target.closest('#rs-exp-info button, #rs-imp-info button');
+      if (!b) return;
+      status('Memproses\u2026 file terunduh / hasil tampil di bawah dalam beberapa detik (data besar bisa sampai setengah menit).');
+      setTimeout(function () { status(''); }, 45000);
+    });
     parkir(ov);
   }
   function buka(kunci) {
@@ -49381,12 +49459,36 @@ function _coordDetailMainInput(actId,q){
   window._sinkronCsv = function () {
     var k = _ctx.kunci;
     if (_ctx.csv && typeof window[_ctx.csv] === 'function') { window[_ctx.csv](); return; }
+    if (CSV_DATA[k]) { var d = CSV_DATA[k](); if (d.b.length) { unduhCsv('Sinkron_' + _ctx.judul, d.k, d.b); return; } }
     csvTabel(VIEW_KTX[k] || 'body', 'Sinkron_' + _ctx.judul);
   };
-  window._sinkronExport = function () { siapkanMesin(); _rsExportDirect(); };
+  function lihat() {
+    [250, 1200, 3000].forEach(function (ms) {
+      setTimeout(function () { var h = document.getElementById('sinkron-hasil'); if (h && h.scrollIntoView) h.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, ms);
+    });
+  }
+  function status(t) { var e = document.getElementById('sinkron-status'); if (e) e.innerHTML = t; }
+  window._sinkronExport = function () {
+    siapkanMesin();
+    status('Memuat format tersimpan\u2026');
+    _rsExportDirect();
+    lihat();
+    /* .xls lama tidak bisa di-patch tanpa merusak format: mesin hanya menjawab
+       "invalid zip data". Beri tahu apa yang harus dilakukan. */
+    setTimeout(function () {
+      var i = document.getElementById('rs-exp-info');
+      if (i && /invalid zip|Gagal membaca/i.test(i.textContent || '')) {
+        i.insertAdjacentHTML('beforeend', '<div style="font-size:13px;color:#8a6d00;margin-top:6px">Format yang tersimpan kemungkinan berkas <b>.xls</b> lama. Export hanya bisa memakai <b>.xlsx/.xlsm</b>: simpan ulang berkas rawnya sebagai .xlsx di Excel, lalu unggah di kotak bawah.</div>');
+      }
+      var st = document.getElementById('sinkron-status'); if (st && i && (i.textContent || '').trim()) st.innerHTML = '';
+    }, 2500);
+  };
   window._sinkronImpor = function () {
     siapkanMesin();
+    var m = document.getElementById('sinkron-mode'); if (m) m.style.display = 'block';
+    status('Pilih berkas Excel raw\u2026');
     var i = document.getElementById('rs-imp-file'); if (i) { i.value = ''; i.click(); }
+    lihat();
   };
 
   /* ---- tombol pemicu: dipasang ulang setiap layar digambar ulang ------------ */
