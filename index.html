@@ -5647,7 +5647,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'5fe5d766'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'66ddb175'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -49940,6 +49940,611 @@ function _coordDetailMainInput(actId,q){
   window._ctbBarisSheet = barisSheet;
   window._ctbProses = proses;
   window._ctbKolom = { dari: KOLOM, ke: KOLOM_KE };
+})();
+
+</script><script id="importer-raw-y568">
+/* Y568 — Perbaikan importer Sinkron Raw (permintaan pemilik 2026-10-05: raw jadi acuan).
+ *
+ * Mengganti, saat jalan, lima bagian importer yang terbukti keliru pada berkas raw
+ * Oktober 2026 (lihat 03-Known-Bugs-Fixed-Log lanjutan 9):
+ *   1. Schedule : membaca sheet "Jadwal" -> 122 dari 132 event "baru" ternyata
+ *                 duplikat. Kini membaca KALENDER BULANAN (sumber sebenarnya),
+ *                 warna merah = Postponed/Cancelled, roster petugas dilewati.
+ *   2. Program  : parser DMS menolak tanda ketik Excel (˚ ’ ”), pemisah ';',
+ *                 "1170 29'" (derajat terbaca 0) dan UTM. Kini menerima semuanya,
+ *                 memakai angka "(Sesuai IPLC : ...)" bila ada, dan bila sheet
+ *                 Monthly bertentangan dengan sheet master "Sampling Point"
+ *                 memakai master serta melaporkan konfliknya.
+ *   3. Recap    : kunci titik membuang isi kurung, sehingga "DWW 5 (NPU New
+ *                 Accommodation)" dan "DWW 5 (CPU Restaurant)" sama-sama jadi
+ *                 "dww 5" dan saling menimpa. Kini titik dipetakan ke nama titik app
+ *                 secara bertingkat; baris Debit BWPD dan m3/bulan dibedakan; baris
+ *                 manual ikut diperbarui; bulan yang belum punya baris dibuat.
+ *   4. RFA 2026 : RFA yang belum ada di app dulu hanya "dilewati". Kini dibuat.
+ *   5. Ekspor Recap memakai pemetaan titik yang sama (dulu menulis nilai CPU ke
+ *      baris NPU).
+ * Semua fungsi lama tetap ada sebagai cadangan (_rsXxxLama).
+ */
+(function(){
+'use strict';
+if(window._rsImporterY568)return; window._rsImporterY568=true;
+var XL=function(){return (typeof XLSXS!=='undefined'?XLSXS:XLSX);};
+
+/* ---------- utilitas umum ---------- */
+function strict(s){
+  return String(s==null?'':s).toLowerCase().replace(/&/g,' ')
+    .replace(/\b(akomodasi|accomodation|accommodation)\b/g,'accommodation')
+    .replace(/\brestaurant\b/g,'restoran').replace(/\bhdl\b/g,'handil')
+    .replace(/\b(dan|and)\b/g,' ').replace(/[°º*]/g,' ').replace(/[^a-z0-9]+/g,' ').replace(/([a-z])\s+(\d)/g,'$1$2').replace(/\s+/g,' ').trim();
+}
+function loose(s){return strict(String(s==null?'':s).replace(/\([^)]*\)/g,' '));}
+function parenIn(s){var m=String(s).match(/\(([^)]*)\)/);return m?m[1]:'';}
+function jarakM(a,b){
+  var R=6371000,p1=a[0]*Math.PI/180,p2=b[0]*Math.PI/180,dl=(b[1]-a[1])*Math.PI/180,dp=p2-p1;
+  var h=Math.sin(dp/2)*Math.sin(dp/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function esc(s){return (typeof _ep==='function')?_ep(s):String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function bacaBerkas(file,cb){var fr=new FileReader();fr.onload=function(){cb(new Uint8Array(fr.result));};fr.readAsArrayBuffer(file);}
+
+/* ======================================================================
+ * 1. SCHEDULE — kalender bulanan
+ * ==================================================================== */
+var BULAN_SHEET={january:1,januari:1,february:2,februari:2,maret:3,april:4,may:5,mei:5,juni:6,juli:7,agustus:8,september:9,oktober:10,november:11,desember:12};
+var SITE_RE=/\b(NPU|HCA|BKP|SPS|SPU|CPU|BPN|CPA|HDL)\b/;
+function warnaMerah(rgb){
+  var h=String(rgb||'').slice(-6); if(h.length<6)return false;
+  var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  return r>150&&g<100&&b<100;
+}
+// alamat sel yang fontnya merah, per nama sheet (hanya jika berkas xlsx)
+function selMerah(bytes){
+  var out={};
+  try{
+    var f=fflate.unzipSync(bytes);
+    var teks=function(p){return f[p]?fflate.strFromU8(f[p]):'';};
+    var dp=new DOMParser();
+    var wb=dp.parseFromString(teks('xl/workbook.xml'),'text/xml');
+    var rels=dp.parseFromString(teks('xl/_rels/workbook.xml.rels'),'text/xml');
+    var relMap={}; Array.prototype.forEach.call(rels.getElementsByTagName('Relationship'),function(r){relMap[r.getAttribute('Id')]=r.getAttribute('Target');});
+    var st=dp.parseFromString(teks('xl/styles.xml'),'text/xml');
+    var fonts=[]; var fe=st.getElementsByTagName('fonts')[0];
+    if(fe)Array.prototype.forEach.call(fe.getElementsByTagName('font'),function(ft){var c=ft.getElementsByTagName('color')[0];fonts.push(c?warnaMerah(c.getAttribute('rgb')):false);});
+    var xfMerah=[]; var cx=st.getElementsByTagName('cellXfs')[0];
+    if(cx)Array.prototype.forEach.call(cx.getElementsByTagName('xf'),function(x){xfMerah.push(!!fonts[parseInt(x.getAttribute('fontId')||'0',10)]);});
+    Array.prototype.forEach.call(wb.getElementsByTagName('sheet'),function(sh){
+      var rid=sh.getAttribute('r:id')||sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');
+      var tgt=relMap[rid]; if(!tgt)return;
+      var path=tgt.charAt(0)==='/'?tgt.slice(1):'xl/'+tgt;
+      var xml=teks(path); var set={};
+      var re=/<c r="([A-Z]+\d+)"([^>]*)>/g,m;
+      while((m=re.exec(xml))){var sm=/\ss="(\d+)"/.exec(m[2]); if(sm&&xfMerah[parseInt(sm[1],10)])set[m[1]]=1;}
+      out[sh.getAttribute('name')]=set;
+    });
+  }catch(e){}
+  return out;
+}
+function klasifikasi(t){
+  var tahap='During',m=t.match(/\b(Before|During|After)\b/i); if(m)tahap=m[1].charAt(0).toUpperCase()+m[1].slice(1).toLowerCase();
+  var l=t.toLowerCase(),typ;
+  if(l.indexOf('perjalanan')>=0)typ='Perjalanan';else if(l.indexOf('dredging')>=0)typ='Dredging';
+  else if(l.indexOf('drilling')>=0)typ='Drilling';else if(l.indexOf('trenching')>=0)typ='Trenching';
+  else if(l.indexOf('leveling')>=0)typ='Leveling';else if(l.indexOf('hydrotest')>=0)typ='Hydrotest';
+  else if(l.indexOf('dumping')>=0)typ='Offshore Dumping';else if(l.indexOf('semesterly')>=0)typ='Semesterly';
+  else if(l.indexOf('yearly')>=0)typ='Yearly';else if(l.indexOf('monthly')>=0)typ='Monthly';
+  else if(l.indexOf('resampling')>=0||l.indexOf('re-sampling')>=0)typ='Resampling';else typ='Other';
+  return {type:typ,tahap:tahap};
+}
+function parseEntri(raw){
+  var t=String(raw).trim().replace(/^\s*-\s*/,''); if(!t)return null;
+  var ppc='',m=t.match(/\(PPC:\s*([^)]*)\)/i);
+  if(m){ppc=m[1].trim();t=(t.slice(0,m.index)+t.slice(m.index+m[0].length)).trim();}
+  t=t.replace(/\s{2,}/g,' ').replace(/^[\s\-,]+|[\s\-,]+$/g,'');
+  var k=klasifikasi(t),site='',sm=SITE_RE.exec(t);
+  if(sm)site={HDL:'HCA',CPA:'HCA'}[sm[1]]||sm[1];
+  return {text:t,ppc:ppc,type:k.type,tahap:k.tahap,site:site};
+}
+function normTeks(t){return String(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
+function jadwalGrid(wbx,bytes){
+  var merah=bytes?selMerah(bytes):{}; var out=[];
+  wbx.SheetNames.forEach(function(sn){
+    var bulan=BULAN_SHEET[String(sn).trim().toLowerCase()]; if(!bulan)return;
+    var ws=wbx.Sheets[sn]; if(!ws||!ws['!ref'])return;
+    var rg=XL().utils.decode_range(ws['!ref']);
+    var rows=XL().utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+    var tahun=2026;
+    for(var i=0;i<Math.min(3,rows.length);i++)(rows[i]||[]).forEach(function(v){if(typeof v==='string'){var y=v.match(/\b(20\d{2})\b/);if(y)tahun=parseInt(y[1],10);}});
+    var hariBaris=[];
+    rows.forEach(function(r,i){
+      r=r||[]; var ints=0,strs=0;
+      r.forEach(function(v){if(typeof v==='number'&&v===Math.floor(v)&&v>=1&&v<=31)ints++;else if(typeof v==='string'&&v.trim())strs++;});
+      if(ints>=3&&!strs)hariBaris.push(i);
+    });
+    hariBaris.forEach(function(dr,bi){
+      var akhir=bi+1<hariBaris.length?hariBaris[bi+1]:rows.length;
+      var hariPerKol={},r0=rows[dr]||[];
+      r0.forEach(function(v,c){
+        if(typeof v!=='number'||v<1||v>31)return;
+        var d=Math.floor(v);
+        if(bi===0&&d>20)return;
+        if(bi===hariBaris.length-1&&bi>0&&d<15&&c>0){var adaBesar=false;for(var cc=0;cc<c;cc++){if(typeof r0[cc]==='number'&&r0[cc]>20)adaBesar=true;}if(adaBesar)return;}
+        hariPerKol[c]=d;
+      });
+      for(var r=dr+1;r<akhir;r++){
+        Object.keys(hariPerKol).forEach(function(cs){
+          var c=parseInt(cs,10),v=(rows[r]||[])[c]; if(typeof v!=='string'||!v.trim())return;
+          var alamat=_rsColLetter(c+rg.s.c)+(r+1+rg.s.r);
+          var cancelled=!!(merah[sn]&&merah[sn][alamat]);
+          v.split(/\n(?=\s*-)/).forEach(function(line){
+            var e=parseEntri(line); if(!e)return;
+            var dd=hariPerKol[c];
+            e.date=tahun+'-'+('0'+bulan).slice(-2)+'-'+('0'+dd).slice(-2); e.cancelled=cancelled; out.push(e);
+          });
+        });
+      }
+    });
+  });
+  // merah: Postponed bila kegiatan yang sama muncul tidak-merah di tanggal lain, selain itu Cancelled
+  var hijau={}; out.forEach(function(e){if(!e.cancelled)hijau[normTeks(e.text)]=1;});
+  out.forEach(function(e){e.status=e.cancelled?(hijau[normTeks(e.text)]?'Postponed':'Cancelled'):'Planned';});
+  return out;
+}
+var _schedImportLama=window._rsSchedImport; window._rsSchedImportLama=_schedImportLama;
+window._rsSchedImportGrid=jadwalGrid;
+window._rsSchedImport=function(wbx,bytes){
+  var g=jadwalGrid(wbx,bytes||window._rsLastBytes);
+  if(g.length)return g;
+  return _schedImportLama?_schedImportLama(wbx):null;
+};
+var _schedApplyLama=window._rsSchedApply; window._rsSchedApplyLama=_schedApplyLama;
+window._rsSchedApply=function(recs){
+  var cal=[]; try{cal=JSON.parse(localStorage.getItem('env26_cal')||'[]');}catch(e){}
+  if((!cal||!cal.length)&&typeof CAL_EVENTS!=='undefined')cal=CAL_EVENTS.slice();
+  var perTgl={}; cal.forEach(function(e){if(e&&e.date)(perTgl[e.date]=perTgl[e.date]||[]).push(normTeks(e.text));});
+  var added=0,skipped=0,uid=Date.now();
+  recs.forEach(function(r){
+    if(!r.date||!/^\d{4}-\d{2}-\d{2}$/.test(r.date)){skipped++;return;}
+    if(typeof _calIsPpcRoster==='function'&&_calIsPpcRoster({type:r.type,tahap:r.tahap,text:r.text})){skipped++;return;}
+    var a=normTeks(r.text); if(!a){skipped++;return;}
+    var a22=a.slice(0,22);
+    var ada=(perTgl[r.date]||[]).some(function(b){return b.indexOf(a22)>=0||(b.length>=10&&a.indexOf(b.slice(0,22))>=0);});
+    if(ada){skipped++;return;}
+    cal.push({id:'u-ev-sched-'+(uid++)+'-'+Math.random().toString(36).slice(2,7),date:r.date,type:r.type||'Lainnya',tahap:r.tahap||'',
+      text:r.text||'',ppc:r.ppc||'',site:r.site||'',sra:'',status:r.status||'Planned',source:'Import Raw Schedule',rem:'',actId:null});
+    (perTgl[r.date]=perTgl[r.date]||[]).push(a); added++;
+  });
+  try{localStorage.setItem('env26_cal',JSON.stringify(cal));}catch(e){}
+  if(typeof CAL_EVENTS!=='undefined')try{CAL_EVENTS=cal;}catch(e){}
+  try{if(typeof _rfaNormalizeAll==='function')_rfaNormalizeAll();}catch(e){}
+  if(typeof saveStorage==='function')saveStorage('Import raw ENV Mon Schedule (kalender bulanan)');
+  if(typeof renderCalendar==='function')try{renderCalendar();}catch(e){}
+  return {added:added,skipped:skipped,total:recs.length};
+};
+
+/* ======================================================================
+ * 2. PROGRAM — parser koordinat
+ * ==================================================================== */
+function bersihkanKoordinat(s){
+  var v=String(s==null?'':s).replace(/ /g,' ').replace(/˚|º|o(?=\s*\d)/g,'°').replace(/[’′]/g,"'").replace(/[”″]/g,'"').replace(/''/g,'"');
+  v=v.replace(/\b(11[678])0\s?(\d{2})'/g,'$1° $2\'').replace(/\b0?0(\d{2})'/g,'0° $1\'');
+  return v;
+}
+// satu pasang (lat,lng) dari teks DMS atau UTM; null bila tidak yakin
+function parsePasangan(teks){
+  var t=String(teks==null?'':teks).trim(); if(!t)return null;
+  var iplc=t.match(/Sesuai\s*IPLC\s*:?\s*([\s\S]*?)\)?\s*$/i);
+  var utama=t.replace(/\(?\s*Sesuai\s*IPLC[\s\S]*$/i,'').trim();
+  var kandidat=iplc?[iplc[1],utama]:[utama];
+  for(var k=0;k<kandidat.length;k++){var h=parsePasanganTunggal(kandidat[k]);if(h)return h;}
+  return null;
+}
+function parsePasanganTunggal(teks){
+  var u=String(teks).replace(/^\(|\)$/g,'').trim(); if(!u)return null;
+  var mu=u.match(/^\(?\s*[EeXx]?\s*[:=]?\s*(\d{6,7}(?:[.,]\d+)?)\s*[\/,;]\s*[NnYy]?\s*[:=]?\s*(\d{7}(?:[.,]\d+)?)/);
+  if(mu&&typeof _utmToLatLng==='function'){
+    var ll=_utmToLatLng(parseFloat(mu[1].replace(',','.')),parseFloat(mu[2].replace(',','.')),50,'S');
+    if(ll&&isFinite(ll.lat)&&isFinite(ll.lng))return {lat:ll.lat,lng:ll.lng,utm:true};
+    return null;
+  }
+  var v=bersihkanKoordinat(u);
+  var re=/(?:([A-Za-z]{1,2})\s*:?\s*)?(\d{1,3})\s*°?\s*(\d{1,2})\s*'\s*(\d{1,2}(?:[.,]\d+)?)\s*"?\s*(?:([A-Za-z]{1,2})(?![A-Za-z]*\s*:?\s*\d))?/g;
+  var m,lat=null,lng=null,n=0;
+  while((m=re.exec(v))&&n<2){
+    n++;
+    var h=(m[5]||m[1]||'').toUpperCase(),val=parseInt(m[2],10)+parseInt(m[3],10)/60+parseFloat(m[4].replace(',','.'))/3600;
+    if(h==='LS'||h==='S')lat=-val;else if(h==='LU'||h==='N')lat=val;
+    else if(h==='BT'||h==='E')lng=val;else if(h==='BB'||h==='W')lng=-val;
+  }
+  return (lat!=null&&lng!=null)?{lat:lat,lng:lng}:null;
+}
+function parseTunggal(teks,isLat){
+  var v=bersihkanKoordinat(teks),m=v.match(/(\d{1,3})\s*°?\s*(\d{1,2})\s*'\s*(\d{1,2}(?:[.,]\d+)?)\s*"?\s*(LS|LU|BT|BB|N|S|E|W)?/i);
+  if(!m)return null;
+  var x=parseInt(m[1],10)+parseInt(m[2],10)/60+parseFloat(m[3].replace(',','.'))/3600,h=(m[4]||'').toUpperCase();
+  if(h==='LS'||h==='S'||h==='BB'||h==='W')x=-x; else if(!h&&isLat)x=-x; // Kaltim: lintang tanpa tanda = selatan
+  return x;
+}
+function fmtDms(x,isLat){
+  var h=isLat?(x>=0?'LU':'LS'):(x>=0?'BT':'BB'),a=Math.abs(x),d=Math.floor(a),mf=(a-d)*60,mi=Math.floor(mf),s=(mf-mi)*60;
+  if(s>=59.995){s=0;mi++;} if(mi>=60){mi=0;d++;}
+  var p2=function(n){return ('0'+n).slice(-2);};
+  return (isLat?p2(d):d)+'°'+p2(mi)+"'"+s.toFixed(2).replace('.',',')+'" '+h;
+}
+var _progImportLama=window._rsProgImport; window._rsProgImportLama=_progImportLama;
+window._rsProgImport=function(wbx){
+  var out=[],konflik=[];
+  var ws,rows;
+  // master: sheet "Sampling Point" (nama titik penaatan + Lintang/Bujur Outlet)
+  var master={};
+  var sp=wbx.SheetNames.filter(function(s){return _rsNorm(s)==='sampling point';})[0];
+  if(sp){
+    rows=XL().utils.sheet_to_json(wbx.Sheets[sp],{header:1,raw:true,defval:null});
+    var hdr=rows[0]||[],ci={};
+    hdr.forEach(function(h,j){var n=_rsNorm(h);if(n.indexOf('nama titik')===0)ci.nama=j;else if(n.indexOf('lintang outlet')===0)ci.lat=j;else if(n.indexOf('bujur outlet')===0)ci.lng=j;});
+    if(ci.nama!=null&&ci.lat!=null&&ci.lng!=null)for(var i=1;i<rows.length;i++){
+      var r=rows[i]||[],nm=r[ci.nama]; if(!nm)continue;
+      var la=parseTunggal(r[ci.lat],true),ln=parseTunggal(r[ci.lng],false);
+      if(la!=null&&ln!=null)master[strict(nm)]={lat:la,lng:ln,latS:String(r[ci.lat]),lngS:String(r[ci.lng])};
+    }
+  }
+  RS_PROG_SHEETS.forEach(function(sd){
+    var sn=_rsProgSheetName(wbx,sd.match); if(!sn)return;
+    rows=XL().utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+    var map=_rsProgCols(rows); if(!map)return;
+    for(var i=map.headerRow+1;i<rows.length;i++){
+      var r=rows[i]||[],name=map.cols.name!=null?r[map.cols.name]:null; if(name==null||String(name).trim()==='')continue;
+      var latD=null,lngD=null,latRaw='',lngRaw='';
+      if(map.cols.lat!=null&&map.cols.lng!=null){
+        latD=parseTunggal(r[map.cols.lat],true); lngD=parseTunggal(r[map.cols.lng],false);
+        latRaw=r[map.cols.lat]==null?'':String(r[map.cols.lat]); lngRaw=r[map.cols.lng]==null?'':String(r[map.cols.lng]);
+      }else if(map.cols.coord!=null&&r[map.cols.coord]!=null){
+        var pp=parsePasangan(String(r[map.cols.coord]));
+        if(pp){latD=pp.lat;lngD=pp.lng;latRaw=fmtDms(pp.lat,true);lngRaw=fmtDms(pp.lng,false);}
+      }
+      var rec={cat:sd.k,name:String(name),position:map.cols.pos!=null?String(r[map.cols.pos]||''):'',
+        penulisan:map.cols.penulisan!=null?String(r[map.cols.penulisan]||''):'',lat:latRaw,lng:lngRaw,latD:latD,lngD:lngD};
+      var m=master[strict(rec.name)];
+      if(m&&latD!=null&&lngD!=null){
+        var j=jarakM([latD,lngD],[m.lat,m.lng]);
+        if(j>10){konflik.push({nama:rec.name,sheet:sn,jarak:Math.round(j),raw:fmtDms(latD,true)+' ; '+fmtDms(lngD,false),master:fmtDms(m.lat,true)+' ; '+fmtDms(m.lng,false)});
+          rec.latD=m.lat;rec.lngD=m.lng;rec.lat=fmtDms(m.lat,true);rec.lng=fmtDms(m.lng,false);}
+      }
+      out.push(rec);
+    }
+  });
+  out.konflik=konflik;
+  return out;
+};
+
+/* ======================================================================
+ * 3. RECAP — pemetaan titik, Debit BWPD vs m3/bulan, baris manual, baris baru
+ * ==================================================================== */
+var TURUNAN={'produksi':1,'beban pencemar':1,'debit':1,'debit m3 bulan':1};
+var _gridLama=window._rsRecapGrid;
+function satuanM3(s){return /m3|m³/i.test(String(s||''));}
+// grid + nama titik app + baris satuan Debit
+function gridS(rows,sheetNorm,titikApp){
+  var g=_gridLama(rows); if(!g)return null;
+  var kolSat=3,out=[];
+  var tambahan=[];
+  g.rows.forEach(function(dr){
+    var sat=(rows[dr.excelRow-1]||[])[kolSat];
+    dr.unit=sat==null?'':String(sat);
+    dr.titikRaw=dr.titik;
+    dr.titik=resolveTitik(sheetNorm,dr.titik,titikApp);
+    if(_rsNormKey(dr.param)==='debit'&&satuanM3(dr.unit))dr.param='Debit [m3/bulan]';
+  });
+  // baris satuan tanpa nama parameter (kolom C kosong) tepat di bawah baris Debit
+  g.rows.slice().forEach(function(dr){
+    if(_rsNormKey(dr.param)!=='debit')return;
+    var nx=(rows[dr.excelRow]||[]),nxP=nx[2],nxU=nx[kolSat];
+    if((nxP==null||String(nxP).trim()==='')&&nxU!=null&&satuanM3(nxU)){
+      tambahan.push({excelRow:dr.excelRow+1,titik:dr.titik,titikRaw:dr.titikRaw,param:'Debit [m3/bulan]',unit:String(nxU)});
+    }
+  });
+  g.rows=g.rows.concat(tambahan);
+  return g;
+}
+function titikAppPerSheet(){
+  var peta={};
+  var grup=Object.keys(HS_GROUPS_DATA||{});
+  grup.forEach(function(gk){
+    (_hsRowsFor(gk)||[]).forEach(function(r){
+      var sh=_rsNorm(r.extra&&r.extra.sumberSheet); if(!sh||!r.titik)return;
+      var m=(peta[sh]=peta[sh]||{});
+      m[strict(r.titik)]=m[strict(r.titik)]||r.titik;
+    });
+  });
+  return peta;
+}
+var ALIAS_TITIK={'handil base new office':'handil ii base new office'};
+function resolveTitik(sheetNorm,raw,peta){
+  var daftar=(peta&&peta[sheetNorm])||{},nm=String(raw==null?'':raw);
+  if(!nm)return nm;
+  var cek=function(k){return k&&daftar[k]?daftar[k]:null;};
+  var s=strict(nm),hit=cek(s);
+  if(hit)return hit;
+  hit=cek(ALIAS_TITIK[s]);                                   if(hit)return hit;
+  var p=parenIn(nm);
+  // titik inlet tidak boleh dipetakan lewat isi kurungnya: "INLET DWW 4 (NPU Camp II)"
+  // bukan "NPU Camp II" (outlet); isi kurung membuang penanda inlet-nya
+  if(/inlet/i.test(nm))p='';
+  if(p){hit=cek(strict(p));                                   if(hit)return hit;
+        hit=cek(strict(p.replace(/\s*-\s*[A-Za-z]{2,4}\s*$/,'')));  if(hit)return hit;
+        hit=cek(strict(nm.replace(/\(([^)]*?)\s*-\s*[A-Za-z]{2,4}\s*\)/,'($1)')));if(hit)return hit;}
+  hit=cek(loose(nm));                                         if(hit)return hit;
+  hit=cek(strict(nm.replace(/^PW\s+/i,'')));                  if(hit)return hit;
+  hit=cek(ALIAS_TITIK[strict(nm.replace(/^PW\s+/i,''))]);     if(hit)return hit;
+  return nm;
+}
+// indeks app: kunci titik = nama LENGKAP (kurung dipertahankan) supaya
+// "Outlet DWWTU (Restaurant)" dan "(Toilet)" tidak jadi satu; Debit m3/bulan
+// punya kunci sendiri agar tidak tertukar dengan Debit BWPD.
+var _idxLama=window._rsRecapAppIndex; window._rsRecapAppIndexLama=_idxLama;
+window._rsRecapAppIndex=function(withEmpty){
+  var idx={};
+  Object.keys(HS_GROUPS_DATA||{}).forEach(function(g){
+    var rows=(typeof _hsRowsFor==='function')?_hsRowsFor(g):(HS_GROUPS_DATA[g]||[]);
+    rows.forEach(function(r){
+      var sheet=_rsNorm(r.extra&&r.extra.sumberSheet); if(!sheet)return;
+      var mn=_rsMonthNum(r.extra&&r.extra.bulan);
+      if(!mn&&r.tanggal&&r.tanggal[0])mn=parseInt(String(r.tanggal[0]).slice(5,7),10)||null;
+      if(!mn)return;
+      var yr=(r.tanggal&&r.tanggal[0])?String(r.tanggal[0]).slice(0,4):'';
+      if(!withEmpty&&(r.nilai==null||r.nilai===''))return;
+      var kp=_rsNormKey(r.parameter); if(kp==='debit'&&satuanM3(r.satuan))kp='debit m3 bulan';
+      var key=strict(r.titik)+'‖'+kp+'‖'+mn;
+      var m=(idx[sheet]=idx[sheet]||{});
+      (m[key]=m[key]||[]).push({nilai:r.nilai,year:yr,group:g,row:r});
+    });
+  });
+  return idx;
+};
+function ambilCocok(b,kT,kP,mn,yr){
+  var h=_rsRecapPick(b[kT+'‖'+kP+'‖'+mn],yr);
+  if(!h&&kP==='debit m3 bulan')h=_rsRecapPick(b[kT+'‖debit‖'+mn],yr);
+  return h;
+}
+function sama(a,b){
+  var x=String(a==null?'':a).trim(),y=String(b==null?'':b).trim();
+  if(x===y)return true;
+  var nx=Number(x),ny=Number(y);
+  return x!==''&&y!==''&&isFinite(nx)&&isFinite(ny)&&Math.abs(nx-ny)<=1e-9*Math.max(1,Math.abs(nx),Math.abs(ny));
+}
+var BLN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function petaRfaTanggal(rows){
+  var rfaAt={},tglAt={},lr=null,lt=null;
+  rows.forEach(function(r,i){
+    var a=_rsNorm((r||[])[0]);
+    if(a==='rfa')lr=r;else if(a.indexOf('tanggal')===0)lt=r;
+    rfaAt[i+1]=lr;tglAt[i+1]=lt;
+  });
+  return {rfa:rfaAt,tgl:tglAt};
+}
+var _runLama=window._rsRecapRunImport; window._rsRecapRunImportLama=_runLama;
+window._rsRecapRunImport=function(wbx){
+  var base=window._rsRecapAppIndex(true),peta=titikAppPerSheet();
+  var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE!=='replace');
+  var changed=0,same=0,unmatched=0,dilindungi=0,dibuat=0,nolDilewati=0,report=[],gagalBaru=[],manualUbah=0;
+  // templat baris untuk membuat bulan baru: sheet -> titik‖param -> baris app terbaru
+  var tpl={};
+  Object.keys(HS_GROUPS_DATA||{}).concat(['__manual']).forEach(function(){});
+  (typeof _hsAllRows==='function'?_hsAllRows():[]).forEach(function(r){
+    var sh=_rsNorm(r.extra&&r.extra.sumberSheet); if(!sh)return;
+    var kp=_rsNormKey(r.parameter); if(satuanM3(r.satuan)&&kp==='debit')kp='debit m3 bulan';
+    var k=strict(r.titik)+'‖'+kp,t=(r.tanggal&&r.tanggal[0])||'';
+    var m=(tpl[sh]=tpl[sh]||{});
+    if(!m[k]||t>((m[k].tanggal&&m[k].tanggal[0])||''))m[k]=r;
+  });
+  var rfaAda={};
+  (typeof _hsAllRows==='function'?_hsAllRows():[]).forEach(function(r){(r.noRfa||[]).forEach(function(n){rfaAda[n+'‖'+strict(r.titik)+'‖'+_rsNormKey(r.parameter)]=1;});});
+  var baruRows=[];
+  wbx.SheetNames.forEach(function(sn){
+    var sh=_rsNorm(sn),b=base[sh];
+    if(!b){report.push({sheet:sn,status:'lewat',alasan:'sheet ini tidak dikenali sebagai bagian recap di aplikasi'});return;}
+    var rows=XL().utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+    var grid=gridS(rows,sh,peta); if(!grid){report.push({sheet:sn,status:'lewat',alasan:'baris kolom bulan / titik / parameter tidak terbaca'});return;}
+    var pt=petaRfaTanggal(rows);
+    var c0=changed,s0=same,u0=unmatched,p0=dilindungi,d0=dibuat;
+    grid.rows.forEach(function(dr){
+      var kP=_rsNormKey(dr.param);
+      var kTs=strict(dr.titik),kT=kTs;
+      Object.keys(grid.monthCols).forEach(function(cj){
+        var raw=(rows[dr.excelRow-1]||[])[parseInt(cj,10)];
+        if(raw==null||String(raw).trim()==='')return;
+        var ym=grid.monthCols[cj],mn=parseInt(ym.slice(5,7),10),yr=ym.slice(0,4);
+        var turunan=!!TURUNAN[kP];
+        var nol=(String(raw).trim()==='0'||raw===0);
+        // kunci memakai nama titik app hasil pemetaan
+        var hit=ambilCocok(b,kT,kP,mn,yr);
+        if(!hit){
+          // bulan yang belum punya baris: buat dari templat (hanya 2026 dst., bukan turunan/nol)
+          if(turunan||nol||ym<'2026-01'){unmatched++;return;}
+          var t=(tpl[sh]||{})[kTs+'‖'+kP]||(kP==='debit m3 bulan'?(tpl[sh]||{})[kTs+'‖debit']:null);
+          var rfaV=((pt.rfa[dr.excelRow]||[])[parseInt(cj,10)]),tglV=((pt.tgl[dr.excelRow]||[])[parseInt(cj,10)]);
+          rfaV=rfaV==null?'':String(rfaV).trim();
+          tglV=typeof tglV==='number'?_rsSerialToIso(tglV):(tglV?String(tglV).slice(0,10):'');
+          var rec={sheet:sn.trim(),titik:dr.titikRaw||dr.titik,param:dr.param,ym:ym,raw:String(raw).trim(),rfa:rfaV,tgl:tglV};
+          var alasan=null;
+          if(!t)alasan='titik/parameter ini belum punya baris di app';
+          else if(!/^\d{6}-\d{2}[A-Z]?/.test(rfaV)||!/^\d{4}-\d{2}-\d{2}$/.test(tglV))alasan='RFA/tanggal sampling tidak terbaca';
+          else if(tglV.slice(0,7)!==ym)alasan='tanggal sampling tidak sebulan dengan kolom';
+          if(alasan){rec.alasan=alasan;gagalBaru.push(rec);unmatched++;return;}
+          var rl=rfaV.split(/[\/,;\s]+/).filter(Boolean);
+          if(rl.some(function(n){return rfaAda[n+'‖'+kTs+'‖'+kP.replace(/ m3 bulan$/,'')];})){same++;return;}
+          var rs=String(raw).trim();
+          var ev=_hsEvalCompliance(rs,t.bakuMutu==null?null:t.bakuMutu,{satuan:t.satuan,satuanBaku:t.satuanBakuMutu,tanggal:[tglV]});
+          var ex=Object.assign({},t.extra,{bulan:BLN[mn-1],manualId:'hm-rc-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+baruRows.length});
+          delete ex.overridden;delete ex.overriddenAt;
+          baruRows.push({group:t.group||'Monthly',category:t.category||'routine',noRfa:rl,site:t.site,titik:t.titik,tanggal:[tglV],
+            parameter:t.parameter,nilai:rs,satuan:t.satuan,bakuMutu:t.bakuMutu==null?null:t.bakuMutu,satuanBakuMutu:t.satuanBakuMutu||'',
+            peraturan:t.peraturan||'',catatan:'Impor Water Monitoring Recap (raw)',computed:0,status:ev.status,nilaiNum:ev.nilaiNum,extra:ex});
+          rl.forEach(function(n){rfaAda[n+'‖'+kTs+'‖'+kP.replace(/ m3 bulan$/,'')]=1;});
+          dibuat++;return;
+        }
+        var row=hit.row,isManual=!!(row.extra&&row.extra.manualId);
+        var cur=row.nilai==null?'':String(row.nilai);
+        if(sama(cur,raw)){same++;return;}
+        // nol pada baris turunan = nilai bawaan rumus raw untuk bulan yang belum terisi
+        if(turunan&&nol){nolDilewati++;return;}
+        if(isManual){
+          var mrow=HASIL_MANUAL.filter(function(x){return x.extra&&x.extra.manualId===row.extra.manualId;})[0]; if(!mrow){same++;return;}
+          if(fillOnly&&cur.trim()!==''){dilindungi++;return;}
+          mrow.nilai=String(raw);
+          var ev2=_hsEvalCompliance(mrow.nilai,mrow.bakuMutu==null?null:mrow.bakuMutu,{satuan:mrow.satuan,satuanBaku:mrow.satuanBakuMutu,tanggal:mrow.tanggal});
+          mrow.status=ev2.status;mrow.nilaiNum=ev2.nilaiNum;changed++;manualUbah++;return;
+        }
+        var k=_hsRowKey(hit.group,row);
+        if(fillOnly){
+          var ov=HASIL_OVERRIDE[k];
+          var adaIsi=(ov&&String(ov.nilai==null?'':ov.nilai).trim()!=='')||cur.trim()!=='';
+          if(adaIsi){dilindungi++;return;}
+        }
+        HASIL_OVERRIDE[k]={nilai:String(raw),ts:Date.now()};changed++;
+      });
+    });
+    report.push({sheet:sn,status:'ok',baris:grid.rows.length,kolomBulan:Object.keys(grid.monthCols).length,
+      changed:changed-c0,same:same-s0,unmatched:unmatched-u0,dilindungi:dilindungi-p0,dibuat:dibuat-d0});
+  });
+  if(baruRows.length){HASIL_MANUAL.push.apply(HASIL_MANUAL,baruRows);}
+  if(manualUbah||baruRows.length){try{_hsSaveManual();}catch(e){}}
+  if(changed){try{_hsSaveOverride();}catch(e){}}
+  if(changed||baruRows.length){if(typeof saveStorage==='function')saveStorage('Import raw Water Monitoring Recap ('+changed+' diperbarui, '+dibuat+' baris baru)');}
+  window._rsRecapLast={changed:changed,same:same,unmatched:unmatched,dilindungi:dilindungi,dibuat:dibuat,nolDilewati:nolDilewati,manualUbah:manualUbah,gagalBaru:gagalBaru,report:report};
+  return window._rsRecapLast;
+};
+var _lapRepLama=window._rsRecapReportHtml;
+window._rsRecapReportHtml=function(res){
+  var h=_lapRepLama?_lapRepLama(res):'';
+  var t='';
+  if(res.dibuat)t+='<div style="font-size:13px;color:#2e7d32;margin-top:3px">+ <b>'+res.dibuat+'</b> baris hasil baru dibuat (bulan yang belum punya baris, dari templat titik+parameter yang sama).</div>';
+  if(res.manualUbah)t+='<div style="font-size:13px;color:var(--text);margin-top:3px">'+res.manualUbah+' di antaranya memperbarui baris yang diisi/di-generate di app.</div>';
+  if(res.nolDilewati)t+='<div style="font-size:13px;color:#8a5a00;margin-top:3px">'+res.nolDilewati+' nilai 0 pada baris turunan (Produksi/Beban Pencemar/Debit) dilewati: itu bawaan rumus raw untuk bulan yang belum terisi.</div>';
+  if(res.gagalBaru&&res.gagalBaru.length)t+='<div style="font-size:13px;color:#9a5b00;margin-top:3px">'+res.gagalBaru.length+' nilai belum bisa dimasukkan (titik/parameter belum ada di app, atau RFA/tanggal sampling tidak terbaca).</div>';
+  return t+h;
+};
+// ---- ekspor Recap: pemetaan titik yang sama ----
+var _expLama=window._rsRecapRunExport; window._rsRecapRunExportLama=_expLama;
+window._rsRecapRunExport=function(files,wbx){
+  var getP=_rsSheetPath(files),appIdx=window._rsRecapAppIndex(),peta=titikAppPerSheet();
+  var sum={sheets:0,cells:0,skippedFormula:0};
+  wbx.SheetNames.forEach(function(sn){
+    var sh=_rsNorm(sn),app=appIdx[sh]; if(!app)return;
+    var rows=XL().utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+    var grid=gridS(rows,sh,peta); if(!grid)return;
+    var path=getP(sn); if(!path||!files[path])return;
+    var xml=fflate.strFromU8(files[path]),colStyle={};
+    Object.keys(grid.monthCols).forEach(function(cj){colStyle[cj]=_rsColSampleStyle(xml,_rsColLetter(parseInt(cj,10)),grid.dataStart+1);});
+    var wrote=0;
+    grid.rows.forEach(function(dr){
+      var kT=strict(dr.titik),kP=_rsNormKey(dr.param);
+      Object.keys(grid.monthCols).forEach(function(cj){
+        var ym=grid.monthCols[cj],mn=parseInt(ym.slice(5,7),10),yr=ym.slice(0,4);
+        var hit=ambilCocok(app,kT,kP,mn,yr); if(!hit)return;
+        var addr=_rsColLetter(parseInt(cj,10))+dr.excelRow;
+        if(_rsCellIsFormula(xml,addr)){sum.skippedFormula++;return;}
+        var v=hit.nilai;
+        xml=_rsWriteCell(xml,addr,(typeof v==='number')?{num:v}:{text:String(v)},colStyle[cj]);wrote++;
+      });
+    });
+    if(wrote){files[path]=fflate.strToU8(xml);sum.sheets++;sum.cells+=wrote;}
+  });
+  return sum;
+};
+window._rsRecapGridS=gridS;
+
+/* ======================================================================
+ * 4. RFA 2026 — buat RFA yang belum ada
+ * ==================================================================== */
+var _imp2026Lama=window._rsImport2026;
+window._rsImport2026=function(wbx){
+  var out=_imp2026Lama?_imp2026Lama(wbx):null; if(!out)return out;
+  var ws=wbx.Sheets['2026'],rows=XL().utils.sheet_to_json(ws,{header:1,raw:true,defval:null}),M=RS_RFA2026_IMPORT;
+  var peta={}; for(var i=1;i<rows.length;i++){var r=rows[i];if(r&&r[M.noRfa])(peta[String(r[M.noRfa])]=peta[String(r[M.noRfa])]||[]).push(r);}
+  var s=function(v){return v==null?'':String(v).trim();};
+  var iso=function(v){return typeof v==='number'?_rsSerialToIso(v):s(v);};
+  out.forEach(function(rec){
+    var r=(peta[rec.noRfa]||[])[0]; if(!r)return;
+    rec.bulan=s(r[1]);rec.jenisRaw=s(r[2]);rec.sampelRaw=s(r[3]);rec.site=s(r[4]);rec.titik=s(r[5]);
+    rec.coc=s(r[7]);rec.analysisRaw=s(r[8]);rec.draftC=iso(r[21]);rec.scanC=iso(r[26]);
+  });
+  return out;
+};
+var SITE_ALIAS={HDL:'HCA',SNP:'SPS',SNB:'SPU',TUNU:'TUNU'};
+var BULAN_NO={jan:1,feb:2,mar:3,apr:4,may:5,mei:5,jun:6,jul:7,aug:8,agu:8,sep:9,sept:9,oct:10,okt:10,nov:11,dec:12,des:12};
+function buatRfaBaru(recs){
+  if(typeof RFA_DATA==='undefined'||typeof rfaMkRow!=='function')return 0;
+  var ada={}; RFA_DATA.forEach(function(r){ada[String(r.noRfa)]=1;});
+  var n=0;
+  recs.forEach(function(rec){
+    if(!rec.noRfa||ada[rec.noRfa])return;
+    var m=String(rec.noRfa).match(/^(\d{2})(\d{2})(\d{2})-(\d+)([A-Z]?)$/); if(!m)return;
+    var kode=m[1],suf=m[5];
+    var bn=BULAN_NO[String(rec.bulan||'').toLowerCase().slice(0,4)]||BULAN_NO[String(rec.bulan||'').toLowerCase().slice(0,3)]||parseInt(m[2],10);
+    var tipe=!suf?'Normal':((kode==='01'||kode==='02'||kode==='03'||kode==='04')&&suf==='A'?'Duplikat':'Resampling');
+    var an=rec.analysisRaw==='1'?'100%':(rec.analysisRaw==='0.5'?'50%':(rec.analysisRaw&&isNaN(Number(rec.analysisRaw))?rec.analysisRaw:'Normal'));
+    var site=SITE_ALIAS[rec.site]||rec.site||'';
+    var sampel=/^drain$/i.test(rec.sampelRaw||'')?'DRAIN':(rec.sampelRaw||'');
+    var row=rfaMkRow({noRfa:rec.noRfa,year:'2000'===''?'':('20'+m[3]),sheet:'2026',bulan:BLN[bn-1],jenis:rec.jenisRaw,jenisRaw:rec.jenisRaw,sampel:sampel,sampelRaw:rec.sampelRaw,
+      site:site,titik:rec.titik||'',coc:rec.coc||'',analysis:an,tipeSuffix:tipe,tglSampling:rec.tglSampling||'',tglKirimCbt:rec.tglKirimCbt||'',
+      tglKirimRfa:rec.tglKirimRfa||'',konfirmasiCbt:rec.konfirmasiCbt||'',draftA:rec.draftA||'',draftB:rec.draftB||'',scanA:rec.scanA||'',scanB:rec.scanB||'',
+      draftC:rec.draftC||'',scanC:rec.scanC||'',source:'Import Raw Monitoring Backup'});
+    var c=rfaCalc(row);
+    row.maxKirim=c.maxKirim;row.estTerimaCbt=c.estTerima;row.estSelesaiA=c.estA;row.estSelesaiB=c.estB;row.estScanA=c.estScanA;row.estScanB=c.estScanB;row.waktuTunggu=c.waktu;
+    if(typeof _rfaDeriveStatus==='function')row.statusRfa=_rfaDeriveStatus(row);
+    RFA_DATA.push(row);ada[rec.noRfa]=1;n++;
+  });
+  return n;
+}
+var _applyLama=window._rsApplyImport; window._rsApplyImportLama=_applyLama;
+window._rsApplyImport=function(){
+  var buf=window._rsImportBuf||(typeof _rsImportBuf!=='undefined'?_rsImportBuf:null);
+  var mode=buf&&buf.mode,recs=buf&&buf.records;
+  var baru=0;
+  if(mode==='rfa2026'&&recs){try{baru=buatRfaBaru(recs);}catch(e){console.warn('buatRfaBaru',e);}}
+  var r=_applyLama.apply(this,arguments);
+  var info=document.getElementById('rs-imp-info');
+  if(mode==='rfa2026'&&baru){
+    try{if(typeof _rfaNormalizeAll==='function')_rfaNormalizeAll();if(typeof saveStorageRaw==='function')saveStorageRaw();}catch(e){}
+    if(info)info.innerHTML+='<div style="font-size:13px;color:#2e7d32;margin-top:3px">+ <b>'+baru+'</b> RFA baru dibuat dari tracker (belum ada di app).</div>';
+    if(typeof toast==='function')toast('✓ '+baru+' RFA baru dibuat dari raw.');
+  }
+  if(mode==='program'&&recs&&recs.konflik&&recs.konflik.length&&info){
+    info.innerHTML+='<div style="font-size:13px;color:#9a5b00;margin-top:5px"><b>'+recs.konflik.length+' titik di sheet Monthly bertentangan dengan sheet master "Sampling Point"</b> — dipakai koordinat master:</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:3px"><tr style="color:var(--g4)"><th style="text-align:left">Titik</th><th>Selisih</th><th style="text-align:left">Monthly</th><th style="text-align:left">Master</th></tr>'
+      +recs.konflik.map(function(k){return '<tr style="border-top:1px solid var(--g2)"><td>'+esc(k.nama)+'</td><td style="text-align:right">'+k.jarak+' m</td><td>'+esc(k.raw)+'</td><td>'+esc(k.master)+'</td></tr>';}).join('')+'</table>';
+  }
+  return r;
+};
+
+/* ======================================================================
+ * 5. Pembacaan berkas Schedule: simpan byte asli (untuk membaca warna merah)
+ * ==================================================================== */
+var _pickLama=window._rsPickImport; window._rsPickImportLama=_pickLama;
+window._rsPickImport=function(inp){
+  var file=inp&&inp.files&&inp.files[0];
+  if(file&&typeof RS_SEL!=='undefined'&&RS_SEL==='schedule'){
+    var info=document.getElementById('rs-imp-info');
+    if(info)info.innerHTML='<span style="font-size:13px;color:#888">Membaca...</span>';
+    bacaBerkas(file,function(bytes){
+      try{
+        window._rsLastBytes=bytes;
+        var wbx=XL().read(bytes,{type:'array'});
+        try{if(typeof _rsShowFormulaErrors==='function')_rsShowFormulaErrors(wbx,info);}catch(e){}
+        var recs=window._rsSchedImport(wbx,bytes);
+        if(!recs){info.innerHTML='<span style="color:#c62828;font-size:13px">Sheet kalender bulanan / "Jadwal" tidak ditemukan.</span>';return;}
+        var existN=_rsSchedEvents().length;
+        _rsImportBuf={mode:'schedule',records:recs};
+        var merah=recs.filter(function(r){return r.status&&r.status!=='Planned';}).length;
+        info.innerHTML='<div style="font-size:13px;color:var(--text);margin-top:6px">Terbaca <b>'+recs.length+'</b> entri dari kalender bulanan (kalender app saat ini: '+existN+' event)'
+          +(merah?', <b>'+merah+'</b> bertanda merah (Postponed/Cancelled)':'')+'. Hanya entri yang <b>belum ada</b> pada tanggal itu yang ditambahkan; roster petugas On/Off dilewati.</div>'
+          +'<button onclick="_rsApplyImport()" style="margin-top:8px;background:#2e7d32;color:#fff;border:none;border-radius:7px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Tambahkan ke Kalender</button>';
+      }catch(e){if(info)info.innerHTML='<span style="color:#c62828;font-size:13px">Gagal membaca: '+esc(e.message)+'</span>';}
+    });
+    return;
+  }
+  return _pickLama.apply(this,arguments);
+};
 })();
 
 </script><script id="kartu-bulanan-y517">
