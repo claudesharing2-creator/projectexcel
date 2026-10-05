@@ -2667,7 +2667,15 @@ h1,h2,h3,h4,.card-title,.dash-card-title,.et-sec-title,.mo-head h3,
 }
 </style>
 
-<style id="y561-tampilan">/* Y561 */
+<style id="y565-sinkron">/* Y565 */
+html:root #dataset-inner .et-sec{border:2px solid var(--g3)!important}
+html:root #dataset-inner .et-drop{border:2px dashed var(--g3)!important}
+.sinkron-abs{position:absolute;right:14px;top:50%;transform:translateY(-50%);margin:0}
+@media(max-width:900px){.sinkron-abs{position:static!important;transform:none!important;margin:6px 0 0 auto!important;display:block}}
+</style><style id="y564-simetri">/* Y564 */
+table.sym-fix{table-layout:fixed}
+@media(max-width:900px){table.sym-fix{table-layout:auto}}
+</style><style id="y561-tampilan">/* Y561 */
 html:root .et-sub-btn:not(.active),html:root .rfa-sub-btn:not(.active),html:root .lap-sub-btn:not(.active),html:root .drain-sub-btn:not(.active),html:root .hs-sub-btn:not(.active),html:root .ds-sub-btn:not(.active){border:2px solid var(--g3)!important}
 html:root .et-sub-btn.active,html:root .rfa-sub-btn.active,html:root .lap-sub-btn.active,html:root .drain-sub-btn.active,html:root .hs-sub-btn.active,html:root .ds-sub-btn.active{border:2px solid #1b5e20!important}
 html:root .et-card,html:root .et-card-solo{max-width:none!important;margin-left:0!important;margin-right:0!important}
@@ -5639,7 +5647,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'7b001625'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'50a43ad1'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -13749,7 +13757,6 @@ function renderRfaList(){
         </div>
         <button onclick="rfaUpdateSamplingDB()" title="Update database titik sampling" style="border:1px solid #90bef5;background:#eaf2ff;color:#1565c0;border-radius:6px;padding:4px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">Update DB Titik</button>
         <button id="rfa-batch-btn" onclick="rfaBatchDateModal()" disabled title="Isi Tgl Kirim CBT/RFA atau CoC sekaligus untuk RFA yang dicentang (dikirim dalam satu batch)" style="border:1px solid #c8a828;background:#fffbe6;color:#7a5800;border-radius:6px;padding:4px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;opacity:.45">Isi Batch (<span id="rfa-batch-count">0</span>)</button>
-        <button onclick="rfaExportCSV()" title="Export ke CSV" style="border:1px solid #4cba7a;background:#eafff1;color:#2e7d32;border-radius:6px;padding:4px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">Export CSV</button>
       </div>
     </div>
     ${(()=>{
@@ -20975,7 +20982,7 @@ function _izinTabHtml(q){
   var blocks=sites.map(function(site){
     var rows=byLapangan[site].slice().sort(function(a,b){return String(a.nama||'').localeCompare(String(b.nama||''));});
     var trs=rows.map(function(v){var bad=/belum|tidak/i.test(String(v.izin||''));return '<tr><td style="'+TD+';font-weight:600">'+esc(v.nama)+'</td><td style="'+TD+';text-align:center"><span style="font-size:11px;color:'+(bad?'#c62828':'#2e7d32')+';background:'+(bad?'#fdecea':'#eafaf1')+';border-radius:4px;padding:2px 7px;font-weight:700">'+esc(v.izin||'—')+'</span></td><td style="'+TD+';font-family:monospace;font-size:13px">'+esc(v.izin_nomor||'—')+'</td><td style="'+TD+';text-align:center;white-space:nowrap">'+esc(v.izin_tanggal_terbit||'—')+'</td><td style="'+TD+';text-align:center;white-space:nowrap">'+esc(v.izin_berlaku_hingga||'—')+'</td></tr>';}).join('');
-    return '<div style="margin-bottom:16px;border:1px solid var(--g2);border-radius:8px;overflow:hidden"><div style="background:var(--g1);padding:8px 11px"><b style="font-size:13px;color:#c62828">'+esc(site)+'</b><span style="font-size:11px;color:var(--g3);margin-left:6px">'+rows.length+' titik</span></div><div style="overflow:auto"><table style="width:100%;min-width:700px;border-collapse:collapse"><thead><tr><th style="'+TH+'">Titik Penaatan</th><th style="'+TH+'">Status</th><th style="'+TH+'">Nomor Izin</th><th style="'+TH+'">Tanggal Terbit</th><th style="'+TH+'">Berlaku Hingga</th></tr></thead><tbody>'+trs+'</tbody></table></div></div>';
+    return '<div style="margin-bottom:16px;border:1px solid var(--g2);border-radius:8px;overflow:hidden"><div style="background:var(--g1);padding:8px 11px"><b style="font-size:13px;color:#c62828">'+esc(site)+'</b><span style="font-size:11px;color:var(--g3);margin-left:6px">'+rows.length+' titik</span></div><div style="overflow:auto"><table class="sym-fix" style="width:100%;min-width:700px;border-collapse:collapse"><colgroup><col style="width:28%"><col style="width:12%"><col style="width:30%"><col style="width:15%"><col style="width:15%"></colgroup><thead><tr><th style="'+TH+'">Titik Penaatan</th><th style="'+TH+'">Status</th><th style="'+TH+'">Nomor Izin</th><th style="'+TH+'">Tanggal Terbit</th><th style="'+TH+'">Berlaku Hingga</th></tr></thead><tbody>'+trs+'</tbody></table></div></div>';
   }).join('');
   return {html:blocks||'<div style="padding:20px;color:var(--g3);font-size:13px">Tidak ada data izin yang cocok dengan pencarian.</div>',count:filtered.length};
 }
@@ -21190,7 +21197,8 @@ function _bmMasterHtml(q){
         ${c.peraturan&&c.peraturan!=='-'?`<span style="font-size:11px;background:#fff;border:1px solid #b2dfdb;color:#00695c;border-radius:4px;padding:1px 6px">${esc(c.peraturan)}</span>`:''}${typeof _bmRegBadge==='function'?_bmRegBadge(c.peraturan):''}
         <button onclick="_bmAddParam('${jq(t.key)}','${jq(c.key)}')" style="margin-left:auto;border:1px solid #4db6ac;background:#fff;color:#00695c;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">+ Parameter</button>
       </div>
-      <table style="width:100%;border-collapse:separate;border-spacing:0">
+      <table class="sym-fix" style="width:100%;border-collapse:separate;border-spacing:0">
+        <colgroup>${isNR?'<col style="width:21%"><col style="width:11%"><col style="width:11%"><col style="width:10%"><col style="width:9%"><col style="width:30%"><col style="width:8%">':'<col style="width:26%"><col style="width:16%"><col style="width:12%"><col style="width:38%"><col style="width:8%">'}</colgroup>
         <thead><tr><th style="${TH}">Parameter</th><th style="${TH}">Baku Mutu${isNR?' (Swamp)':''}</th>${isNR?`<th style="${TH}">BM Offshore</th><th style="${TH}">Tahap berlaku</th>`:''}<th style="${TH}">Satuan</th><th style="${TH}">Peraturan / Dasar</th><th style="${TH}"></th></tr></thead>
         <tbody>${rows||`<tr><td colspan="${isNR?7:5}" style="${TD};color:#999;text-align:center">Belum ada parameter.</td></tr>`}</tbody>
       </table>
@@ -28011,7 +28019,7 @@ function renderRawSync(host){
   var chip=function(x){var on=x.k===RS_SEL;var live=x.status==='live';var col=live?'#2e7d32':'#999';
     return '<button onclick="RS_SEL=\''+x.k+'\';_rsImportBuf=null;_rsExportBuf=null;_rsRerender()" '+
       'style="display:flex;flex-direction:column;gap:3px;cursor:pointer;text-align:left;font-family:inherit;'+
-      'border:1px solid '+(on?'#2e7d32':'var(--g2)')+';border-radius:9px;padding:9px 13px;min-width:158px;'+
+      'border:2px solid '+(on?'#2e7d32':'var(--g3)')+';border-radius:9px;padding:8px 12px;min-width:158px;'+
       'background:'+(on?'rgba(46,125,50,.10)':'transparent')+';box-shadow:'+(on?'0 2px 10px rgba(46,125,50,.14)':'none')+'">'+
       '<span style="font-size:13px;font-weight:800;color:var(--text)">'+_ep(x.label)+'</span>'+
       '<span style="font-size:11px;font-weight:700;color:'+col+';letter-spacing:.02em">'+(live?('● '+_rsCap(x)):'○ Menyusul')+'</span></button>';};
@@ -28019,7 +28027,7 @@ function renderRawSync(host){
   if(f.status==='live'){
     var shTog='';
     if(f.k==='backup'){
-      var sb=function(k,lbl,dk){var on=RS_BACKUP_SHEET===k;return '<button onclick="RS_BACKUP_SHEET=\''+k+'\';_rsImportBuf=null;_rsExportBuf=null;_rsRerender()" style="border:1px solid '+(on?'#2e7d32':'var(--g2)')+';background:'+(on?'#2e7d32':'transparent')+';color:'+(on?'#fff':'var(--text)')+';border-radius:6px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">'+lbl+'</button>';};
+      var sb=function(k,lbl,dk){var on=RS_BACKUP_SHEET===k;return '<button onclick="RS_BACKUP_SHEET=\''+k+'\';_rsImportBuf=null;_rsExportBuf=null;_rsRerender()" style="border:2px solid '+(on?'#2e7d32':'var(--g3)')+';background:'+(on?'#2e7d32':'transparent')+';color:'+(on?'#fff':'var(--text)')+';border-radius:6px;padding:4px 11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">'+lbl+'</button>';};
       shTog='<div style="display:flex;gap:6px;margin-bottom:12px;align-items:center;justify-content:center"><span style="font-size:13px;color:var(--g4);font-weight:700">Sheet:</span>'+sb('rea','Reanalysis → env26_rea')+sb('rfa2026','Tracker 2026 → env26_rfa')+'</div>';
     }
     var shName,dk,expDesc;
@@ -28032,7 +28040,7 @@ function renderRawSync(host){
     var acc='.xlsx,.xlsm,.xls';
     var impSec=f.expOnly?'':('<div class="et-sec"><div class="et-sec-title">Import Raw → Data Pack</div>'+
       '<div style="font-size:13px;color:var(--g4);margin-bottom:10px">Upload file <b>'+_ep(f.label)+'</b>. Data sheet <b>'+_ep(shName)+'</b> dibaca dan disinkron ke <b>'+_ep(dk)+'</b>.</div>'+
-      '<div style="border:1px solid var(--g2);border-radius:9px;padding:9px 11px;margin-bottom:10px">'+
+      '<div style="border:2px solid var(--g3);border-radius:9px;padding:8px 10px;margin-bottom:10px">'+
         '<div style="font-size:13px;font-weight:700;color:var(--g4);margin-bottom:5px">MODE SINKRON (untuk record yang sudah ada)</div>'+
         '<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;margin-right:14px;cursor:pointer">'+
           '<input type="radio" name="rs-mode" value="fillblank"'+(RS_MODE!=='replace'?' checked':'')+' onchange="_rsSetMode(this.value)"> Fill Blank Only</label>'+
@@ -43764,8 +43772,8 @@ function _etRenderEmf(host){
    +'</div>'
    +'<details id="emf-iplc" style="margin:0 0 14px;border:1px solid var(--g2);border-radius:9px;padding:9px 13px">'
    +'<summary style="font-size:13px;font-weight:700;cursor:pointer">\ud83d\udcc8 Debit tertinggi 2019 (IPLC) \u2014 garis pembanding di grafik debit</summary>'
-   +'<div style="font-size:13px;color:var(--g4);margin:7px 0 9px;line-height:1.55">Naskah EMF menyebut debit dibandingkan dengan <b>debit tertinggi tahun 2019</b> menurut dokumen IPLC. Angkanya tidak ada di data sampling, jadi harus diisi di sini sekali saja \u2014 tersimpan di peramban dan ikut terbawa saat Data Pack diekspor. Titik yang dibiarkan kosong tetap digambar, tetapi <b>tanpa garis pembanding</b>, dan akan disebut di laporan hasil generate.</div>'
-   +'<div id="emf-iplc-fields" style="display:flex;gap:11px;flex-wrap:wrap"></div>'
+   +'<div style="font-size:13px;color:var(--g4);margin:7px 0 9px;line-height:1.55">Naskah EMF menyebut debit dibandingkan dengan <b>debit tertinggi tahun 2019</b> menurut dokumen IPLC. Angkanya tidak ada di data sampling, jadi harus diisi di sini sekali saja \u2014 tersimpan di peramban dan ikut terbawa saat Data Pack diekspor. Garis memakai angka pertama yang ada: tertinggi 2019 (m3/bulan), lalu tertinggi 2019 dalam m3/hari, lalu <b>debit maksimum yang diizinkan</b> (m3/hari); dua yang terakhir dikali 30 hari. Titik yang dibiarkan kosong tetap digambar, tetapi <b>tanpa garis pembanding</b>, dan akan disebut di laporan hasil generate.</div>'
+   +'<div id="emf-iplc-fields"></div>'
    +'</details>'
    +'<div class="et-sec" style="margin:0 0 14px;padding:12px 14px">'
    +'<div style="font-weight:700;font-size:13px;margin-bottom:3px">Bangun Bagian Air dari Data</div>'
@@ -44710,6 +44718,18 @@ function _emfChartRefSet(titik,nilai){
   return all.iplcDebitTertinggi;
 }
 window._emfChartRefSet=_emfChartRefSet;
+/*Y563*/function _emfChartRefSetJenis(jenis,titik,nilai){
+  var kunci={bulan:'iplcDebitTertinggi',hari:'iplcDebitTertinggiHari',maks:'izinDebitMaks'}[jenis];
+  if(!kunci)return null;
+  var all=_emfChartRefAll();
+  if(!all[kunci]||typeof all[kunci]!=='object')all[kunci]={};
+  var v=parseFloat(String(nilai==null?'':nilai).replace(',','.'));
+  if(isFinite(v)&&v>0)all[kunci][titik]=v; else delete all[kunci][titik];
+  try{localStorage.setItem('env26_emf_chartref',JSON.stringify(all));}catch(e){}
+  try{_emfRenderIplc();}catch(_e){}
+  return all[kunci];
+}
+window._emfChartRefSetJenis=_emfChartRefSetJenis;
 // Titik mana saja yang punya bacaan Debit bulanan di tahun yang dipilih --
 // itulah titik yang grafiknya akan digambar, jadi itu pula daftar yang perlu
 // angka pembandingnya.
@@ -44729,26 +44749,38 @@ function _emfTitikDebit(year){
   return out;
 }
 function _emfRenderIplc(){
+  /*Y563*/
   var box=document.getElementById('emf-iplc-fields');
   if(!box)return;
   var y=parseInt((document.getElementById('emf-year')||{}).value,10);
   if(!y)return;
-  var ref=_emfChartRef(), list=_emfTitikDebit(y), h='';
+  var all=_emfChartRefAll(), A=all.iplcDebitTertinggi||{}, B=all.iplcDebitTertinggiHari||{}, C=all.izinDebitMaks||{};
+  var list=_emfTitikDebit(y);
   if(!list.length){
     box.innerHTML='<div style="font-size:13px;color:var(--g4)">Belum ada data debit bulanan '
       +y+' di aplikasi, jadi belum ada titik yang perlu diisi.</div>';
     return;
   }
+  var ada=function(m,t){var v=parseFloat(m[t]);return isFinite(v)&&v>0;};
+  var sel=function(jenis,t,m){
+    var v=m[t];
+    return '<td><input type="number" step="any" min="0" class="et-in" style="font-size:13px;width:100%;box-sizing:border-box" value="'
+      +(v==null?'':_ep(String(v)))+'" onchange="_emfChartRefSetJenis(\''+jenis+'\','
+      +JSON.stringify(t).replace(/"/g,'&quot;')+',this.value)"></td>';
+  };
+  var h='<table style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px">'
+    +'<colgroup><col style="width:34%"><col style="width:22%"><col style="width:22%"><col style="width:22%"></colgroup>'
+    +'<thead><tr><th style="text-align:left">Titik</th><th>Tertinggi 2019<br>(m3/bulan)</th>'
+    +'<th>Tertinggi 2019<br>(m3/hari)</th><th>Maks. izin<br>(m3/hari)</th></tr></thead><tbody>';
+  var belum=0;
   for(var i=0;i<list.length;i++){
-    var t=list[i], v=ref[t];
-    h+='<label style="font-size:13px;color:var(--g4)">'+_ep(t)+'<br>'
-      +'<input type="number" step="any" min="0" class="et-in" placeholder="m3/bulan" '
-      +'style="font-size:13px;min-width:140px" value="'+(v==null?'':_ep(String(v)))+'" '
-      +'onchange="_emfChartRefSet('+JSON.stringify(t).replace(/"/g,'&quot;')+',this.value)"></label>';
+    var t=list[i];
+    if(!ada(A,t)&&!ada(B,t)&&!ada(C,t))belum++;
+    h+='<tr><td>'+_ep(t)+'</td>'+sel('bulan',t,A)+sel('hari',t,B)+sel('maks',t,C)+'</tr>';
   }
-  var belum=list.filter(function(t){return ref[t]==null;}).length;
-  if(belum)h+='<div style="flex:1 1 100%;font-size:13px;color:#8a6d00;margin-top:4px">⚠ '
-    +belum+' titik belum punya angka debit tertinggi 2019; grafiknya akan digambar tanpa garis pembanding.</div>';
+  h+='</tbody></table>';
+  if(belum)h+='<div style="font-size:13px;color:#8a6d00;margin-top:6px">⚠ '
+    +belum+' titik belum punya angka pembanding sama sekali; grafiknya akan digambar tanpa garis.</div>';
   box.innerHTML=h;
 }
 window._emfRenderIplc=_emfRenderIplc;
@@ -45693,10 +45725,29 @@ function _emfIsBadanAirCaption(cap){
 }
 var EMF_MON_ABBR=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function _emfChartRef(){
-  try{var r=JSON.parse(localStorage.getItem('env26_emf_chartref')||'null');
-      if(r&&r.iplcDebitTertinggi)return r.iplcDebitTertinggi;}catch(e){}
-  return {};
+  /*Y563*/
+  var out={};
+  try{
+    var r=JSON.parse(localStorage.getItem('env26_emf_chartref')||'null')||{};
+    var a=r.iplcDebitTertinggi||{}, b=r.iplcDebitTertinggiHari||{}, c=r.izinDebitMaks||{};
+    Object.keys(c).forEach(function(t){var v=parseFloat(c[t]);if(isFinite(v)&&v>0)out[t]=v*30;});
+    Object.keys(b).forEach(function(t){var v=parseFloat(b[t]);if(isFinite(v)&&v>0)out[t]=v*30;});
+    Object.keys(a).forEach(function(t){var v=parseFloat(a[t]);if(isFinite(v)&&v>0)out[t]=v;});
+  }catch(e){}
+  return out;
 }
+// Label garis sesuai sumbernya (urutan sama dengan _emfChartRef).
+function _emfChartRefLabel(t){
+  try{
+    var r=JSON.parse(localStorage.getItem('env26_emf_chartref')||'null')||{};
+    var pos=function(m){var v=parseFloat((m||{})[t]);return isFinite(v)&&v>0;};
+    if(pos(r.iplcDebitTertinggi))return 'Debit Tertinggi 2019 (IPLC)';
+    if(pos(r.iplcDebitTertinggiHari))return 'Debit Tertinggi 2019 (IPLC, m3/hari x 30)';
+    if(pos(r.izinDebitMaks))return 'Debit Maksimum Izin (m3/hari x 30)';
+  }catch(e){}
+  return 'Debit Tertinggi 2019 (IPLC)';
+}
+window._emfChartRefLabel=_emfChartRefLabel;
 // Pair every picture with the caption that follows it. One caption line can
 // carry two charts ("Gambar. 5 Debit CPU Restaurant   Gambar. 6 CPU Laundry"),
 // so a caption is split and handed out to the images queued before it.
@@ -45871,7 +45922,7 @@ function _emfChartSpec(label, ctx, idx, months, year, sem){
        'grafik digambar tanpa garis pembanding']);}catch(_eR){}}
     return {type:'bar',title:'Debit Air Limbah Domestik',subtitle:mD[1],values:vals,labels:mlab,
       seriesLabel:mD[1],yfmt:function(v){return v.toFixed(2);},numFmt:'#,##0.00',
-      lines:iplc!=null?[{value:iplc,color:'#c0504d',label:'Debit Tertinggi 2019 (IPLC)',marker:true}]:[]};
+      lines:iplc!=null?[{value:iplc,color:'#c0504d',label:_emfChartRefLabel(titik),marker:true}]:[]};
   }
   // "pH" / "Minyak dan Lemak" / "Sulfida Terlarut" / "Debit" -> line chart for
   // the produced-water outlet named in the document's own terproduksi table
@@ -45894,7 +45945,7 @@ function _emfChartSpec(label, ctx, idx, months, year, sem){
       var ip=ref[t2];
       return {type:'bar',title:'Debit Air Limbah Domestik',subtitle:lab,values:v3,labels:mlab,
         seriesLabel:lab,yfmt:function(v){return v.toFixed(2);},
-        lines:ip!=null?[{value:ip,color:'#c0504d',label:'Debit Tertinggi 2019 (IPLC)',marker:true}]:[]};
+        lines:ip!=null?[{value:ip,color:'#c0504d',label:_emfChartRefLabel(t2),marker:true}]:[]};
     }
     return null;
   }
@@ -48886,12 +48937,37 @@ function _coordDetailMainInput(actId,q){
     var aoa = [], rowsInfo = [], gab = [], off = 0;
     var ws = {}, maxR = 0;
     function taruh(r, c, cel) { ws[XLSX.utils.encode_cell({ r: r, c: c })] = cel; if (r > maxR) maxR = r; }
+    /* Pita merah "DRAF — BUKAN UNTUK DIKIRIM" yang ada di atas tiap halaman
+       dokumen ikut ke lembarnya (bukan hanya lembar DRAF tersendiri), supaya
+       lembar yang disalin sendirian tetap tidak bisa dikira final. */
+    var pita = null, kids = halaman.children;
+    for (var pk = 0; pk < kids.length; pk++) {
+      if (kids[pk].tagName === 'DIV' && /c62828/i.test(kids[pk].getAttribute('style') || '')) { pita = kids[pk]; break; }
+    }
+    if (pita) {
+      var dalam = pita.querySelector('div');
+      var barisPita = [(pita.firstChild && pita.firstChild.nodeType === 3 ? pita.firstChild.nodeValue : 'DRAF — BUKAN UNTUK DIKIRIM').trim(),
+                       dalam ? _lapSelBaris(dalam).replace(/\n/g, ' ') : ''];
+      var merah = { tebal: true, h: 'center', isi: 'FDECEA', warna: 'B71C1C', sz: 11 };
+      var gMerah = { style: 'medium', color: { rgb: 'C62828' } };
+      for (var pb = 0; pb < 2; pb++) {
+        var gaya = _lapGayaSel(pb === 0 ? merah : { h: 'center', isi: 'FDECEA', warna: '7F1D1D', sz: 9, tebal: false });
+        gaya.border = { left: gMerah, right: gMerah };
+        if (pb === 0) gaya.border.top = gMerah; else gaya.border.bottom = gMerah;
+        taruh(off + pb, 0, { t: 's', v: pb === 0 ? (barisPita[0] || 'DRAF — BUKAN UNTUK DIKIRIM') : barisPita.slice(1).join(' '), s: gaya });
+        for (var pj = 1; pj < n; pj++) taruh(off + pb, pj, { t: 's', v: '', s: gaya });
+        gab.push({ s: { r: off + pb, c: 0 }, e: { r: off + pb, c: Math.max(0, n - 1) } });
+        rowsInfo[off + pb] = { hpt: pb === 0 ? 20 : 16 };
+      }
+      rowsInfo[off + 2] = { hpt: 8 };
+      off += 3;
+    }
     if (judul) {
-      taruh(0, 0, { t: 's', v: judul, s: _lapGayaSel({ tebal: true, sz: 12, h: 'center', garis: false }) });
-      for (var j = 1; j < n; j++) taruh(0, j, { t: 's', v: '', s: _lapGayaSel({ garis: false }) });
-      gab.push({ s: { r: 0, c: 0 }, e: { r: 0, c: Math.max(0, n - 1) } });
-      rowsInfo[0] = { hpt: 22 }; rowsInfo[1] = { hpt: 8 };
-      off = 2;
+      taruh(off, 0, { t: 's', v: judul, s: _lapGayaSel({ tebal: true, sz: 12, h: 'center', garis: false }) });
+      for (var j = 1; j < n; j++) taruh(off, j, { t: 's', v: '', s: _lapGayaSel({ garis: false }) });
+      gab.push({ s: { r: off, c: 0 }, e: { r: off, c: Math.max(0, n - 1) } });
+      rowsInfo[off] = { hpt: 22 }; rowsInfo[off + 1] = { hpt: 8 };
+      off += 2;
     }
     for (var rr = 0; rr < k.kisi.length; rr++) {
       for (var cc = 0; cc < n; cc++) {
@@ -48920,7 +48996,8 @@ function _coordDetailMainInput(actId,q){
     ws['!cols'] = lebar.map(function (w) { return { wch: w }; });
     ws['!rows'] = rowsInfo;
     ws['!merges'] = gab;
-    return { ws: ws, judul: judul };
+    var nKepala = tbl.querySelectorAll('thead tr').length;
+    return { ws: ws, judul: judul, kepala: nKepala ? { a: off + 1, b: off + nKepala } : null };
   }
 
   window._lapHalamanKeSheet = _lapHalamanKeSheet;   /* diuji langsung */
@@ -48938,11 +49015,26 @@ function _coordDetailMainInput(actId,q){
         if (!/^xl\/worksheets\/sheet\d+\.xml$/.test(nm)) continue;
         var xml = await _emfBagianTeks(z.parts, nm);
         if (xml == null) continue;
+        /* Excel menolak lembar yang urutan elemennya salah ("XML error. Load
+           error"): pageSetup harus SEBELUM ignoredErrors/drawing/tableParts
+           (urutan skema CT_Worksheet). Percobaan pertama menaruhnya di ujung,
+           sesudah ignoredErrors yang ditulis pustaka -> Excel memperbaiki dan
+           membuang gayanya. */
         if (xml.indexOf('<pageSetup') < 0) {
-          var ps = '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>';
-          if (/<pageMargins[^>]*\/>/.test(xml)) xml = xml.replace(/(<pageMargins[^>]*\/>)/, function (m) { return m + ps; });
-          else xml = xml.replace('</worksheet>', ps + '</worksheet>');
+          var ps = '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>'
+            + '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>';
+          if (/<pageMargins[^>]*\/>/.test(xml)) {
+            ps = '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>';
+            xml = xml.replace(/(<pageMargins[^>]*\/>)/, function (m) { return m + ps; });
+          } else {
+            var sisip = xml.search(/<(ignoredErrors|smartTags|drawing|legacyDrawing|legacyDrawingHF|picture|oleObjects|controls|webPublishItems|tableParts|extLst)[\s>\/]/);
+            xml = (sisip >= 0) ? xml.slice(0, sisip) + ps + xml.slice(sisip) : xml.replace('</worksheet>', ps + '</worksheet>');
+          }
         }
+        /* SheetJS menulis xml:space="preserve" pada <row> dan <c> bila ada sel
+           berbaris-baru atau berspasi; atribut itu TIDAK ada di skema keduanya
+           dan Excel menganggap lembarnya rusak. */
+        xml = xml.replace(/(<(?:row|c)\b[^>]*?)\s+xml:space="preserve"/g, '$1');
         if (xml.indexOf('fitToPage') < 0) {
           if (/<sheetPr\s*\/>/.test(xml)) xml = xml.replace(/<sheetPr\s*\/>/, '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
           else if (xml.indexOf('<sheetPr') < 0) xml = xml.replace(/(<worksheet[^>]*>)/, function (m) { return m + '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>'; });
@@ -49024,7 +49116,14 @@ function _coordDetailMainInput(actId,q){
       var aoa = _lapTblKeAoa(tbl);
       if (!aoa.length) continue;
       var sh = _lapHalamanKeSheet(halaman[i], tbl);
-      XLSX.utils.book_append_sheet(wb, sh.ws, _lapNamaSheet(judul, dipakai));
+      var namaSh = _lapNamaSheet(judul, dipakai);
+      XLSX.utils.book_append_sheet(wb, sh.ws, namaSh);
+      /* kepala tabel diulang di tiap halaman cetak (seperti thead di PDF) */
+      if (sh.kepala) {
+        wb.Workbook = wb.Workbook || {}; wb.Workbook.Names = wb.Workbook.Names || [];
+        wb.Workbook.Names.push({ Name: '_xlnm.Print_Titles', Sheet: wb.SheetNames.length - 1,
+          Ref: "'" + namaSh.replace(/'/g, "''") + "'!$" + sh.kepala.a + ':$' + sh.kepala.b });
+      }
       n++;
     }
     if (!n) {
@@ -49048,6 +49147,291 @@ function _coordDetailMainInput(actId,q){
     _lapAturCetak(mentah).then(selesai, function () { selesai(mentah); });
   }
   window._lapExcelBagian = _lapExcelBagian;
+})();
+
+</script><script id="simetri-tabel-y564">
+/* Y564 simetri tabel: perataan kepala kolom mengikuti perataan isinya.
+ *
+ * Pemilik (2026-10-05): "rapikan semua tabel agar simetris". Di ENV Program ->
+ * Izin, judul kolom "Status", "Tanggal Terbit" dan "Berlaku Hingga" rata kiri
+ * sementara isinya rata tengah; 17 kolom di 9 layar lain begitu juga (Price di
+ * RFA List, Aksi di Hasil Sampling, #/Jenis/Analysis di ENV Program, Baku Mutu
+ * dan Satuan BM di WMR). Mengubahnya satu per satu berarti tiap tabel baru
+ * mengulang kesalahannya, jadi aturannya dijaga di satu tempat: sesudah
+ * tabel digambar, setiap kepala kolom diberi perataan yang SAMA dengan
+ * perataan dominan sel di bawahnya.
+ *
+ * Aturan pemilihan: dominan = perataan terhitung (computed) yang paling banyak
+ * di antara maksimum 30 baris pertama yang jumlah selnya sama dengan jumlah
+ * kepala (baris ber-colspan tidak ikut dihitung). Tabel berkepala bertingkat
+ * (colspan di kepala) dan tabel tanpa <thead> tidak disentuh.
+ */
+(function () {
+  'use strict';
+  function rata(s) {
+    return s === 'start' ? 'left' : s === 'end' ? 'right' : s === 'justify' ? 'left' : s;
+  }
+  function selaraskan(t) {
+    var head = t.tHead && t.tHead.rows.length === 1 ? t.tHead.rows[0] : null;
+    var body = t.tBodies && t.tBodies[0];
+    if (!head || !body || !body.rows.length) return 0;
+    var n = head.cells.length, i, c, ubah = 0;
+    for (i = 0; i < n; i++) if (head.cells[i].colSpan > 1) return 0;
+    var baris = [];
+    for (i = 0; i < body.rows.length && baris.length < 30; i++) {
+      var r = body.rows[i];
+      if (r.cells.length !== n) continue;
+      var ok = true;
+      for (c = 0; c < n; c++) if (r.cells[c].colSpan > 1) { ok = false; break; }
+      if (ok) baris.push(r);
+    }
+    if (!baris.length) return 0;
+    for (c = 0; c < n; c++) {
+      var th = head.cells[c];
+      if (!(th.textContent || '').trim()) continue;
+      var hit = {}, k;
+      for (i = 0; i < baris.length; i++) {
+        k = rata(getComputedStyle(baris[i].cells[c]).textAlign);
+        hit[k] = (hit[k] || 0) + 1;
+      }
+      var dom = null, maks = -1;
+      for (k in hit) if (hit[k] > maks) { maks = hit[k]; dom = k; }
+      if (dom && rata(getComputedStyle(th).textAlign) !== dom) { th.style.textAlign = dom; ubah++; }
+    }
+    return ubah;
+  }
+  var tunda = null;
+  function jalan() {
+    tunda = null;
+    var ts = document.querySelectorAll('table');
+    for (var i = 0; i < ts.length; i++) {
+      var t = ts[i];
+      try {
+        var tanda = (t.tBodies && t.tBodies[0] ? t.tBodies[0].rows.length : 0) + '|' + (t.tHead ? t.tHead.rows.length : 0) + '|'
+          + (t.tHead && t.tHead.rows[0] ? t.tHead.rows[0].cells.length : 0);
+        if (t.__simetri === tanda) continue;
+        t.__simetri = tanda;
+        selaraskan(t);
+      } catch (e) { /* satu tabel yang aneh tidak boleh menghentikan yang lain */ }
+    }
+  }
+  window._uiSelarasKepala = jalan;
+  window._uiSelarasKepalaSatu = selaraskan;
+  try {
+    new MutationObserver(function () { if (!tunda) tunda = setTimeout(jalan, 120); })
+      .observe(document.body, { childList: true, subtree: true });
+  } catch (e) { /* tanpa MutationObserver: tetap bisa dipanggil manual */ }
+  setTimeout(jalan, 400);
+})();
+
+</script><script id="pintasan-sinkron-y565">
+/* Y565 pintasan Sinkron di tab-tab yang datanya disinkron dari Excel raw.
+ *
+ * Pemilik (2026-10-05): "di ENV Tools ada sinkron dataset ... aku juga mau di
+ * beberapa menu itu muncul shortcut juga buat sinkron. Misal kalau kubuka RFA
+ * Tracker -> RFA List muncul juga menu export import yang sama dengan yang ada di
+ * ENV Tools, export ke CSV-nya dipindahkan aja ke menu ini jadi 1. Pas kupencet
+ * tombolnya ada 3 pilihan utama: Export CSV, Export Excel Raw, Impor Excel Raw
+ * ... dengan fungsi yang sama."
+ *
+ * Yang dipakai ULANG, bukan ditulis ulang: _rsExportDirect, _rsPickExport,
+ * _rsPickImport, _rsApplyImport, _rsSetMode (mesin Sinkron Raw di ENV Tools).
+ * Pintasan ini hanya menyiapkan keadaannya (RS_SEL, RS_BACKUP_SHEET) dan
+ * menyediakan tempat hasilnya ditulis.
+ *
+ * Jebakan: mesin itu menulis hasilnya ke elemen ber-id tetap (rs-imp-info,
+ * rs-exp-info, ...). Panel Sinkron Raw di ENV Tools yang pernah dibuka tetap
+ * ada di dokumen (hanya disembunyikan; _etSwitchSub sengaja tidak merender
+ * ulang), dan getElementById memilih yang PERTAMA dalam urutan dokumen -- yaitu
+ * panel tersembunyi itu (aturan 6am). Jadi selama jendela terbuka, id kembar di
+ * luar jendela "diparkir" (id dicopot, disimpan di data-parkir-id) dan
+ * dikembalikan saat jendela ditutup.
+ */
+(function () {
+  'use strict';
+  var ID_MESIN = ['rs-imp-info', 'rs-exp-info', 'rs-mode-note', 'rs-imp-file', 'rs-exp-file', 'rs-imp-drop', 'rs-exp-drop'];
+
+  /* Konteks tiap layar: judul, file raw yang relevan, dan (bila ada) fungsi CSV
+     bawaannya. file[].sheet hanya untuk Monitoring Backup (dua sheet). */
+  var KONTEKS = {
+    'rfa-list': { judul: 'RFA List', csv: 'rfaExportCSV',
+      file: [{ k: 'rfa' }, { k: 'backup', sheet: 'rfa2026', label: 'Monitoring Backup (Tracker 2026)' }] },
+    'rfa-rea': { judul: 'Reanalisis', file: [{ k: 'backup', sheet: 'rea', label: 'Monitoring Backup (Reanalysis)' }] },
+    'hasil': { judul: 'Hasil Sampling', file: [{ k: 'recap' }] },
+    'program': { judul: 'ENV Program', file: [{ k: 'program' }] },
+    'jadwal': { judul: 'Scheduling', file: [{ k: 'schedule' }] },
+    'drain': { judul: 'Drainase', file: [{ k: 'drain' }] }
+  };
+  var _ctx = null, _pilih = 0;
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function fileInfo(k) {
+    var l = (typeof RS_FILES !== 'undefined') ? RS_FILES : [];
+    for (var i = 0; i < l.length; i++) if (l[i].k === k) return l[i];
+    return { k: k, label: k, note: '' };
+  }
+
+  /* ---- id yang diparkir -------------------------------------------------- */
+  function parkir(modal) {
+    ID_MESIN.forEach(function (id) {
+      document.querySelectorAll('[id="' + id + '"]').forEach(function (e) {
+        if (modal && modal.contains(e)) return;
+        e.setAttribute('data-parkir-id', id); e.removeAttribute('id');
+      });
+    });
+  }
+  function pulihkan() {
+    document.querySelectorAll('[data-parkir-id]').forEach(function (e) {
+      var id = e.getAttribute('data-parkir-id');
+      if (!document.getElementById(id)) e.id = id;
+      e.removeAttribute('data-parkir-id');
+    });
+  }
+
+  /* ---- CSV: fungsi bawaan layar kalau ada, kalau tidak tabel terbesar --- */
+  function csvTabel(viewSel, nama) {
+    var v = document.querySelector(viewSel) || document;
+    var ts = [].slice.call(v.querySelectorAll('table')).filter(function (t) { return t.rows.length > 1 && t.getClientRects().length; });
+    if (!ts.length) { if (typeof toast === 'function') toast('Tidak ada tabel di layar ini untuk diekspor.'); return false; }
+    ts.sort(function (a, b) { return b.rows.length - a.rows.length; });
+    var t = ts[0], out = [];
+    var q = function (x) { x = String(x == null ? '' : x).replace(/\s+/g, ' ').trim(); return /[",\n;]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
+    [].slice.call(t.rows).forEach(function (r) { out.push([].slice.call(r.cells).map(function (c) { return q(c.textContent); }).join(',')); });
+    var blob = new Blob(['﻿' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    a.download = nama.replace(/[\\/:*?"<>|]/g, '-') + '_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return true;
+  }
+  var VIEW_KTX = { 'rfa-list': '#view-rfa', 'rfa-rea': '#view-rfa', 'hasil': '#view-hasil', 'program': '#view-envprog', 'jadwal': 'body', 'drain': '#view-laporan' };
+
+  /* ---- jendela ----------------------------------------------------------- */
+  function tutup() {
+    var m = document.getElementById('sinkron-ov'); if (m) m.remove();
+    pulihkan();
+  }
+  function siapkanMesin() {
+    var f = _ctx.file[_pilih];
+    window.RS_SEL = f.k;
+    if (f.sheet) window.RS_BACKUP_SHEET = f.sheet;
+    window._rsImportBuf = null; window._rsExportBuf = null;
+  }
+  function gambar() {
+    var ktx = _ctx, f = ktx.file[_pilih], fi = fileInfo(f.k);
+    var pil = '';
+    if (ktx.file.length > 1) {
+      pil = '<div class="sinkron-file" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px">'
+        + ktx.file.map(function (x, i) {
+          var on = i === _pilih;
+          return '<button type="button" onclick="_sinkronPilihFile(' + i + ')" class="sinkron-chip' + (on ? ' on' : '') + '" style="border:2px solid ' + (on ? '#2e7d32' : 'var(--g3)')
+            + ';background:' + (on ? 'rgba(46,125,50,.10)' : 'transparent') + ';border-radius:9px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--text)">'
+            + esc(x.label || fileInfo(x.k).label) + '</button>';
+        }).join('') + '</div>';
+    }
+    var tomb = function (id, teks, aksi, mati, warna) {
+      return '<button type="button" id="' + id + '" onclick="' + aksi + '"' + (mati ? ' disabled' : '') + ' class="sinkron-aksi" style="flex:1 1 0;min-width:0;border:2px solid ' + (mati ? 'var(--g2)' : warna)
+        + ';background:' + (mati ? 'transparent' : warna) + ';color:' + (mati ? 'var(--g3)' : '#fff') + ';border-radius:9px;padding:12px 8px;font-size:13px;font-weight:700;cursor:' + (mati ? 'default' : 'pointer')
+        + ';font-family:inherit;text-align:center">' + teks + '</button>';
+    };
+    var modeBawaan = (typeof RS_MODE !== 'undefined' && RS_MODE === 'replace') ? 'replace' : 'fillblank';
+    var ov = document.getElementById('sinkron-ov');
+    ov.innerHTML = '<div class="mo-box" style="width:640px;max-width:96vw" onclick="event.stopPropagation()">'
+      + '<div class="mo-head"><h3 style="margin:0;font-size:15px">Sinkron · ' + esc(ktx.judul) + '</h3>'
+      + '<button class="mo-close" onclick="_sinkronTutup()" title="Tutup">×</button></div>'
+      + '<div class="mo-body" style="padding:14px">'
+      + '<div style="font-size:13px;color:var(--g4);margin-bottom:12px;line-height:1.5">Sama seperti ENV Tools → Dataset → Sinkron Raw, dari layar ini. Pilih satu dari tiga.</div>'
+      + pil
+      + '<div style="display:flex;gap:10px;margin-bottom:12px">'
+      + tomb('sinkron-csv', 'Export CSV', '_sinkronCsv()', false, '#455a64')
+      + tomb('sinkron-exp', 'Export Excel Raw', '_sinkronExport()', false, '#2e7d32')
+      + tomb('sinkron-imp', 'Impor Excel Raw', '_sinkronImpor()', false, '#1565c0')
+      + '</div>'
+      + '<div style="font-size:13px;color:var(--g4);margin-bottom:10px;line-height:1.5"><b>' + esc(fi.label) + '</b> — ' + esc(fi.note || '') + '</div>'
+      + '<div id="sinkron-mode" style="border:2px solid var(--g3);border-radius:9px;padding:8px 10px;margin-bottom:10px">'
+      + '<div style="font-size:13px;font-weight:700;color:var(--g4);margin-bottom:5px">MODE IMPOR (untuk record yang sudah ada)</div>'
+      + '<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;margin-right:14px;cursor:pointer"><input type="radio" name="rs-mode" value="fillblank"' + (modeBawaan === 'fillblank' ? ' checked' : '') + ' onchange="_rsSetMode(this.value)"> Fill Blank Only</label>'
+      + '<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="radio" name="rs-mode" value="replace"' + (modeBawaan === 'replace' ? ' checked' : '') + ' onchange="_rsSetMode(this.value)"> Replace All</label>'
+      + '<div id="rs-mode-note" style="font-size:13px;color:var(--g4);margin-top:5px;line-height:1.5">' + ((typeof _rsModeNote === 'function') ? _rsModeNote() : '') + '</div></div>'
+      + '<input type="file" id="rs-imp-file" accept=".xlsx,.xlsm,.xls" onchange="_rsPickImport(this)" style="display:none">'
+      + '<div id="rs-imp-info"></div><div id="rs-exp-info"></div>'
+      + '<div style="font-size:13px;color:var(--g4);margin-top:12px;padding-top:10px;border-top:1px solid var(--g2)">Belum ada format tersimpan untuk Export? Unggah file raw-mu <b>sekali</b>:'
+      + ' <input type="file" id="rs-exp-file" accept=".xlsx,.xlsm,.xls" onchange="_rsPickExport(this)" style="font-size:13px;margin-left:6px"></div>'
+      + '</div></div>';
+    parkir(ov);
+  }
+  function buka(kunci) {
+    var ktx = KONTEKS[kunci]; if (!ktx) return;
+    if (typeof _rsExportDirect !== 'function' || typeof _rsPickImport !== 'function') {
+      if (typeof toast === 'function') toast('Mesin Sinkron Raw belum siap.'); return;
+    }
+    tutup();
+    _ctx = ktx; _ctx.kunci = kunci; _pilih = 0;
+    var ov = document.createElement('div');
+    ov.id = 'sinkron-ov'; ov.className = 'mo-overlay open'; ov.style.zIndex = '430';
+    ov.onclick = tutup;
+    document.body.appendChild(ov);
+    siapkanMesin();
+    gambar();
+  }
+  window._sinkronBuka = buka;
+  window._sinkronTutup = tutup;
+  window._sinkronPilihFile = function (i) { _pilih = i; siapkanMesin(); pulihkan(); gambar(); };
+  window._sinkronCsv = function () {
+    var k = _ctx.kunci;
+    if (_ctx.csv && typeof window[_ctx.csv] === 'function') { window[_ctx.csv](); return; }
+    csvTabel(VIEW_KTX[k] || 'body', 'Sinkron_' + _ctx.judul);
+  };
+  window._sinkronExport = function () { siapkanMesin(); _rsExportDirect(); };
+  window._sinkronImpor = function () {
+    siapkanMesin();
+    var i = document.getElementById('rs-imp-file'); if (i) { i.value = ''; i.click(); }
+  };
+
+  /* ---- tombol pemicu: dipasang ulang setiap layar digambar ulang ------------ */
+  function tampak(e) { return e && e.getClientRects().length && (!e.checkVisibility || e.checkVisibility()); }
+  function tombolPemicu(entri) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'sinkron-pemicu'; b.setAttribute('data-sinkron', '1');
+    b.textContent = 'Sinkron';
+    b.title = 'Export CSV, Export Excel Raw, Impor Excel Raw';
+    b.style.cssText = 'border:2px solid var(--g3);background:transparent;color:var(--text);border-radius:8px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;margin-left:auto;flex:0 0 auto';
+    b.onclick = function (ev) { ev.preventDefault(); ev.stopPropagation(); buka(typeof entri.kunci === 'function' ? entri.kunci() : entri.kunci); };
+    return b;
+  }
+  /* satu entri = satu layar. baris(): elemen baris tempat tombol ditaruh. */
+  var PASANG = [
+    { v: 'view-rfa', baris: function (v) { var p = v.querySelector('.rfa-sub-btn'); var w = p && (p.closest('.ui-btnwrap') || p.parentElement); return w && w.parentElement; },
+      kunci: function () { var a = document.querySelector('#view-rfa .rfa-sub-btn.active'); return /reanalis/i.test((a && a.textContent) || '') ? 'rfa-rea' : 'rfa-list'; } },
+    { v: 'view-hasil', baris: function (v) { var p = v.querySelector('.hs-sub-btn'); var w = p && (p.closest('.ui-btnwrap') || p.parentElement); return w && w.parentElement; }, kunci: 'hasil' },
+    /* Scheduling: tiap sub-tab punya baris pil sendiri dan hanya satu yang tampak,
+       jadi yang dicari adalah pil yang TAMPAK, bukan yang pertama di dokumen. */
+    { v: null, baris: function () { var p = [].slice.call(document.querySelectorAll('.sched-sub-btn')).filter(tampak)[0]; return p && (p.closest('.ui-btnwrap') || p.parentElement); }, kunci: 'jadwal', flex: true },
+    { v: 'view-envprog', baris: function (v) { var b = [].slice.call(v.querySelectorAll('button')).find(function (x) { return /^Peta\b/.test((x.textContent || '').trim()); }); return b && b.parentElement; }, kunci: 'program' },
+    { v: 'view-laporan', baris: function (v) { var s = v.querySelector('details[data-pd-key="lap_drain"] > summary'); return s; }, kunci: 'drain', ringkas: true }
+  ];
+  function pasang() {
+    PASANG.forEach(function (p) {
+      var v = p.v ? document.getElementById(p.v) : document.body; if (!v) return;
+      var row = null; try { row = p.baris(v); } catch (e) { row = null; }
+      if (!row) return;
+      if (row.querySelector(':scope > [data-sinkron]')) return;
+      var b = tombolPemicu(p);
+      if (p.ringkas) { b.style.padding = '2px 10px'; b.style.marginLeft = '10px'; }
+      /* Baris pil Scheduling ditata ulang oleh lapisan tombol (display/width dicopot),
+         jadi tombol diletakkan MUTLAK di kanan barisnya, bukan lewat flex. */
+      if (p.flex) {
+        if (getComputedStyle(row).position === 'static') row.style.position = 'relative';
+        b.classList.add('sinkron-abs');   /* aturan di lembar gaya: mutlak di layar lebar, biasa di HP */
+      }
+      row.appendChild(b);
+    });
+  }
+  window._sinkronPasang = pasang;
+  var tunda = null;
+  try { new MutationObserver(function () { if (!tunda) tunda = setTimeout(function () { tunda = null; pasang(); }, 150); }).observe(document.body, { childList: true, subtree: true }); } catch (e) { }
+  setTimeout(pasang, 500);
 })();
 
 </script><script id="kartu-bulanan-y517">
