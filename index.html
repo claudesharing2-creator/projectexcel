@@ -5647,7 +5647,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'aef3dbfc'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'5fe5d766'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -33466,20 +33466,26 @@ function _etRenderCoordTransform(host){
     '</div>'+
     '<div class="et-card et-card-solo" style="max-width:820px;margin-top:16px">'+
     '<div class="et-sec-title">Batch — banyak koordinat sekaligus</div>'+
-    '<div class="et-sec-desc">Tempel atau unggah banyak koordinat (satu per baris). Format sumber <b>terdeteksi otomatis</b> — Decimal (Lat,Lng maupun Lng,Lat), DMS (1°14&#39;21&quot;S 116°50&#39;E, atau 1 14 21 S, 116 50 E), atau UTM (mis. 50 M 512345 9876543). Boleh diawali label &quot;Nama: &quot;. Hasil bisa diunduh CSV.</div>'+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:8px">'+
-      '<div style="flex:1;min-width:180px;text-align:left"><div style="font-size:11px;color:var(--g3);margin-bottom:2px">Konversi ke</div><select id="ctb-to" style="width:100%;font-family:inherit;padding:5px;border:1px solid var(--g2);border-radius:6px;background:transparent">'+opts+'</select></div>'+
-      '<div style="flex:0 0 130px;text-align:left"><div style="font-size:11px;color:var(--g3);margin-bottom:2px">Zona UTM default</div><input id="ctb-zone" type="number" min="1" max="60" value="'+UTM_DEFAULT_ZONE+'" style="width:100%;font-family:inherit;padding:5px;border:1px solid var(--g2);border-radius:6px;background:transparent"></div>'+
+    '<div class="et-sec-desc">Pilih format <b>Dari</b> dan <b>Ke</b>, unduh <b>template Excel</b> yang menyesuaikan, isi, lalu unggah. Atau tempel koordinat (satu titik per baris) di kotak. Hasil bisa diunduh sebagai Excel atau CSV.</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">'+
+      '<div style="flex:1;min-width:180px;text-align:left"><div style="font-size:11px;color:var(--g3);margin-bottom:2px">Dari</div><select id="ctb-from" style="width:100%;height:32px;font-family:inherit;padding:5px;border:1px solid var(--g2);border-radius:6px;background:transparent;box-sizing:border-box" onchange="_ctbSync()">'+opts+'</select></div>'+
+      '<div style="flex:1;min-width:180px;text-align:left"><div style="font-size:11px;color:var(--g3);margin-bottom:2px">Ke</div><select id="ctb-to" style="width:100%;height:32px;font-family:inherit;padding:5px;border:1px solid var(--g2);border-radius:6px;background:transparent;box-sizing:border-box" onchange="_ctbSync()">'+opts+'</select></div>'+
+      '<div id="ctb-zone-wrap" style="flex:0 0 130px;text-align:left"><div style="font-size:11px;color:var(--g3);margin-bottom:2px">Zona UTM default</div><input id="ctb-zone" type="number" min="1" max="60" value="'+UTM_DEFAULT_ZONE+'" style="width:100%;height:32px;font-family:inherit;padding:5px;border:1px solid var(--g2);border-radius:6px;background:transparent;box-sizing:border-box"></div>'+
+      '<div id="ctb-hemi-wrap" style="flex:0 0 130px;text-align:left"><div style="font-size:11px;color:var(--g3);margin-bottom:2px">Hemisphere default</div><select id="ctb-hemi" style="width:100%;height:32px;font-family:inherit;padding:5px;border:1px solid var(--g2);border-radius:6px;background:transparent;box-sizing:border-box"><option value="S"'+(UTM_DEFAULT_HEMI==='S'?' selected':'')+'>Selatan (S)</option><option value="N"'+(UTM_DEFAULT_HEMI==='N'?' selected':'')+'>Utara (N)</option></select></div>'+
     '</div>'+
-    '<textarea id="ctb-in" rows="6" placeholder="Contoh:&#10;Titik A: -1.239277, 116.846077&#10;1 14 21.4 S, 116 50 45.8 E&#10;50 M 512345 9876543" style="width:100%;font-family:monospace;font-size:13px;padding:8px;border:1px solid var(--g2);border-radius:8px;background:transparent;text-align:left;box-sizing:border-box"></textarea>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px">'+
-      '<button onclick="_ctBatchRun()" style="border:none;background:#1565c0;color:#fff;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Transform Semua</button>'+
-      '<button onclick="_ctBatchTemplate()" style="border:1px solid var(--g2);background:transparent;color:var(--text);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Unduh Template</button>'+
-      '<label style="border:1px solid var(--g2);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Unggah .txt/.csv<input type="file" accept=".txt,.csv" style="display:none" onchange="_ctBatchFile(this)"></label>'+
+    '<div id="ctb-kolom" style="font-size:13px;color:var(--g4);margin-bottom:10px;line-height:1.5;text-align:left"></div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
+      '<button onclick="_ctbTemplate()" style="border:2px solid var(--g3);background:transparent;color:var(--text);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Unduh Template (Excel)</button>'+
+      '<label style="border:2px solid var(--g3);background:transparent;color:var(--text);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Unggah Excel / CSV / TXT<input type="file" accept=".xlsx,.xlsm,.xls,.csv,.txt" style="display:none" onchange="_ctbFile(this)"></label>'+
     '</div>'+
+    '<div style="font-size:11px;color:var(--g3);margin-bottom:2px;text-align:left">atau tempel di sini</div>'+
+    '<textarea id="ctb-in" rows="6" style="width:100%;font-family:monospace;font-size:13px;padding:8px;border:1px solid var(--g2);border-radius:8px;background:transparent;text-align:left;box-sizing:border-box"></textarea>'+
+    '<div style="margin-top:10px"><button onclick="_ctbRun()" style="border:none;background:#1565c0;color:#fff;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Transform Semua</button></div>'+
     '<div id="ctb-out" style="margin-top:12px"></div>';
   document.getElementById('ct-to').value='utm';
   document.getElementById('ctb-to').value='utm';
+  document.getElementById('ctb-from').value='wgs84';
+  if(typeof _ctbSync==='function')_ctbSync();
   _ctRenderInputs();
 }
 function _ctField(id,label,placeholder,type){
@@ -49534,6 +49540,406 @@ function _coordDetailMainInput(actId,q){
   var tunda = null;
   try { new MutationObserver(function () { if (!tunda) tunda = setTimeout(function () { tunda = null; pasang(); }, 150); }).observe(document.body, { childList: true, subtree: true }); } catch (e) { }
   setTimeout(pasang, 500);
+})();
+
+</script><script id="transform-batch-y567">
+/* Y567 Transform Koordinat: batch dengan "Dari" dan "Ke", template Excel.
+ *
+ * Pemilik (2026-10-05): "bantu aku buat tools ini bisa diproses batch. Unduh
+ * templatenya dalam Excel aja. Untuk batch ada koordinat from sama to-nya biar
+ * gampang dan templatenya menyesuaikan."
+ *
+ * Perubahan dari batch lama:
+ *  - pilihan "Dari" ikut ditentukan pengguna (dulu ditebak dari tiap baris), jadi
+ *    kolom template, cara membaca baris, dan petunjuknya ikut pilihan itu;
+ *  - template berupa Excel (.xlsx) dengan contoh baris yang DIHITUNG dari titik
+ *    acuan dalam format "Dari" yang dipilih, plus lembar Petunjuk;
+ *  - unggahan Excel/CSV dibaca per KOLOM BERJUDUL (sinonim dikenali), teks tempel
+ *    dibaca per baris sesuai "Dari";
+ *  - hasil bisa diunduh Excel (dan CSV); baris gagal tetap tampil dengan "-" dan
+ *    alasannya (aturan tampilan 3), tidak dibuang diam-diam.
+ * Rumus konversi TIDAK ditulis ulang: memakai _latLngToUtm, _utmToLatLng,
+ * _utmToP2exc, _p2excToUtm, _decToDms yang sama dengan Transform tunggal.
+ */
+(function () {
+  'use strict';
+  var TITIK_ACUAN = [['Titik A', -1.239277, 116.846077], ['Titik B', -0.735, 117.478]];
+
+  function labelCrs(k) {
+    var l = (typeof CT_CRS !== 'undefined') ? CT_CRS : [];
+    for (var i = 0; i < l.length; i++) if (l[i].k === k) return l[i].label;
+    return k;
+  }
+  /* kolom data tiap format asal (judul persis seperti di template) */
+  var KOLOM = {
+    wgs84: ['Latitude', 'Longitude'],
+    dms: ['Latitude (DMS)', 'Longitude (DMS)'],
+    utm: ['Zona', 'Hemisphere', 'Easting', 'Northing'],
+    p2exc: ['Easting', 'Northing']
+  };
+  function zonaDef() { var v = parseInt((document.getElementById('ctb-zone') || {}).value, 10); return v >= 1 && v <= 60 ? v : (typeof UTM_DEFAULT_ZONE !== 'undefined' ? UTM_DEFAULT_ZONE : 50); }
+  function hemiDef() { var v = (document.getElementById('ctb-hemi') || {}).value; return v === 'N' ? 'N' : 'S'; }
+
+  /* ---- nilai contoh dalam format asal ------------------------------------- */
+  function contohBaris(from) {
+    return TITIK_ACUAN.map(function (t) {
+      var lat = t[1], lng = t[2], c;
+      if (from === 'wgs84') c = [+lat.toFixed(6), +lng.toFixed(6)];
+      else if (from === 'dms') c = [_decToDms(lat, true), _decToDms(lng, false)];
+      else if (from === 'utm') { var u = _latLngToUtm(lat, lng); c = [u.zone, u.hemi, +u.easting.toFixed(2), +u.northing.toFixed(2)]; }
+      else { var u2 = _latLngToUtm(lat, lng); var p = _utmToP2exc(u2.easting, u2.northing); c = [+p.e.toFixed(3), +p.n.toFixed(3)]; }
+      return [t[0]].concat(c);
+    });
+  }
+
+  /* ---- membaca satu koordinat sesuai "Dari" ---------------------------------
+     cells = nilai kolom data (urutan KOLOM[from]); mengembalikan {lat,lng} atau {err}. */
+  function angka(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : NaN;
+    var s = String(v == null ? '' : v).trim().replace(/\s/g, '');
+    if (!s) return NaN;
+    if (/,/.test(s) && !/\./.test(s)) s = s.replace(',', '.');           // 116,846 -> 116.846
+    else s = s.replace(/,/g, '');
+    var n = parseFloat(s);
+    return /^-?\d+(\.\d+)?$/.test(s) ? n : NaN;
+  }
+  function derajat(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : NaN;
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return NaN;
+    var d = (typeof _ctDmsToDec === 'function') ? _ctDmsToDec(s) : NaN;
+    return d;
+  }
+  function pita(zonaTeks) {                     // "50", "50M", "50S" -> {zone, hemi?}
+    var m = String(zonaTeks == null ? '' : zonaTeks).trim().match(/^(\d{1,2})\s*([A-Za-z])?$/);
+    if (!m) return null;
+    var z = parseInt(m[1], 10); if (z < 1 || z > 60) return null;
+    var h = null;
+    if (m[2]) { var L = m[2].toUpperCase(); h = (L === 'N' || L === 'S') ? L : (L >= 'N' ? 'N' : 'S'); }   // pita lintang: C-M selatan, N-X utara
+    return { zone: z, hemi: h };
+  }
+  function bacaKoordinat(from, cells) {
+    var a, b, lat, lng;
+    if (from === 'wgs84') {
+      a = angka(cells[0]); b = angka(cells[1]);
+      if (!isFinite(a) || !isFinite(b)) return { err: 'Latitude/Longitude bukan angka' };
+      lat = a; lng = b;
+      if (Math.abs(lat) > 90 && Math.abs(lng) <= 90) { var t = lat; lat = lng; lng = t; }
+      if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return { err: 'di luar rentang (Lat ±90, Lng ±180)' };
+      return { lat: lat, lng: lng };
+    }
+    if (from === 'dms') {
+      lat = derajat(cells[0]); lng = derajat(cells[1]);
+      if (!isFinite(lat) || !isFinite(lng)) return { err: 'DMS tidak terbaca' };
+      if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return { err: 'di luar rentang' };
+      return { lat: lat, lng: lng };
+    }
+    if (from === 'utm') {
+      var z = pita(cells[0]), hm = String(cells[1] == null ? '' : cells[1]).trim().toUpperCase();
+      var zone = z ? z.zone : zonaDef();
+      var hemi = (hm === 'N' || hm === 'S') ? hm : (z && z.hemi) ? z.hemi : hemiDef();
+      if (String(cells[0] == null ? '' : cells[0]).trim() && !z) return { err: 'Zona tidak terbaca (mis. 50 atau 50M)' };
+      var e = angka(cells[2]), n = angka(cells[3]);
+      if (!isFinite(e) || !isFinite(n)) return { err: 'Easting/Northing bukan angka' };
+      if (e < 100000 || e > 900000 || n < 0 || n > 10000000) return { err: 'Easting/Northing di luar rentang UTM' };
+      try { var ll = _utmToLatLng(e, n, zone, hemi); if (ll && isFinite(ll.lat) && isFinite(ll.lng)) return { lat: ll.lat, lng: ll.lng, zonaDipakai: zone + hemi }; } catch (x) { }
+      return { err: 'konversi UTM gagal' };
+    }
+    var e2 = angka(cells[0]), n2 = angka(cells[1]);
+    if (!isFinite(e2) || !isFinite(n2)) return { err: 'Easting/Northing bukan angka' };
+    try {
+      var u = _p2excToUtm(e2, n2), l2 = _utmToLatLng(u.e, u.n, (typeof UTM_DEFAULT_ZONE !== 'undefined' ? UTM_DEFAULT_ZONE : 50), (typeof UTM_DEFAULT_HEMI !== 'undefined' ? UTM_DEFAULT_HEMI : 'S'));
+      if (l2 && isFinite(l2.lat) && isFinite(l2.lng)) return { lat: l2.lat, lng: l2.lng };
+    } catch (x2) { }
+    return { err: 'konversi P2EXC gagal' };
+  }
+
+  /* ---- format hasil menurut "Ke" -------------------------------------------- */
+  var KOLOM_KE = {
+    wgs84: ['Latitude', 'Longitude'],
+    dms: ['Latitude (DMS)', 'Longitude (DMS)'],
+    utm: ['Zona', 'Easting', 'Northing'],
+    p2exc: ['Easting', 'Northing']
+  };
+  function hasilKe(to, lat, lng) {
+    if (to === 'wgs84') return [+lat.toFixed(7), +lng.toFixed(7)];
+    if (to === 'dms') return [_decToDms(lat, true), _decToDms(lng, false)];
+    if (to === 'utm') { var u = _latLngToUtm(lat, lng); return [u.zone + u.hemi, +u.easting.toFixed(2), +u.northing.toFixed(2)]; }
+    var w = _latLngToUtm(lat, lng), p = _utmToP2exc(w.easting, w.northing);
+    return [+p.e.toFixed(3), +p.n.toFixed(3)];
+  }
+  var FMT_ANGKA = { wgs84: '0.0000000', utm: '0.00', p2exc: '0.000' };
+
+  /* ---- teks tempel: satu koordinat per baris ----------------------------------- */
+  function barisTeks(from, baris) {
+    var s = String(baris || '').trim(), label = '';
+    var lm = s.match(/^([^,;\t0-9\-][^,;\t]*?)\s*[:\t]\s*(.+)$/);
+    if (lm && /[A-Za-z]/.test(lm[1])) { label = lm[1].trim(); s = lm[2].trim(); }
+    if (from === 'dms') {
+      var parts = (typeof _ctSplitDms === 'function') ? _ctSplitDms(s) : null;
+      if (!parts) return { label: label, cells: ['', ''] };
+      return { label: label, cells: [parts[0].trim(), parts[1].trim()] };
+    }
+    if (from === 'utm') {
+      var zm = s.match(/(?:zona?\s*)?\b([1-9]|[1-5]\d|60)\s*([A-Za-z])?\b(?=\s+-?\d{5,})/i);
+      var zona = '', hemi = '';
+      if (zm) { zona = zm[1] + (zm[2] || ''); s = s.replace(zm[0], ' '); }
+      var hs = s.match(/\b([NS])\b/); if (hs && !zm) { hemi = hs[1]; }
+      var nums = (s.replace(/\bzona?\b/i, '').match(/-?\d+(?:[.,]\d+)?/g) || []);
+      return { label: label, cells: [zona, hemi, nums[0] || '', nums[1] || ''] };
+    }
+    var n = (s.match(/-?\d+(?:\.\d+)?/g) || s.match(/-?\d+(?:,\d+)?/g) || []);
+    return { label: label, cells: [n[0] || '', n[1] || ''] };
+  }
+
+  /* ---- berkas Excel/CSV: kolom berjudul ---------------------------------------- */
+  var SINONIM = {
+    label: /^(label|nama|name|titik|point|id|kode)$/,
+    'Latitude': /^(lat|latitude|lintang|y)$/,
+    'Longitude': /^(lng|lon|long|longitude|bujur|x)$/,
+    'Latitude (DMS)': /^(lat|latitude|lintang)(\s*\(?dms\)?)?$/,
+    'Longitude (DMS)': /^(lng|lon|long|longitude|bujur)(\s*\(?dms\)?)?$/,
+    'Zona': /^(zona|zone|zon)$/,
+    'Hemisphere': /^(hemisphere|hemi|hs|belahan)$/,
+    'Easting': /^(e|easting|timur|x)$/,
+    'Northing': /^(n|northing|utara|y)$/
+  };
+  function norm(h) { return String(h == null ? '' : h).trim().toLowerCase().replace(/\s+/g, ' '); }
+  function barisSheet(from, rows) {
+    // rows: array of arrays (baris pertama = judul)
+    if (!rows.length) return { err: 'berkas kosong' };
+    var kepala = (rows[0] || []).map(norm), peta = {}, cari = KOLOM[from];
+    var labelIdx = -1;
+    kepala.forEach(function (h, i) { if (labelIdx < 0 && SINONIM.label.test(h)) labelIdx = i; });
+    cari.forEach(function (k) {
+      for (var i = 0; i < kepala.length; i++) {
+        if (i === labelIdx || Object.keys(peta).some(function (kk) { return peta[kk] === i; })) continue;
+        if (SINONIM[k] && SINONIM[k].test(kepala[i])) { peta[k] = i; return; }
+      }
+    });
+    var wajib = cari.filter(function (k) { return k !== 'Zona' && k !== 'Hemisphere'; });
+    var hilang = wajib.filter(function (k) { return peta[k] == null; });
+    if (hilang.length) return { err: 'kolom tidak ditemukan: ' + hilang.join(', ') + ' (judul kolom di baris pertama; unduh template untuk contohnya)' };
+    var out = [];
+    for (var r = 1; r < rows.length; r++) {
+      var row = rows[r] || [];
+      if (row.every(function (c) { return c == null || String(c).trim() === ''; })) continue;
+      out.push({ label: labelIdx >= 0 && row[labelIdx] != null ? String(row[labelIdx]) : '', cells: cari.map(function (k) { return peta[k] != null ? row[peta[k]] : ''; }) });
+    }
+    return { baris: out };
+  }
+
+  /* ---- proses utama ------------------------------------------------------------- */
+  function proses(from, to, daftar) {
+    return daftar.map(function (b) {
+      var k = bacaKoordinat(from, b.cells);
+      if (k.err) return { label: b.label, cells: b.cells, ok: false, err: k.err, out: KOLOM_KE[to].map(function () { return '-'; }) };
+      try { return { label: b.label, cells: b.cells, ok: true, err: '', out: hasilKe(to, k.lat, k.lng), lat: k.lat, lng: k.lng }; }
+      catch (e) { return { label: b.label, cells: b.cells, ok: false, err: 'gagal dihitung', out: KOLOM_KE[to].map(function () { return '-'; }) }; }
+    });
+  }
+  function pilihan() {
+    return { from: (document.getElementById('ctb-from') || {}).value || 'wgs84', to: (document.getElementById('ctb-to') || {}).value || 'utm' };
+  }
+  function tampilkan(from, to, hasil, sumber) {
+    var out = document.getElementById('ctb-out'); if (!out) return;
+    window._ctbLast = { from: from, to: to, hasil: hasil };
+    var okN = hasil.filter(function (r) { return r.ok; }).length;
+    var kin = KOLOM[from], kout = KOLOM_KE[to];
+    var h = '<div style="font-size:13px;color:var(--g4);margin-bottom:6px">' + okN + ' dari ' + hasil.length + ' baris berhasil' + (sumber ? ' · ' + _ep(sumber) : '') + '. <b>' + _ep(labelCrs(from)) + '</b> → <b>' + _ep(labelCrs(to)) + '</b></div>';
+    h += '<div style="overflow-x:auto"><table class="et-tbl" style="min-width:520px;width:100%"><thead><tr><th>Label</th>'
+      + kin.map(function (c) { return '<th>' + _ep(c) + '</th>'; }).join('') + kout.map(function (c) { return '<th>→ ' + _ep(c) + '</th>'; }).join('') + '<th>Status</th></tr></thead><tbody>';
+    hasil.forEach(function (r) {
+      h += '<tr' + (r.ok ? '' : ' style="background:rgba(230,60,60,.08)"') + '><td>' + _ep(r.label || '-') + '</td>'
+        + kin.map(function (c, i) { var v = r.cells[i]; return '<td style="font-family:monospace">' + _ep(v == null || String(v).trim() === '' ? '-' : String(v)) + '</td>'; }).join('')
+        + r.out.map(function (v) { return '<td style="font-family:monospace">' + _ep(String(v)) + '</td>'; }).join('')
+        + '<td style="' + (r.ok ? 'color:#2e7d32' : 'color:#c62828') + '">' + _ep(r.ok ? 'OK' : r.err) + '</td></tr>';
+    });
+    h += '</tbody></table></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'
+      + '<button onclick="_ctbXlsx()" style="border:none;background:#2e7d32;color:#fff;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Unduh Hasil (Excel)</button>'
+      + '<button onclick="_ctbCsv()" style="border:2px solid var(--g3);background:transparent;color:var(--text);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Unduh CSV</button></div>';
+    out.innerHTML = h;
+  }
+  function sama(from, to) {
+    if (from === to) { if (typeof toast === 'function') toast('⚠ Pilih format Dari dan Ke yang berbeda.'); return true; }
+    return false;
+  }
+  function jalankanTeks() {
+    var p = pilihan(); if (sama(p.from, p.to)) return;
+    var ta = document.getElementById('ctb-in');
+    var baris = (ta ? ta.value : '').split(/\r?\n/).filter(function (l) { return l.trim() && !/^\s*#/.test(l); });
+    if (!baris.length) { var o = document.getElementById('ctb-out'); if (o) o.innerHTML = '<div style="font-size:13px;color:var(--g3)">Belum ada koordinat: tempel di kotak atau unggah berkas.</div>'; return; }
+    var d = baris.map(function (l) { return barisTeks(p.from, l); });
+    tampilkan(p.from, p.to, proses(p.from, p.to, d), 'teks tempel');
+  }
+  window._ctbRun = jalankanTeks;
+
+  function bacaBerkas(inp) {
+    var f = inp.files && inp.files[0]; if (!f) return;
+    var p = pilihan(); if (sama(p.from, p.to)) { inp.value = ''; return; }
+    if (/\.txt$/i.test(f.name)) {            /* teks bebas: sama seperti tempel, dibaca per baris sesuai Dari */
+      var ft = new FileReader();
+      ft.onload = function () { var ta = document.getElementById('ctb-in'); if (ta) { ta.value = String(ft.result || '').replace(/^\ufeff/, ''); jalankanTeks(); } inp.value = ''; };
+      ft.readAsText(f); return;
+    }
+    var fr = new FileReader();
+    fr.onload = function () {
+      try {
+        var XL = window.XLSXS || window.XLSX;
+        var wb = XL.read(new Uint8Array(fr.result), { type: 'array', raw: true });
+        var nm = wb.SheetNames.filter(function (s) { return /^input$/i.test(s); })[0] || wb.SheetNames[0];
+        var rows = XL.utils.sheet_to_json(wb.Sheets[nm], { header: 1, raw: true, defval: '' });
+        var r = barisSheet(p.from, rows);
+        var out = document.getElementById('ctb-out');
+        if (r.err) { if (out) out.innerHTML = '<div style="font-size:13px;color:#c62828">' + _ep(r.err) + '</div>'; return; }
+        if (!r.baris.length) { if (out) out.innerHTML = '<div style="font-size:13px;color:var(--g3)">Tidak ada baris data di sheet "' + _ep(nm) + '".</div>'; return; }
+        tampilkan(p.from, p.to, proses(p.from, p.to, r.baris), f.name + ' · sheet ' + nm);
+      } catch (e) {
+        var o2 = document.getElementById('ctb-out'); if (o2) o2.innerHTML = '<div style="font-size:13px;color:#c62828">Berkas tidak bisa dibaca: ' + _ep(e.message || String(e)) + '</div>';
+      } finally { inp.value = ''; }
+    };
+    fr.readAsArrayBuffer(f);
+  }
+  window._ctbFile = bacaBerkas;
+
+  /* ---- Excel: template dan hasil ------------------------------------------------ */
+  var HITAM = { style: 'thin', color: { rgb: '000000' } };
+  function gaya(o) {
+    var s = { font: { name: 'Arial', sz: o.sz || 10, bold: !!o.tebal }, alignment: { horizontal: o.h || 'left', vertical: 'center', wrapText: !!o.bungkus } };
+    if (o.warna) s.font.color = { rgb: o.warna };
+    if (o.garis !== false) s.border = { top: HITAM, bottom: HITAM, left: HITAM, right: HITAM };
+    if (o.isi) s.fill = { patternType: 'solid', fgColor: { rgb: o.isi } };
+    return s;
+  }
+  function sel(v, s, z) {
+    var c = (typeof v === 'number') ? { t: 'n', v: v } : { t: 's', v: String(v == null ? '' : v) };
+    c.s = s; if (z) c.z = z; return c;
+  }
+  function lembar(aoa, lebar, kolomTeks) {
+    var XL = window.XLSXS || window.XLSX, ws = {};
+    aoa.forEach(function (row, r) {
+      row.forEach(function (cell, c) { if (cell != null) ws[XL.utils.encode_cell({ r: r, c: c })] = cell; });
+    });
+    var maxC = Math.max.apply(null, aoa.map(function (r) { return r.length; }));
+    ws['!ref'] = XL.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(0, aoa.length - 1), c: Math.max(0, maxC - 1) } });
+    ws['!cols'] = lebar.map(function (w) { return { wch: w }; });
+    return ws;
+  }
+  async function tulisXlsx(wb, nama) {
+    var XL = window.XLSXS || window.XLSX;
+    var mentah = XL.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });
+    var akhir = mentah;
+    /* pembersihan skema yang sama dengan Excel laporan (xml:space pada <row>/<c> dan
+       urutan pageSetup membuat Excel "memperbaiki" berkas) */
+    try { if (typeof window._lapAturCetak === 'function') akhir = await window._lapAturCetak(mentah); } catch (e) { akhir = mentah; }
+    var blob = new Blob([akhir], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nama + '.xlsx';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    return akhir;
+  }
+  function bangunTemplate(from, to) {
+    var XL = window.XLSXS || window.XLSX, kol = KOLOM[from];
+    var kepala = ['Label'].concat(kol).map(function (t) { return sel(t, gaya({ tebal: true, h: 'center', isi: 'EEEEEE' })); });
+    var teksKol = { dms: true, utm: false };
+    var contoh = contohBaris(from).map(function (b) {
+      return b.map(function (v, i) {
+        if (i === 0) return sel(v, gaya({}));
+        var fmt = (typeof v === 'number') ? (from === 'wgs84' ? '0.000000' : from === 'utm' ? (kol[i - 1] === 'Zona' ? '0' : '0.00') : '0.000') : null;
+        return sel(v, gaya({ h: typeof v === 'number' ? 'right' : 'center' }), fmt);
+      });
+    });
+    var lebar = [16].concat(kol.map(function (k) { return from === 'dms' ? 20 : (k === 'Zona' || k === 'Hemisphere' ? 12 : 16); }));
+    var wsIn = lembar([kepala].concat(contoh), lebar);
+    var petunjuk = [
+      ['Template Transform Koordinat (batch)'],
+      [''],
+      ['Dari: ' + labelCrs(from) + '   →   Ke: ' + labelCrs(to)],
+      [''],
+      ['Cara pakai'],
+      ['1. Isi sheet "Input", satu titik per baris, mulai baris 2. Hapus dua baris contoh.'],
+      ['2. Jangan ubah judul kolom di baris pertama (urutan kolom boleh berbeda).'],
+      ['3. Kolom Label boleh dikosongkan.'],
+      ['4. Di aplikasi: pilih Dari dan Ke yang SAMA dengan yang tertulis di atas, lalu Unggah Excel dan klik hasilnya diunduh.'],
+      ['']
+    ];
+    if (from === 'wgs84') petunjuk.push(['Latitude/Longitude dalam derajat desimal (Lat -1.239277, Lng 116.846077). Tanda minus untuk S/W.']);
+    if (from === 'dms') petunjuk.push(['Tulis DMS sebagai teks, mis. 1°14\'21.40"S atau 1 14 21.4 S. Huruf S/W atau tanda minus memberi arah.']);
+    if (from === 'utm') petunjuk.push(['Zona (1-60) dan Hemisphere (N/S) boleh dikosongkan: dipakai Zona UTM default dan Hemisphere yang dipilih di aplikasi (Kalimantan Timur: zona 50, S).'], ['Easting 100.000-900.000 m, Northing 0-10.000.000 m.']);
+    if (from === 'p2exc') petunjuk.push(['Easting/Northing dalam sistem lokal P2EXC-T9 (Segara).']);
+    petunjuk.push(['']);
+    petunjuk.push(['Contoh dua baris di sheet Input dihitung dari titik acuan yang sama, jadi hasil Transform-nya bisa dicocokkan.']);
+    var aoaP = petunjuk.map(function (r, i) { return [sel(r[0], gaya({ tebal: i === 0 || r[0] === 'Cara pakai', sz: i === 0 ? 12 : 10, garis: false }))]; });
+    var wsP = lembar(aoaP, [110]);
+    var wb = XL.utils.book_new();
+    XL.utils.book_append_sheet(wb, wsIn, 'Input');
+    XL.utils.book_append_sheet(wb, wsP, 'Petunjuk');
+    return wb;
+  }
+  window._ctbTemplateBangun = bangunTemplate;
+  window._ctbTemplate = function () {
+    var p = pilihan(); if (sama(p.from, p.to)) return;
+    var nama = 'Template_' + p.from + '_ke_' + p.to;
+    return tulisXlsx(bangunTemplate(p.from, p.to), nama);
+  };
+  function bangunHasil(from, to, hasil) {
+    var XL = window.XLSXS || window.XLSX, kin = KOLOM[from], kout = KOLOM_KE[to];
+    var kepala = ['Label'].concat(kin, kout.map(function (c) { return '→ ' + c; }), ['Status']).map(function (t) { return sel(t, gaya({ tebal: true, h: 'center', isi: 'EEEEEE', bungkus: true })); });
+    var fmtOut = FMT_ANGKA[to];
+    var baris = hasil.map(function (r) {
+      var row = [sel(r.label || '-', gaya({}))];
+      kin.forEach(function (c, i) { var v = r.cells[i]; row.push(sel(v == null || String(v).trim() === '' ? '-' : v, gaya({ h: typeof v === 'number' ? 'right' : 'left' }))); });
+      r.out.forEach(function (v) { row.push(sel(v, gaya({ h: typeof v === 'number' ? 'right' : 'center' }), typeof v === 'number' ? fmtOut : null)); });
+      row.push(sel(r.ok ? 'OK' : r.err, gaya({ warna: r.ok ? '2E7D32' : 'C62828', tebal: !r.ok })));
+      return row;
+    });
+    var lebar = [18].concat(kin.map(function () { return 18; }), kout.map(function () { return 18; }), [34]);
+    var wb = XL.utils.book_new();
+    XL.utils.book_append_sheet(wb, lembar([kepala].concat(baris), lebar), 'Hasil');
+    return wb;
+  }
+  window._ctbHasilBangun = bangunHasil;
+  window._ctbXlsx = function () {
+    var r = window._ctbLast; if (!r) return;
+    return tulisXlsx(bangunHasil(r.from, r.to, r.hasil), 'Hasil_' + r.from + '_ke_' + r.to);
+  };
+  window._ctbCsv = function () {
+    var r = window._ctbLast; if (!r) return;
+    var q = function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var kin = KOLOM[r.from], kout = KOLOM_KE[r.to];
+    var csv = ['Label'].concat(kin, kout.map(function (c) { return '-> ' + c; }), ['Status']).map(q).join(',') + '\r\n';
+    r.hasil.forEach(function (x) {
+      csv += [x.label || '-'].concat(kin.map(function (c, i) { var v = x.cells[i]; return v == null || String(v).trim() === '' ? '-' : v; }), x.out, [x.ok ? 'OK' : x.err]).map(q).join(',') + '\r\n';
+    });
+    var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Hasil_' + r.from + '_ke_' + r.to + '.csv';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  };
+
+  /* ---- penyesuaian tampilan terhadap pilihan Dari/Ke -------------------------------- */
+  var CONTOH_TEKS = {
+    wgs84: ['Titik A: -1.239277, 116.846077', '-0.735000, 117.478000'],
+    dms: ['Titik A: 1 14 21.4 S, 116 50 45.8 E', '0°44\'6"S 117°28\'40.8"E'],
+    utm: ['Titik A: 50 S 512345 9862000', '50 S 600123 9917000'],
+    p2exc: ['Titik A: 12345.678 23456.789', '12400.100 23500.200']
+  };
+  window._ctbSync = function () {
+    var p = pilihan();
+    var ta = document.getElementById('ctb-in');
+    if (ta) ta.placeholder = 'Contoh (satu titik per baris, ' + labelCrs(p.from) + '):\n' + CONTOH_TEKS[p.from].join('\n');
+    var ket = document.getElementById('ctb-kolom');
+    if (ket) ket.innerHTML = 'Kolom template Excel: <b>' + ['Label'].concat(KOLOM[p.from]).map(_ep).join(' · ') + '</b> → hasil: <b>' + KOLOM_KE[p.to].map(_ep).join(' · ') + '</b>';
+    var utmDipakai = (p.from === 'utm');
+    ['ctb-zone-wrap', 'ctb-hemi-wrap'].forEach(function (id) { var e = document.getElementById(id); if (e) e.style.display = utmDipakai ? '' : 'none'; });
+    var out = document.getElementById('ctb-out'); if (out) out.innerHTML = '';
+    window._ctbLast = null;
+  };
+  /* diuji langsung */
+  window._ctbBacaKoordinat = bacaKoordinat;
+  window._ctbBarisTeks = barisTeks;
+  window._ctbBarisSheet = barisSheet;
+  window._ctbProses = proses;
+  window._ctbKolom = { dari: KOLOM, ke: KOLOM_KE };
 })();
 
 </script><script id="kartu-bulanan-y517">
