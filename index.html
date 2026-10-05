@@ -5647,7 +5647,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'66ddb175'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'287d7a89'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -50219,7 +50219,18 @@ window._rsProgImport=function(wbx){
 /* ======================================================================
  * 3. RECAP — pemetaan titik, Debit BWPD vs m3/bulan, baris manual, baris baru
  * ==================================================================== */
-var TURUNAN={'produksi':1,'beban pencemar':1,'debit':1,'debit m3 bulan':1};
+var TURUNAN_AWAL=['produksi','beban pencemar','debit'];
+function turunanKey(kp){return TURUNAN_AWAL.some(function(a){return kp===a||kp.indexOf(a+' ')===0;});}
+// "Beban Pencemar" muncul dua kali per titik (beban H2S dan beban Minyak dan Lemak) dan
+// di raw namanya sama; di app dibedakan lewat kurung. Kunci dibedakan menurut parameter
+// yang dibebani.
+function sufiksBeban(t){var x=String(t||'').toLowerCase();return /h2s|sulfida/.test(x)?'h2s':(/minyak|lemak|oil/.test(x)?'minyak':'');}
+function kunciParamApp(parameter,satuan){
+  var kp=_rsNormKey(parameter);
+  if(kp==='debit'&&satuanM3(satuan))return 'debit m3 bulan';
+  if(kp==='beban pencemar'){var sf=sufiksBeban(parenIn(parameter));if(sf)return 'beban pencemar '+sf;}
+  return kp;
+}
 var _gridLama=window._rsRecapGrid;
 function satuanM3(s){return /m3|m³/i.test(String(s||''));}
 // grid + nama titik app + baris satuan Debit
@@ -50233,6 +50244,11 @@ function gridS(rows,sheetNorm,titikApp){
     dr.titikRaw=dr.titik;
     dr.titik=resolveTitik(sheetNorm,dr.titik,titikApp);
     if(_rsNormKey(dr.param)==='debit'&&satuanM3(dr.unit))dr.param='Debit [m3/bulan]';
+  });
+  // dua baris "Beban Pencemar" per titik: dibedakan menurut parameter di atasnya
+  var prev=''; g.rows.slice().sort(function(a,b){return a.excelRow-b.excelRow;}).forEach(function(dr){
+    if(_rsNormKey(dr.param)==='beban pencemar'){var sf=sufiksBeban(prev);if(sf)dr.param='Beban Pencemar ['+sf+']';}
+    else if(_rsNormKey(dr.param).indexOf('beban pencemar')!==0)prev=dr.param;
   });
   // baris satuan tanpa nama parameter (kolom C kosong) tepat di bawah baris Debit
   g.rows.slice().forEach(function(dr){
@@ -50292,7 +50308,7 @@ window._rsRecapAppIndex=function(withEmpty){
       if(!mn)return;
       var yr=(r.tanggal&&r.tanggal[0])?String(r.tanggal[0]).slice(0,4):'';
       if(!withEmpty&&(r.nilai==null||r.nilai===''))return;
-      var kp=_rsNormKey(r.parameter); if(kp==='debit'&&satuanM3(r.satuan))kp='debit m3 bulan';
+      var kp=kunciParamApp(r.parameter,r.satuan);
       var key=strict(r.titik)+'‖'+kp+'‖'+mn;
       var m=(idx[sheet]=idx[sheet]||{});
       (m[key]=m[key]||[]).push({nilai:r.nilai,year:yr,group:g,row:r});
@@ -50303,6 +50319,7 @@ window._rsRecapAppIndex=function(withEmpty){
 function ambilCocok(b,kT,kP,mn,yr){
   var h=_rsRecapPick(b[kT+'‖'+kP+'‖'+mn],yr);
   if(!h&&kP==='debit m3 bulan')h=_rsRecapPick(b[kT+'‖debit‖'+mn],yr);
+  if(!h&&kP.indexOf('beban pencemar ')===0)h=_rsRecapPick(b[kT+'‖beban pencemar‖'+mn],yr);
   return h;
 }
 function sama(a,b){
@@ -50325,13 +50342,13 @@ var _runLama=window._rsRecapRunImport; window._rsRecapRunImportLama=_runLama;
 window._rsRecapRunImport=function(wbx){
   var base=window._rsRecapAppIndex(true),peta=titikAppPerSheet();
   var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE!=='replace');
-  var changed=0,same=0,unmatched=0,dilindungi=0,dibuat=0,nolDilewati=0,report=[],gagalBaru=[],manualUbah=0;
+  var changed=0,same=0,unmatched=0,dilindungi=0,dibuat=0,nolDilewati=0,report=[],gagalBaru=[],manualUbah=0,ubah=[];
   // templat baris untuk membuat bulan baru: sheet -> titik‖param -> baris app terbaru
   var tpl={};
   Object.keys(HS_GROUPS_DATA||{}).concat(['__manual']).forEach(function(){});
   (typeof _hsAllRows==='function'?_hsAllRows():[]).forEach(function(r){
     var sh=_rsNorm(r.extra&&r.extra.sumberSheet); if(!sh)return;
-    var kp=_rsNormKey(r.parameter); if(satuanM3(r.satuan)&&kp==='debit')kp='debit m3 bulan';
+    var kp=kunciParamApp(r.parameter,r.satuan);
     var k=strict(r.titik)+'‖'+kp,t=(r.tanggal&&r.tanggal[0])||'';
     var m=(tpl[sh]=tpl[sh]||{});
     if(!m[k]||t>((m[k].tanggal&&m[k].tanggal[0])||''))m[k]=r;
@@ -50353,14 +50370,14 @@ window._rsRecapRunImport=function(wbx){
         var raw=(rows[dr.excelRow-1]||[])[parseInt(cj,10)];
         if(raw==null||String(raw).trim()==='')return;
         var ym=grid.monthCols[cj],mn=parseInt(ym.slice(5,7),10),yr=ym.slice(0,4);
-        var turunan=!!TURUNAN[kP];
+        var turunan=turunanKey(kP);
         var nol=(String(raw).trim()==='0'||raw===0);
         // kunci memakai nama titik app hasil pemetaan
         var hit=ambilCocok(b,kT,kP,mn,yr);
         if(!hit){
           // bulan yang belum punya baris: buat dari templat (hanya 2026 dst., bukan turunan/nol)
           if(turunan||nol||ym<'2026-01'){unmatched++;return;}
-          var t=(tpl[sh]||{})[kTs+'‖'+kP]||(kP==='debit m3 bulan'?(tpl[sh]||{})[kTs+'‖debit']:null);
+          var t=(tpl[sh]||{})[kTs+'‖'+kP]||(kP==='debit m3 bulan'?(tpl[sh]||{})[kTs+'‖debit']:(kP.indexOf('beban pencemar ')===0?(tpl[sh]||{})[kTs+'‖beban pencemar']:null));
           var rfaV=((pt.rfa[dr.excelRow]||[])[parseInt(cj,10)]),tglV=((pt.tgl[dr.excelRow]||[])[parseInt(cj,10)]);
           rfaV=rfaV==null?'':String(rfaV).trim();
           tglV=typeof tglV==='number'?_rsSerialToIso(tglV):(tglV?String(tglV).slice(0,10):'');
@@ -50392,7 +50409,7 @@ window._rsRecapRunImport=function(wbx){
           if(fillOnly&&cur.trim()!==''){dilindungi++;return;}
           mrow.nilai=String(raw);
           var ev2=_hsEvalCompliance(mrow.nilai,mrow.bakuMutu==null?null:mrow.bakuMutu,{satuan:mrow.satuan,satuanBaku:mrow.satuanBakuMutu,tanggal:mrow.tanggal});
-          mrow.status=ev2.status;mrow.nilaiNum=ev2.nilaiNum;changed++;manualUbah++;return;
+          mrow.status=ev2.status;mrow.nilaiNum=ev2.nilaiNum;changed++;manualUbah++;ubah.push({sheet:sn.trim(),row:dr.excelRow,col:parseInt(cj,10),titikRaw:dr.titikRaw,titikApp:dr.titik,param:dr.param,ym:ym,lama:cur,baru:String(raw),jenis:'baris app'});return;
         }
         var k=_hsRowKey(hit.group,row);
         if(fillOnly){
@@ -50400,7 +50417,7 @@ window._rsRecapRunImport=function(wbx){
           var adaIsi=(ov&&String(ov.nilai==null?'':ov.nilai).trim()!=='')||cur.trim()!=='';
           if(adaIsi){dilindungi++;return;}
         }
-        HASIL_OVERRIDE[k]={nilai:String(raw),ts:Date.now()};changed++;
+        HASIL_OVERRIDE[k]={nilai:String(raw),ts:Date.now()};changed++;ubah.push({sheet:sn.trim(),row:dr.excelRow,col:parseInt(cj,10),titikRaw:dr.titikRaw,titikApp:dr.titik,param:dr.param,ym:ym,lama:cur,baru:String(raw),jenis:'override'});
       });
     });
     report.push({sheet:sn,status:'ok',baris:grid.rows.length,kolomBulan:Object.keys(grid.monthCols).length,
@@ -50410,7 +50427,7 @@ window._rsRecapRunImport=function(wbx){
   if(manualUbah||baruRows.length){try{_hsSaveManual();}catch(e){}}
   if(changed){try{_hsSaveOverride();}catch(e){}}
   if(changed||baruRows.length){if(typeof saveStorage==='function')saveStorage('Import raw Water Monitoring Recap ('+changed+' diperbarui, '+dibuat+' baris baru)');}
-  window._rsRecapLast={changed:changed,same:same,unmatched:unmatched,dilindungi:dilindungi,dibuat:dibuat,nolDilewati:nolDilewati,manualUbah:manualUbah,gagalBaru:gagalBaru,report:report};
+  window._rsRecapLast={ubah:ubah,changed:changed,same:same,unmatched:unmatched,dilindungi:dilindungi,dibuat:dibuat,nolDilewati:nolDilewati,manualUbah:manualUbah,gagalBaru:gagalBaru,report:report};
   return window._rsRecapLast;
 };
 var _lapRepLama=window._rsRecapReportHtml;
