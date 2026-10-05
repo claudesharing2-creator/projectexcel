@@ -5633,7 +5633,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-09-22',h:'7d11a9c2'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-09-22',h:'aa831c43'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -39252,11 +39252,22 @@ function _drainPopulateMonthSelects(){
     if(months.length){s1.value=months[0];s2.value=months[months.length-1];}
   });
 }
+function _drainDataBulan(catchment,all){
+  const bulan=Array.from(new Set(all.map(function(d){return d.slice(0,7);}))).sort().reverse();
+  const sel=document.getElementById('et-drain-data-month');
+  if(!sel)return bulan[0]||'';
+  let pilih=sel.value;
+  if(sel.getAttribute('data-cat')!==catchment||bulan.indexOf(pilih)<0)pilih=bulan[0]||'';
+  sel.setAttribute('data-cat',catchment);
+  sel.innerHTML=bulan.map(function(m){return '<option value="'+m+'"'+(m===pilih?' selected':'')+'>'+m+'</option>';}).join('');
+  return pilih;
+}
 function _drainRenderPreview(catchment,full){
   const el=document.getElementById('et-drain-preview-'+catchment)||document.getElementById('et-drain-data-tbl');
   if(!el)return;
   const all=Object.keys(DRAIN_DATA[catchment]).sort();
-  const dates=full?all:all.slice(-14);
+  /*Y557*/const bulanIni=full?_drainDataBulan(catchment,all):'';
+  const dates=full?all.filter(function(d){return d.slice(0,7)===bulanIni;}):all.slice(-14);
   const pts=DRAIN_AREAS[catchment]?Object.keys(DRAIN_AREAS[catchment]):null;
   if(!dates.length){el.innerHTML='<div style="font-size:13px;color:var(--g4);padding:8px 0">Belum ada data.</div>';return;}
   el.innerHTML=`${full?'':`<div style="font-size:11px;color:var(--g4);margin-bottom:4px">${all.length} hari data tersimpan (${all[0]||''} s/d ${all[all.length-1]||''})</div>`}
@@ -39276,7 +39287,7 @@ function _drainRenderPreview(catchment,full){
              :mm.toFixed(2));
       return `<tr${_es?' class="drain-est-row"':''}><td>${d}</td><td>${_mmTd}</td>${pts?pts.map(p=>{const v=_drainDebit(catchment,p,d);return `<td>${v==null?'—':(_es?`<span class="drain-est">~${v.toFixed(3)}</span>`:v.toFixed(3))}</td>`;}).join(''):''}</tr>`;
     }).join('')}
-  </tbody></table></div>${full?'':`<div style="font-size:11px;color:var(--g4);margin-top:4px">Menampilkan 14 hari terakhir${dates.length===14?' dari total data yang ada':''}.</div>`}`;
+  </tbody></table></div>${full?`<div style="font-size:11px;color:var(--g4);margin-top:4px">Menampilkan ${dates.length} hari pada bulan ${bulanIni} dari ${all.length} hari tersimpan. Ganti bulan lewat pilihan di atas.</div>`:`<div style="font-size:11px;color:var(--g4);margin-top:4px">Menampilkan 14 hari terakhir${dates.length===14?' dari total data yang ada':''}.</div>`}`;
 }
 let DRAIN_SUB='import';
 function _etRenderDrain(host){
@@ -39356,6 +39367,8 @@ function _drainRenderDataTab(host){
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
       <b style="font-size:13px">Data tercatat:</b>
       <select id="et-drain-data-catchment" class="et-in" onchange="_drainRenderPreview(this.value,true)">${DRAIN_CATCHMENTS.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+      <b style="font-size:13px;margin-left:10px">Bulan:</b>
+      <select id="et-drain-data-month" class="et-in" onchange="_drainRenderPreview(document.getElementById('et-drain-data-catchment').value,true)"></select>
     </div>
     <div id="et-drain-data-tbl"></div>
   </div>`;
@@ -39364,10 +39377,13 @@ function _drainRenderDataTab(host){
 function _drainRenderExportTab(host){
   host.innerHTML=`<div class="et-card" style="max-width:100%">
     <b style="font-size:13px">Export per Site (Auth / Ket)</b>
-    <div style="font-size:11px;color:var(--g4);margin:4px 0 8px">Auth = tabel harian per titik + total bulanan (format sama seperti Template Auth Excel). Ket = versi bernarasi (judul + paragraf keterangan baku) dengan tabel yang sama. <b>Excel</b> = susunan yang sama dengan Auth, satu bulan satu lembar, tapi bisa disunting: angkanya angka Excel, tanggalnya tanggal Excel, dan baris TOTAL memakai rumus SUM. Tebal/arsiran tidak ikut \u2014 pustaka Excel yang dipakai di sini tidak menulis gaya sel.</div>
+    <div style="font-size:11px;color:var(--g4);margin:4px 0 8px">Auth = tabel harian per titik + total bulanan (format sama seperti Template Auth Excel). Ket = versi bernarasi (judul + paragraf keterangan baku) dengan tabel yang sama. <b>Excel</b> = susunan yang sama dengan Auth, satu bulan satu lembar, tapi bisa disunting: angkanya angka Excel, tanggalnya tanggal Excel, dan baris TOTAL memakai rumus SUM. Tebal/arsiran tidak ikut \u2014 pustaka Excel yang dipakai di sini tidak menulis gaya sel. <b>Raw</b> = satu file berformat sama dengan Excel Debit Drainase asli (lembar Anggana dan Samboja; tanggal, curah hujan, intensitas, lalu debit tiap titik dengan rumus yang masih hidup, jadi C, koefisien, Catchment Area dan curah hujan bisa diubah). Lembar yang ikut mengikuti site yang dicentang, dan tiap lembar memuat seluruh titiknya.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
       <div><div style="font-size:11px;color:var(--g4)">Site</div>
-        <select id="et-drain-site" class="et-in"><option value="__SEMUA__">Semua site</option>${Object.keys(DRAIN_SITES).map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+        <div id="et-drain-site" style="display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;border:1px solid var(--g2);border-radius:8px;padding:6px 10px;min-height:38px;box-sizing:border-box">
+          <label style="font-size:13px;font-weight:700"><input type="checkbox" id="et-drain-site-all" checked onchange="_drainSiteAll(this.checked)"> Select All</label>
+          ${Object.keys(DRAIN_SITES).map(s=>`<label style="font-size:13px"><input type="checkbox" class="et-drain-site-cb" value="${s}" checked onchange="_drainSiteSync()"> ${s}</label>`).join('')}
+        </div></div>
       <div><div style="font-size:11px;color:var(--g4)">Bulan Mulai</div><select id="et-drain-start" class="et-in"></select></div>
       <div><div style="font-size:11px;color:var(--g4)">Bulan Akhir</div><select id="et-drain-end" class="et-in"></select></div>
     </div>
@@ -39375,6 +39391,7 @@ function _drainRenderExportTab(host){
       <button class="coord-copy" style="border-color:#3EE06A;color:#2e7d32" onclick="_drainExport('auth-pdf')">Export Auth (PDF)</button>
       <button class="coord-copy" style="border-color:#3EE06A;color:#2e7d32" onclick="_drainExport('ket-pdf')">Export Ket (PDF)</button>
       <button class="coord-copy" style="border-color:#3EE06A;color:#2e7d32" onclick="_drainExport('xlsx')">Export Excel (.xlsx)</button>
+      <button class="coord-copy" style="border-color:#3EE06A;color:#2e7d32" onclick="_drainExportRaw()" title="Satu file seperti Debit_Drainase.xlsx asli: lembar Anggana dan Samboja, hujan harian, intensitas, debit tiap titik dengan rumus hidup">Export Raw (Format Excel Asli)</button>
     </div>
     <div id="et-drain-export-status" style="font-size:13px;color:var(--g4);margin-top:8px"></div>
     <div style="border-top:1px dashed var(--g2);margin-top:16px;padding-top:12px">
@@ -39486,8 +39503,123 @@ function _drainMonthAvg(catchment,ym){
   if(!vals.length)return 0;
   return vals.reduce((a,b)=>a+b,0)/vals.length;
 }
+function _drainSitesDipilih(){
+  return Array.prototype.slice.call(document.querySelectorAll('.et-drain-site-cb:checked')).map(function(cb){return cb.value;});
+}
+function _drainSiteSync(){
+  var semua=document.querySelectorAll('.et-drain-site-cb'),n=0;
+  for(var i=0;i<semua.length;i++)if(semua[i].checked)n++;
+  var a=document.getElementById('et-drain-site-all');
+  if(!a)return;
+  a.checked=(n===semua.length&&n>0);
+  a.indeterminate=(n>0&&n<semua.length);
+}
+function _drainSiteAll(on){
+  document.querySelectorAll('.et-drain-site-cb').forEach(function(cb){cb.checked=on;});
+  _drainSiteSync();
+}
+const DRAIN_RAW_URUT=['Anggana','Samboja'];
+function _drainRawCats(){
+  var daftar=_drainSitesDipilih();
+  return DRAIN_RAW_URUT.filter(function(c){
+    return daftar.some(function(s){return (DRAIN_SITES[s]||[]).some(function(p){return _drainPointCatchment(p)===c;});});
+  });
+}
+function _drainExportRaw(){
+  var startYm=document.getElementById('et-drain-start').value;
+  var endYm=document.getElementById('et-drain-end').value;
+  var statusEl=document.getElementById('et-drain-export-status');
+  if(!startYm||!endYm){if(statusEl)statusEl.textContent='⚠ Belum ada data untuk periode manapun — impor CSV dulu.';return;}
+  var cats=_drainRawCats();
+  if(!cats.length){
+    if(statusEl)statusEl.textContent='⚠ Pilih minimal satu site.';
+    if(typeof toast==='function')toast('⚠ Pilih minimal satu site.');
+    return;
+  }
+  var wakil=cats.map(function(c){return Object.keys(DRAIN_AREAS[c])[0];});
+  var missing=_drainCheckMissing(wakil,startYm,endYm);
+  var jalan=function(fillMode){_drainDoExportRaw(cats,startYm,endYm,fillMode);};
+  if(missing.length)_drainAskFillMissing(missing.length,jalan);
+  else jalan(null);
+}
+function _drainDoExportRaw(cats,startYm,endYm,fillMode){
+  var statusEl=document.getElementById('et-drain-export-status');
+  if(typeof XLSX==='undefined'||!XLSX.utils||!XLSX.write){
+    if(statusEl)statusEl.textContent='⚠ Pustaka Excel belum siap — muat ulang halaman lalu coba lagi.';
+    return;
+  }
+  var months=_drainMonthsInRange(startYm,endYm);
+  var seri=function(y,m,d){return Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000);};
+  var wb=XLSX.utils.book_new(), hari=0, terisi=0;
+  cats.forEach(function(cat){
+    var pts=Object.keys(DRAIN_AREAS[cat]), samboja=(cat==='Samboja');
+    var ws={}, rng={s:{r:0,c:0},e:{r:3,c:pts.length+2}};
+    var set=function(r,c,cell){
+      ws[XLSX.utils.encode_cell({r:r,c:c})]=cell;
+      if(r>rng.e.r)rng.e.r=r;
+      if(c>rng.e.c)rng.e.c=c;
+    };
+    set(0,3,{t:'s',v:'C'});
+    set(0,4,{t:'s',v:samboja?'Ketetapan':'Koef'});
+    set(1,3,{t:'n',v:DRAIN_C});
+    set(1,4,{t:'n',v:DRAIN_K});
+    set(2,2,{t:'s',v:samboja?'Catchment Area (A)':'Catchment Area'});
+    pts.forEach(function(pt,i){
+      set(2,3+i,{t:'n',v:DRAIN_AREAS[cat][pt]});
+      set(3,3+i,{t:'s',v:pt});
+    });
+    set(3,0,{t:'s',v:'TANGGAL (YYYY-MM-DD)'});
+    set(3,1,{t:'s',v:'CURAH HUJAN (MM)'});
+    set(3,2,{t:'s',v:'INTENSITAS CURAH HUJAN (I)'});
+    var r=4;
+    months.forEach(function(ym){
+      var bagi=ym.split('-'), y=Number(bagi[0]), m=Number(bagi[1]);
+      var lastDay=new Date(y,m,0).getDate();
+      for(var d=1;d<=lastDay;d++){
+        var key=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+        var mm=DRAIN_DATA[cat][key];
+        if(!(mm!=null&&isFinite(mm))){
+          mm=(fillMode==='avg')?_drainMonthAvg(cat,ym):(fillMode==='zero'?0:null);
+          if(mm!=null)terisi++;
+        }
+        var baris=r+1;
+        set(r,0,{t:'n',v:seri(y,m,d),z:'yyyy-mm-dd'});
+        if(mm==null){
+          set(r,2,{t:'n',v:0,f:'B'+baris+'/24'});
+          pts.forEach(function(pt,i){
+            var kol=XLSX.utils.encode_col(3+i);
+            set(r,3+i,{t:'n',v:0,f:(samboja?'$D$2*$E$2*$'+kol+'$3*C'+baris:'$E$2*$D$2*$C'+baris+'*$'+kol+'$3')});
+          });
+        }else{
+          var I=mm/24;
+          set(r,1,{t:'n',v:mm});
+          set(r,2,{t:'n',v:I,f:'B'+baris+'/24'});
+          pts.forEach(function(pt,i){
+            var kol=XLSX.utils.encode_col(3+i);
+            set(r,3+i,{t:'n',v:DRAIN_C*DRAIN_K*DRAIN_AREAS[cat][pt]*I,
+              f:(samboja?'$D$2*$E$2*$'+kol+'$3*C'+baris:'$E$2*$D$2*$C'+baris+'*$'+kol+'$3')});
+          });
+        }
+        r++;
+        hari++;
+      }
+    });
+    ws['!ref']=XLSX.utils.encode_range(rng);
+    ws['!cols']=[{wch:22},{wch:18},{wch:28}].concat(pts.map(function(pt){return {wch:Math.max(14,Math.min(28,String(pt).length+4))};}));
+    XLSX.utils.book_append_sheet(wb,ws,cat);
+  });
+  var out=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+  var outName='Debit_Drainase_'+startYm.replace('-','')+'_'+endYm.replace('-','')+'.xlsx';
+  var url=URL.createObjectURL(new Blob([out],{type:'application/octet-stream'}));
+  var a=document.createElement('a');
+  a.href=url;a.download=outName;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);},4000);
+  if(statusEl)statusEl.textContent='✓ '+outName+' diunduh — lembar '+cats.join(' + ')+', '+(hari/cats.length)+' hari per lembar. '
+    +'Rumus masih hidup: ubah C, Koef/Ketetapan, Catchment Area (baris atas) atau curah hujan (kolom B), debit ikut berubah.'
+    +(terisi?' '+terisi+' hari kosong diisi dengan pilihan Anda.':'');
+}
 function _drainExport(mode){
-  const site=document.getElementById('et-drain-site').value;
   const startYm=document.getElementById('et-drain-start').value;
   const endYm=document.getElementById('et-drain-end').value;
   const statusEl=document.getElementById('et-drain-export-status');
@@ -39496,7 +39628,12 @@ function _drainExport(mode){
      berkas per site (formatnya memang per site, judulnya menyebut sitenya).
      Kelengkapan datanya diperiksa GABUNGAN dulu supaya pertanyaan "isi hari
      yang kosong?" ditanyakan sekali, bukan sekali per site. */
-  const daftar=(site==='__SEMUA__')?Object.keys(DRAIN_SITES):[site];
+  const daftar=_drainSitesDipilih();
+  if(!daftar.length){
+    if(statusEl)statusEl.textContent='⚠ Pilih minimal satu site.';
+    if(typeof toast==='function')toast('⚠ Pilih minimal satu site.');
+    return;
+  }
   const jalan=function(fillMode){
     daftar.forEach(function(s,i){
       setTimeout(function(){_drainDoExport(mode,s,startYm,endYm,fillMode);},i*400);
@@ -48612,29 +48749,29 @@ function _coordDetailMainInput(actId,q){
       var t = track[def.key + '|' + pid] || {};
       var status = t.status || 'Belum';
       return '<tr>'
-        + '<td style="padding:7px 8px;border-bottom:1px solid #eee">'
+        + '<td style="padding:7px 8px;border-bottom:1px solid var(--g3)">'
         + '<div style="font-size:13px;font-weight:700;color:#333">' + _esc(_namaPendek(def.label)) + '</div>'
         + '<div style="font-size:11px;color:#999;margin-top:1px">Site: ' + _esc((def.sites || []).join(', '))
         + ' · Ke: ' + _esc((def.recipients || []).join(', ')) + '</div></td>'
         + (ringkas
-          ? '<td style="padding:7px 8px;border-bottom:1px solid #eee;font-size:11px;color:#888">'
+          ? '<td style="padding:7px 8px;border-bottom:1px solid var(--g3);font-size:11px;color:#888">'
             + (t.noSurat ? _esc(t.noSurat) : '-') + '</td>'
-            + '<td style="padding:7px 8px;border-bottom:1px solid #eee;text-align:center">'
+            + '<td style="padding:7px 8px;border-bottom:1px solid var(--g3);text-align:center">'
             + '<span style="display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;'
             + 'font-weight:700;color:#fff;background:' + _warnaStatus(status) + '">' + _esc(status) + '</span></td>'
-          : '<td style="padding:7px 8px;border-bottom:1px solid #eee;text-align:center">'
+          : '<td style="padding:7px 8px;border-bottom:1px solid var(--g3);text-align:center">'
             + '<span onclick="_lapCycle(\'' + def.key + '\',\'' + pid + '\')" title="Klik untuk ubah status"'
             + ' style="cursor:pointer;display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;'
             + 'font-weight:700;color:#fff;background:' + _warnaStatus(status) + '">' + _esc(status) + '</span></td>'
-            + '<td style="padding:7px 8px;border-bottom:1px solid #eee">'
+            + '<td style="padding:7px 8px;border-bottom:1px solid var(--g3)">'
             + '<input type="date" value="' + _esc(t.tglKirim || '') + '"'
             + ' onchange="_lapSetField(\'' + def.key + '\',\'' + pid + '\',\'tglKirim\',this.value)"'
             + ' style="font-size:13px;border:1px solid #ddd;border-radius:4px;padding:2px 4px"></td>'
-            + '<td style="padding:7px 8px;border-bottom:1px solid #eee">'
+            + '<td style="padding:7px 8px;border-bottom:1px solid var(--g3)">'
             + '<input type="text" value="' + _esc(t.noSurat || '') + '" placeholder="No. surat"'
             + ' onchange="_lapSetField(\'' + def.key + '\',\'' + pid + '\',\'noSurat\',this.value)"'
             + ' style="width:110px;font-size:13px;border:1px solid #ddd;border-radius:4px;padding:2px 4px"></td>')
-        + '<td style="padding:7px 8px;border-bottom:1px solid #eee;text-align:center">'
+        + '<td style="padding:7px 8px;border-bottom:1px solid var(--g3);text-align:center">'
         + '<button onclick="_lapGenerate(\'' + def.key + '\',\'' + pid + '\')"'
         + ' style="border:1px solid #1565c0;background:#eaf2ff;color:#1565c0;border-radius:5px;'
         + 'padding:4px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Generate</button></td>'
@@ -48651,7 +48788,7 @@ function _coordDetailMainInput(actId,q){
     /* Tabelnya sengaja polos -- satu baris <thead>, tanpa colspan dan tanpa
        baris pengelompokan -- supaya pengurut tabel bersama (Y442) memungutnya
        sendiri, sesuai aturan tampilan 2. */
-    return '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:14px 16px;margin-bottom:14px">'
+    return '<div style="background:#fff;border:2px solid var(--g3);border-radius:10px;padding:14px 16px;margin-bottom:14px">'
       + '<div style="font-weight:700;font-size:13px;color:#333;margin-bottom:2px">Laporan Bulanan — Air Limbah</div>'
       + '<div style="font-size:11px;color:#888;margin-bottom:10px">Bulanan · '
       + defs.length + ' jenis laporan dengan periode yang sama, jadi disatukan di sini.</div>'
@@ -48662,16 +48799,15 @@ function _coordDetailMainInput(actId,q){
       + tombolGeser(-1, '‹ Bulan sebelumnya', bIdx === 0)
       + tombolGeser(1, 'Bulan berikutnya ›', bIdx === 11)
       + '</div>'
-      + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
-      + '<thead><tr>'
-      + '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid #eee">Jenis laporan</th>'
+      + '<div style="overflow-x:auto"><table style="width:100%;table-layout:fixed;border-collapse:collapse">' + (ringkas ? '<colgroup class="lap-kolom"><col style="width:46%"><col style="width:20%"><col style="width:16%"><col style="width:18%"></colgroup>' : '<colgroup class="lap-kolom"><col style="width:32%"><col style="width:12%"><col style="width:18%"><col style="width:20%"><col style="width:18%"></colgroup>') + '<thead><tr>'
+      + '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">Jenis laporan</th>'
       + (ringkas
-        ? '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid #eee">No. Surat</th>'
-          + '<th style="padding:5px 8px;font-size:11px;color:#999;border-bottom:2px solid #eee">Status</th>'
-        : '<th style="padding:5px 8px;font-size:11px;color:#999;border-bottom:2px solid #eee">Status</th>'
-          + '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid #eee">Tgl Kirim</th>'
-          + '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid #eee">No. Surat</th>')
-      + '<th style="padding:5px 8px;font-size:11px;color:#999;border-bottom:2px solid #eee">Aksi</th>'
+        ? '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">No. Surat</th>'
+          + '<th style="padding:5px 8px;text-align:center;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">Status</th>'
+        : '<th style="padding:5px 8px;text-align:center;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">Status</th>'
+          + '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">Tgl Kirim</th>'
+          + '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">No. Surat</th>')
+      + '<th style="padding:5px 8px;text-align:center;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">Aksi</th>'
       + '</tr></thead><tbody>' + baris + '</tbody></table></div>'
       + '</div>';
   }
@@ -49078,26 +49214,26 @@ function _coordDetailMainInput(actId,q){
         var t = track[def.key + '|' + p.id] || {};
         var st = t.status || 'Belum';
         return '<tr>'
-          + '<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:13px">' + esc(p.label) + '</td>'
-          + '<td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#888">'
+          + '<td style="padding:6px 8px;border-bottom:1px solid var(--g3);font-size:13px">' + esc(p.label) + '</td>'
+          + '<td style="padding:6px 8px;border-bottom:1px solid var(--g3);font-size:11px;color:#888">'
           + (t.noSurat ? esc(t.noSurat) : '-') + '</td>'
-          + '<td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">'
+          + '<td style="padding:6px 8px;border-bottom:1px solid var(--g3);text-align:center">'
           + '<span style="display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;'
           + 'color:#fff;background:' + _lapStatusColor(st) + '">' + esc(st) + '</span></td>'
-          + '<td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">'
+          + '<td style="padding:6px 8px;border-bottom:1px solid var(--g3);text-align:center">'
           + '<button onclick="_lapGenerate(\'' + jq(def.key) + '\',\'' + jq(p.id) + '\')"'
           + ' style="border:1px solid #1565c0;background:#eaf2ff;color:#1565c0;border-radius:5px;padding:4px 12px;'
           + 'font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Generate</button></td></tr>';
       }).join('');
-      return '<div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:14px 16px;margin-bottom:12px">'
+      return '<div style="background:#fff;border:2px solid var(--g3);border-radius:10px;padding:14px 16px;margin-bottom:12px">'
         + '<div style="font-weight:700;font-size:13px;color:#333;margin-bottom:2px">' + esc(def.label) + '</div>'
         + '<div style="font-size:11px;color:#888;margin-bottom:8px">' + esc(c.FREQ[def.freq])
         + ' · Site: ' + esc((def.sites || []).join(', ')) + ' · Ke: ' + esc((def.recipients || []).join(', ')) + '</div>'
-        + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>'
-        + '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid #eee">Periode</th>'
-        + '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid #eee">No. Surat</th>'
-        + '<th style="padding:5px 8px;font-size:11px;color:#999;border-bottom:2px solid #eee">Status</th>'
-        + '<th style="padding:5px 8px;font-size:11px;color:#999;border-bottom:2px solid #eee">Aksi</th>'
+        + '<div style="overflow-x:auto"><table style="width:100%;table-layout:fixed;border-collapse:collapse"><colgroup class="lap-kolom"><col style="width:46%"><col style="width:20%"><col style="width:16%"><col style="width:18%"></colgroup><thead><tr>'
+        + '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">Periode</th>'
+        + '<th style="padding:5px 8px;text-align:left;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">No. Surat</th>'
+        + '<th style="padding:5px 8px;text-align:center;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">Status</th>'
+        + '<th style="padding:5px 8px;text-align:center;font-size:11px;color:#999;border-bottom:2px solid var(--g3)">Aksi</th>'
         + '</tr></thead><tbody>' + baris + '</tbody></table></div></div>';
     }).join('');
     return atas + sisa;
