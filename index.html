@@ -4499,6 +4499,36 @@ html[data-theme="simple"][data-theme] #landing{
   .et-guide-card .et-sec-title{margin-bottom:4px}
 }
 </style>
+<style id="kalender-y573">
+/* kalender.css — Y573: kotak kalender Scheduling simetris (permintaan pemilik
+ * 2026-10-06). Berlaku untuk SEMUA tema (bukan hanya envmon), layar > 768px;
+ * di HP kalender tetap memakai tata letak titik kecil dari lapisan HP.
+ *
+ *  - semua kotak hari SAMA tinggi (grid-auto-rows:1fr: setinggi minggu terpadat)
+ *  - baris PPC selalu di dasar kotak (margin-top:auto), bukan di bawah kegiatan
+ *    terakhir
+ *  - tinggi minimum kotak = angka tanggal + 2 baris kegiatan + baris PPC, jadi
+ *    jarak tanggal -> PPC tidak pernah kurang dari 2 baris
+ *  - PPC berupa ikon (lingkaran berinisial); nama lengkap ada di tooltip
+ *    dan aria-label
+ * Menggantikan keputusan Y431 ("PPC menempel di bawah daftar kegiatan, tinggi
+ * sel mengikuti isi") atas permintaan pemilik yang baru.
+ */
+@media (min-width:769px){
+  :root{--cal-baris:22px}
+  .cal-grid .cal-body{grid-auto-rows:1fr!important;flex:0 0 auto!important}
+  .cal-grid .cal-body>.cc{display:flex!important;flex-direction:column;box-sizing:border-box;
+    min-height:calc(var(--cal-baris) * 4 + 12px)!important}
+  .cal-grid .cal-body>.cc>*{flex:0 0 auto}
+  .cal-grid .cal-body>.cc .ppc-icon-row{margin-top:auto!important;padding-top:4px;gap:3px;align-items:center;
+    box-sizing:border-box;min-height:calc(var(--cal-baris) + 4px)}
+  .cal-grid .cal-body>.cc .ppc-icon-row:empty{border-top-color:transparent!important}
+  .cal-grid .cal-body>.cc .ppc-duty-dot{box-sizing:border-box;display:inline-flex!important;align-items:center;justify-content:center;
+    width:18px!important;height:18px!important;min-width:18px!important;margin:0!important;padding:0!important;
+    border-radius:50%!important;font-size:11px!important;font-weight:700!important;line-height:1!important;letter-spacing:0!important}
+  .cal-grid .cal-body>.cc .ppc-duty-dot:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+}
+</style>
 </head>
 <body>
 
@@ -5649,7 +5679,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'42305773'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'e0ef0bd4'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -50854,7 +50884,11 @@ html[data-theme="envmon"] .glass-2{background:var(--glass-2);backdrop-filter:blu
     display:grid!important;position:relative;z-index:1;
     grid-template-columns:var(--em-side-w) minmax(0,1fr)!important;
     grid-template-rows:var(--em-head-h) minmax(0,1fr) auto!important;
-    height:100vh!important;height:100dvh!important;min-height:0!important;overflow:hidden!important}
+    /* zoom aplikasi: transform scale(z) pada #zoom-root memperbesar/memperkecil
+     tampilan, jadi kotaknya harus setinggi (viewport / z) supaya hasil skalanya
+     pas satu layar. 100vh polos membuat tampilan terpotong di bawah (z>1) atau
+     menyisakan ruang kosong (z<1); --em-zoom ditulis envmon.js dari transform */
+    height:calc(100vh / var(--em-zoom,1))!important;height:calc(100dvh / var(--em-zoom,1))!important;min-height:0!important;overflow:hidden!important}
   html[data-theme="envmon"] .topbar{display:contents!important}
   html[data-theme="envmon"] #em-side{grid-column:1;grid-row:1/4;background:var(--surface);border-right:1px solid var(--line);z-index:0}
   html[data-theme="envmon"] #em-head{grid-column:2;grid-row:1;z-index:2;display:flex;align-items:center;gap:var(--sp-4);
@@ -50870,6 +50904,22 @@ html[data-theme="envmon"] .glass-2{background:var(--glass-2);backdrop-filter:blu
     display:flex!important;align-items:center;gap:var(--sp-2);margin:0 var(--sp-8) 0 0!important;padding:0!important;background:none!important;border:0!important}
   html[data-theme="envmon"] .app{grid-column:2;grid-row:2/4;min-height:0!important;min-width:0!important;position:relative;z-index:1;background:none!important}
 }
+
+/* navigasi utama bisa disembunyikan (tombol di kepala, Ctrl B). Kolom navigasi
+   jadi 0 dan seluruh lebar dipakai isi; pilihan diingat di localStorage
+   (envmon_ui_sisi). Berlaku di layar >= 768px; di HP navigasinya bilah bawah. */
+@media (min-width:768px){
+  html[data-theme="envmon"][data-em-side="off"]{--em-side-w:0px!important}
+  html[data-theme="envmon"][data-em-side="off"] :is(#em-side,.topbar .brand,.topbar .tabs,#em-ws){display:none!important}
+  html[data-theme="envmon"] #em-side-toggle{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+    width:36px;height:36px;padding:0;margin:0 calc(var(--sp-2) * -1) 0 0;border:1px solid var(--line-strong);border-radius:var(--r-md);
+    background:transparent;color:var(--text-2);cursor:pointer}
+  html[data-theme="envmon"] #em-side-toggle svg{width:18px;height:18px;display:block}
+  html[data-theme="envmon"] #em-side-toggle:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+}
+@media (min-width:768px) and (hover:hover){html[data-theme="envmon"] #em-side-toggle:hover{background:var(--em-hover);color:var(--text)}}
+@media (min-width:768px) and (max-width:1023px){html[data-theme="envmon"] #em-side-toggle{width:44px;height:44px}}
+@media (max-width:767px){html[data-theme="envmon"] #em-side-toggle{display:none!important}}
 /* rel ikon 72px untuk 768-1439px (PDF hal. 11: "Laptop / Tablet L 1024-1439:
    nav collapses to 72 icon rail"; tablet 768-1023 sama). Label tetap ada di
    DOM dan di title tombol (envmon.js), jadi pembaca layar dan tooltip tetap
@@ -51405,6 +51455,50 @@ function tabAktif(){
   return {k:m?m[1]:(b.id||''),label:lbl};
 }
 
+/* ---------- zoom aplikasi: --em-zoom mengikuti transform #zoom-root ---------- */
+function sinkronZoom(){
+  var r=document.getElementById('zoom-root'); if(!r)return false;
+  var m=/scale\(\s*([0-9.]+)\s*\)/.exec(r.style.transform||''), z=m?parseFloat(m[1]):1;
+  if(!(z>0))z=1;
+  document.documentElement.style.setProperty('--em-zoom',String(z));
+  return true;
+}
+function pantauZoom(){
+  if(window.__emZoomPantau)return;
+  var r=document.getElementById('zoom-root'); if(!r){return;}
+  window.__emZoomPantau=true; sinkronZoom();
+  if(window.MutationObserver)new MutationObserver(sinkronZoom).observe(r,{attributes:true,attributeFilter:['style']});
+}
+
+/* ---------- navigasi utama: sembunyikan / tampilkan ---------- */
+var KUNCI_SISI='envmon_ui_sisi';
+var IKON_SISI='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>';
+function sisiTersembunyi(){try{return localStorage.getItem(KUNCI_SISI)==='off';}catch(e){return false;}}
+function terapkanSisi(off,simpan){
+  var h=document.documentElement;
+  if(off)h.setAttribute('data-em-side','off');else h.removeAttribute('data-em-side');
+  var b=document.getElementById('em-side-toggle');
+  if(b){var t=off?'Tampilkan navigasi (Ctrl B)':'Sembunyikan navigasi (Ctrl B)';
+    b.setAttribute('aria-expanded',off?'false':'true');b.title=t;b.setAttribute('aria-label',t);}
+  if(simpan){try{localStorage.setItem(KUNCI_SISI,off?'off':'on');}catch(e){}}
+  // peta dan grafik menghitung ulang ukuran kanvasnya
+  try{window.dispatchEvent(new Event('resize'));}catch(e){}
+}
+function pasangTombolSisi(){
+  var head=document.getElementById('em-head'); if(!head||document.getElementById('em-side-toggle'))return;
+  var b=el('button',{id:'em-side-toggle',type:'button','aria-expanded':'true'},IKON_SISI);
+  b.addEventListener('click',function(){terapkanSisi(!document.documentElement.hasAttribute('data-em-side'),true);});
+  head.insertBefore(b,head.firstChild);
+  terapkanSisi(sisiTersembunyi(),false);
+  if(!window.__emSisiKunci){window.__emSisiKunci=true;
+    document.addEventListener('keydown',function(e){
+      if(!aktif()||!(e.ctrlKey||e.metaKey)||e.altKey||e.shiftKey||String(e.key).toLowerCase()!=='b')return;
+      var t=e.target,tg=t&&t.tagName;
+      if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT'||(t&&t.isContentEditable))return;
+      e.preventDefault();terapkanSisi(!document.documentElement.hasAttribute('data-em-side'),true);
+    });}
+}
+
 /* ---------- shell ---------- */
 function pasangShell(){
   var root=document.getElementById('zoom-root'); if(!root)return;
@@ -51417,6 +51511,7 @@ function pasangShell(){
     var b=window.__BUILD__||{};
     root.appendChild(el('div',{id:'em-ws'},'<div class="k">Workspace</div><div class="v">PHM · Kalimantan Timur</div><div class="s">Versi '+esc(b.v||'-')+(b.h?' · '+esc(b.h):'')+'</div>'));
   }
+  pasangTombolSisi();
   var tabs=document.querySelector('.topbar .tabs');
   if(tabs&&!tabs.querySelector('.em-nav-group')){
     Object.keys(GRUP).forEach(function(id){var t=document.getElementById(id);if(t&&t.parentNode===tabs)tabs.insertBefore(el('div',{'class':'em-nav-group','aria-hidden':'true'},esc(GRUP[id])),t);});
@@ -51778,6 +51873,7 @@ function pasangGerakUi(){
 }
 
 function terapkan(){
+  pantauZoom();
   lembarTema();
   pasangLanding();
   pasangGerakUi();
@@ -51785,6 +51881,7 @@ function terapkan(){
   if(aktif()){petakAkar(document.body);pasangShell();pasangCari();tandaiStatus();tandaiKet(document.getElementById('zoom-root'));}
 }
 function mulai(){
+  pantauZoom();
   nyalakanPeta();
   terapkanGerak();
   terapkan();
@@ -53271,6 +53368,75 @@ if(typeof _ucAsli==='function'){
     return r;
   };
 }
+})();
+
+/* kalender.js — Y573 (permintaan pemilik 2026-10-06):
+ *  A. PPC di kotak kalender jadi ikon (inisial dalam lingkaran, warna PPC);
+ *     nama lengkap + status di tooltip dan aria-label, dan bisa dijangkau
+ *     papan ketik (Enter/Spasi membuka detail PPC seperti klik).
+ *  B. Tombol panel kiri Scheduling ("Input Kegiatan") memakai ikon papan klip
+ *     dengan tanda tambah, supaya tidak terbaca sama dengan tombol sembunyi/
+ *     tampil navigasi utama (ikon panel-kiri di kepala, tema ENV•MONITOR).
+ */
+(function(){
+'use strict';
+if(window.__kalenderY573)return; window.__kalenderY573=true;
+
+function ppcList(){try{return PPC_LIST;}catch(e){return [];}}
+
+/* ---------- A. ikon PPC ---------- */
+function ikonPpc(){
+  var daftar=ppcList();
+  [].forEach.call(document.querySelectorAll('#cal-body .ppc-duty-dot'),function(d){
+    var judul=d.getAttribute('title')||d.getAttribute('aria-label')||d.textContent||'';
+    var nama=judul.split(':')[0].trim();
+    var p=daftar.find(function(x){return String(x.name).toLowerCase()===nama.toLowerCase();});
+    d.textContent=(p&&p.initials)||nama.charAt(0).toUpperCase();
+    d.setAttribute('aria-label',judul||nama);
+    d.setAttribute('role','button');
+    d.tabIndex=0;
+    if(!d.__kbd){d.__kbd=true;d.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();d.click();}});}
+  });
+}
+/* kotak seragam membuat kalender lebih tinggi dari wadahnya, jadi wadah itu menjadi daerah
+   gulir: harus bernama dan bisa difokus papan ketik (axe: scrollable-region-focusable) */
+function daerahGulir(){
+  var w=document.getElementById('cal-body-scroll'); if(!w)return;
+  if(!w.hasAttribute('tabindex'))w.tabIndex=0;
+  if(!w.getAttribute('role'))w.setAttribute('role','region');
+  if(!w.getAttribute('aria-label'))w.setAttribute('aria-label','Kalender sampling (bisa digulir)');
+}
+var _rcAsli=window.renderCalendar;
+if(typeof _rcAsli==='function'){
+  window.renderCalendar=function(){
+    var r=_rcAsli.apply(this,arguments);
+    try{ikonPpc();daerahGulir();}catch(e){}
+    return r;
+  };
+}
+
+/* ---------- B. ikon tombol panel Input Kegiatan ---------- */
+var IKON_INPUT='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
+  +'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="M12 11v6M9 14h6"/></svg>';
+function ikonPanelInput(){
+  var b=document.getElementById('sidebar-toggle'), lp=document.getElementById('left-panel'); if(!b)return;
+  var tutup=lp?lp.classList.contains('collapsed'):true;
+  b.innerHTML=IKON_INPUT;
+  // nama (aria-label) dan aria-expanded dikelola skrip semantik navigasi yang sudah ada
+  // ("Tampilkan/Sembunyikan panel input kegiatan"); di sini hanya ikon dan tooltip
+  b.title=(tutup?'Buka':'Tutup')+' panel Input Kegiatan (khusus Scheduling)';
+  b.setAttribute('data-ikon','input-kegiatan');
+}
+var _tsAsli=window.toggleSidebar;
+if(typeof _tsAsli==='function'){
+  window.toggleSidebar=function(){
+    var r=_tsAsli.apply(this,arguments);
+    try{ikonPanelInput();}catch(e){}
+    return r;
+  };
+}
+if(document.readyState!=='loading'){ikonPanelInput();daerahGulir();}else document.addEventListener('DOMContentLoaded',function(){ikonPanelInput();daerahGulir();});
+window.addEventListener('load',ikonPanelInput);
 })();
 
 </script><script id="kartu-bulanan-y517">
