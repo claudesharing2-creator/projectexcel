@@ -5649,7 +5649,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'faf12051'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'42305773'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -6646,7 +6646,7 @@ function migrateCalEvents(){
   CAL_EVENTS.filter(e=>e.id&&e.id.startsWith('si-')).forEach(si=>{
     if(!si.actId)return;
     const dup=CAL_EVENTS.some(e=>
-      e.id!==si.id&&e.actId===si.actId&&e.tahap===si.tahap&&!e.id.startsWith('si-')&&
+      e.id!==si.id&&e.actId===si.actId&&e.tahap===si.tahap&&e.date===si.date&&!e.id.startsWith('si-')&&
       (e.type===si.type||(_DRILL_EQ.has(e.type)&&_DRILL_EQ.has(si.type)))
     );
     if(dup)siDups.add(si.id);
@@ -52691,6 +52691,585 @@ function dialogKirim(defKey,pid){
     document.body.appendChild(ov);
     setTimeout(function(){no.focus();no.select();},0);
   });
+}
+})();
+
+/* jadwal.js — Y572: perbaikan Scheduling (permintaan pemilik 2026-10-06,
+ * "Improvement bagian scheduling").
+ *
+ *  A. Kegiatan hasil impor raw Schedule dinormalkan (tipe/tahap/titik dibaca
+ *     dari teksnya, Perjalanan -> rute, Dumping Offshore, Maintenance), lalu
+ *     ditautkan ke Daftar Kegiatan (ACTS) dan ke RFA seperti input manual.
+ *  B. Tombol "Lihat" di kartu event memilih tujuan (Kalender / Daftar
+ *     Kegiatan / RFA List / Hasil Sampling); tombol "↩" diberi keterangan.
+ *  C. Metode dredging (CSD / Clamshell) dan pembuangan (dumping area menurut
+ *     ENV Mon Program, Sitecast, Temporary Dumping Area + koordinat dan titik
+ *     500 m upstream/downstream) di form Tambah Event, kartu kegiatan, dan
+ *     Panduan Sampling.
+ *  D. Tipe "Dumping Offshore" kembali bisa dipilih; Other/Maintenance/Holiday
+ *     bisa disimpan lagi (dulu ditolak "Isi well/lokasi" padahal kolomnya
+ *     disembunyikan); Perjalanan: deskripsi = rute.
+ *  E. Garis penghubung label peta mengikuti zoom aplikasi (dulu meleset ~48 px
+ *     pada zoom 90 %).
+ *
+ * Variabel keadaan aplikasi (ACTS, CAL_EVENTS, RFA_DATA, NID, TYPE_COLORS,
+ * ET_GUIDE) adalah let/const/var tingkat atas blok lain: dibaca dengan nama
+ * telanjang, BUKAN window.X (aturan 6p).
+ */
+(function(){
+'use strict';
+if(window.__jadwalY572)return; window.__jadwalY572=true;
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function acts(){try{return ACTS;}catch(e){return [];}}
+function evs(){try{return CAL_EVENTS;}catch(e){return [];}}
+function rfas(){try{return RFA_DATA;}catch(e){return [];}}
+function nid(){try{return NID++;}catch(e){return Date.now()+Math.floor(Math.random()*1000);}}
+function simpan(pesan){try{if(typeof saveStorage==='function')saveStorage(pesan);}catch(e){}}
+function hariIni(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+/* ---------- daftar bersama ---------- */
+var SITES=['HCA','SPU','CPU','NPU','SPS','BKP','BPN'];
+var SITE_ALIAS={HDL:'HCA',CPA:'HCA',HANDIL:'HCA'};
+function siteKode(s){s=String(s||'').trim().toUpperCase();return SITE_ALIAS[s]||s;}
+var SAMP=['Dredging','Drilling','Trenching','Hydrotest','Leveling','CSD','Airlift','Flushing'];
+var SAMP_TYPES={Dredging:['Dredging'],Drilling:['Dredging','Drilling'],Trenching:['Trenching'],Hydrotest:['Hydrotest'],
+  Leveling:['Leveling'],CSD:['CSD'],Airlift:['Airlift'],Flushing:['Flushing']};
+var LAIN=['Offshore Dumping','Maintenance','Holiday','Other'];      // tanpa kegiatan/well
+var LABEL_TIPE={'Offshore Dumping':'Dumping Offshore'};
+window._y572LabelTipe=function(t){return LABEL_TIPE[t]||t;};
+
+/* tipe yang dulu ada di kalender tetapi hilang dari pemilih tag */
+try{
+  var TAMBAH={'Offshore Dumping':'#00796B',Perjalanan:'#78909C',Maintenance:'#8D6E63',Holiday:'#C2185B'};
+  Object.keys(TAMBAH).forEach(function(k){if(!(k in TYPE_COLORS))TYPE_COLORS[k]=TAMBAH[k];});
+}catch(e){}
+
+/* dumping area menurut ENV Mon Program (Data Pack: env26_sampling_points,
+   site "OFFSHORE AREA"), ditambah nama yang memang sudah dipakai kegiatan
+   Clamshell; nama tidak ditulis mati di HTML */
+var CADANGAN_DUMPING=['Tatun-1','Tatun-2','Handil-1','Handil-2','Senipah'];
+function urutAlami(a,b){return String(a).localeCompare(String(b),'id',{numeric:true,sensitivity:'base'});}
+window._y572DumpingAreas=function(){
+  var s={};
+  try{
+    var sp=JSON.parse(localStorage.getItem('env26_sampling_points')||'{}')||{};
+    Object.keys(sp).forEach(function(g){(sp[g]||[]).forEach(function(r){
+      if(/offshore\s*area|dumping/i.test(String(r&&r.site||''))){var n=String(r.position||r.sampleName||'').trim();if(n)s[n]=1;}
+    });});
+  }catch(e){}
+  acts().forEach(function(a){
+    if(a&&a.type==='Dredging'&&/clam/i.test(a.met||'')&&a.dis&&!/site\s*cast|temporary|tambak/i.test(a.dis))s[String(a.dis).trim()]=1;
+  });
+  var l=Object.keys(s); if(!l.length)l=CADANGAN_DUMPING.slice();
+  return l.sort(urutAlami);
+};
+var TEMP='Temporary Dumping Area', SITECAST='Sitecast';
+function disNorm(d){d=String(d||'').trim();if(/^site\s*cast$/i.test(d))return SITECAST;if(/^temporary/i.test(d))return TEMP;return d;}
+window._y572DisOpsi=function(met){
+  if(/^csd$/i.test(met||''))return [SITECAST,TEMP];
+  return window._y572DumpingAreas();
+};
+
+/* ---------- titik Temporary Dumping Area (ikut jalur Titik Penaatan Tambahan) ---------- */
+window._y572SyncTda=function(o){
+  if(!o)return 0;
+  var tps=Array.isArray(o.coordTP)?o.coordTP.filter(function(t){return !(t&&t.auto==='tda');}):[];
+  var n=0;
+  if(o.type==='Dredging'&&/^csd$/i.test(o.met||'')&&disNorm(o.dis)===TEMP&&o.dumpTemp&&o.dumpTemp.coord){
+    var p=null;try{p=_coordParse(o.dumpTemp.coord,o.dumpTemp.datum||'wgs84');}catch(e){}
+    if(p){
+      var b=(o.dumpTemp.bearing!=null&&isFinite(o.dumpTemp.bearing))?+o.dumpTemp.bearing:((o.coordBearing!=null&&isFinite(o.coordBearing))?+o.coordBearing:0);
+      var up=_coordOffset(p.lat,p.lng,500,(b+180)%360), dn=_coordOffset(p.lat,p.lng,500,b);
+      tps.push({label:'Temporary Dumping Area',lat:p.lat,lng:p.lng,auto:'tda'});
+      tps.push({label:'TDA Upstream 500m',lat:up.lat,lng:up.lng,auto:'tda'});
+      tps.push({label:'TDA Downstream 500m',lat:dn.lat,lng:dn.lng,auto:'tda'});
+      n=3;
+    }
+  }
+  o.coordTP=tps;
+  return n;
+};
+
+/* editor metode/pembuangan bersama (form Tambah Event, kartu kegiatan, Panduan) */
+function editorHtml(pre,o,onchg){
+  var met=o.met||'', dis=disNorm(o.dis), dt=o.dumpTemp||{};
+  var metOpsi=['CSD','Clamshell']; if(met&&metOpsi.indexOf(met)<0)metOpsi.push(met);
+  var disOpsi=met?window._y572DisOpsi(met):[]; if(dis&&disOpsi.indexOf(dis)<0)disOpsi=disOpsi.concat([dis]);
+  var lbl=/^csd$/i.test(met)?'Pembuangan material':'Dumping area (ENV Mon Program)';
+  var gaya='border:1px solid var(--g2);border-radius:6px;padding:4px 8px;font-size:13px;font-family:inherit;color:var(--g5);background:#fff';
+  var h='<div class="y572-dred" data-y572="'+pre+'" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:6px">'
+    +'<div><label for="'+pre+'-met">Metode Dredging</label><select id="'+pre+'-met" style="'+gaya+'" onchange="'+onchg+'(\'met\',this.value)">'
+    +'<option value=""'+(met?'':' selected')+'>- Pilih metode -</option>'
+    +metOpsi.map(function(m){return '<option'+(m===met?' selected':'')+'>'+esc(m)+'</option>';}).join('')+'</select></div>';
+  if(met){
+    h+='<div><label for="'+pre+'-dis">'+lbl+'</label><select id="'+pre+'-dis" style="'+gaya+'" onchange="'+onchg+'(\'dis\',this.value)">'
+      +'<option value=""'+(dis?'':' selected')+'>- Pilih -</option>'
+      +disOpsi.map(function(d){return '<option'+(d===dis?' selected':'')+'>'+esc(d)+'</option>';}).join('')+'</select></div>';
+  }
+  if(/^csd$/i.test(met)&&dis===TEMP){
+    h+='<div style="flex:1 1 260px"><label for="'+pre+'-tda">Koordinat Temporary Dumping Area</label>'
+      +'<input id="'+pre+'-tda" class="coord-in" style="width:100%;box-sizing:border-box" value="'+esc(dt.coord||'')+'" placeholder="UTM atau lat, lng" onchange="'+onchg+'(\'tda\',this.value)"></div>'
+      +'<div><label for="'+pre+'-tdab">Arah downstream (°)</label>'
+      +'<input id="'+pre+'-tdab" class="coord-in" type="number" min="0" max="359" step="1" style="width:90px" value="'+esc(dt.bearing!=null?dt.bearing:'')+'" placeholder="ikut utama" onchange="'+onchg+'(\'tdab\',this.value)"></div>'
+      +'<div style="flex-basis:100%;font-size:11px;color:var(--g3)">Titik TDA, TDA Upstream 500m dan TDA Downstream 500m dihitung otomatis dan ikut tampil di peta, Titik Penaatan Tambahan, dan Panduan Sampling.</div>';
+  }
+  return h+'</div>';
+}
+function terapkanUbah(o,k,v){
+  if(k==='met'){o.met=v;var opsi=window._y572DisOpsi(v);if(disNorm(o.dis)&&opsi.indexOf(disNorm(o.dis))<0)o.dis='';if(/^clam/i.test(v)&&!o.dis&&opsi.length===1)o.dis=opsi[0];}
+  else if(k==='dis'){o.dis=v;}
+  else if(k==='tda'){o.dumpTemp=Object.assign({datum:'wgs84'},o.dumpTemp||{},{coord:String(v||'').trim()});}
+  else if(k==='tdab'){var b=parseFloat(v);o.dumpTemp=Object.assign({datum:'wgs84'},o.dumpTemp||{},{bearing:isFinite(b)?((b%360)+360)%360:null});}
+  return window._y572SyncTda(o);
+}
+
+/* kartu kegiatan */
+window._y572ActUbah=function(actId,k,v){
+  var a=acts().find(function(x){return x.id===actId;});if(!a)return;
+  terapkanUbah(a,k,v); a._edited=true;
+  simpan('Edit metode/pembuangan dredging');
+  try{if(typeof renderActList==='function')renderActList();}catch(e){}
+  try{if(typeof openAct==='function')openAct(actId);}catch(e){}
+};
+/* Panduan Sampling (ENV Tools) */
+window._y572GuideUbah=function(k,v){
+  try{ET_GUIDE.type=ET_GUIDE.type||'Dredging';terapkanUbah(ET_GUIDE,k,v);if(typeof _etSaveGuide==='function')_etSaveGuide();if(typeof _etRenderGuide==='function')_etRenderGuide();}catch(e){}
+};
+/* form Tambah Event */
+var dayDred={};
+window._y572DayUbah=function(k,v){
+  terapkanUbah(dayDred,k,v);
+  var w=document.getElementById('day-y572-dred');if(w)w.innerHTML=editorHtml('day-y572',dayDred,'_y572DayUbah');
+};
+
+/* ---------- A. normalisasi + penautan event hasil impor ---------- */
+function cap(s){s=String(s||'').toLowerCase();return s.charAt(0).toUpperCase()+s.slice(1);}
+var RE_SAMP=/^(?:sampling\s+)?(before|during|after)\s+(dredging|drilling|trenching|hydrotest|levell?ing|airlift|flushing|csd)\b[\s:.-]*(.*)$/i;
+var RE_PERJ=/^perjalanan\s+([A-Za-z]{2,6})\s*(?:-|–|—|→|>|ke)+\s*([A-Za-z]{2,6})\b(?:.*?\(\s*PPC\s*:\s*([^)]*)\))?/i;
+var RE_DUMP=/offshore\s+dumping|dumping\s+offshore/i;
+function normEv(ev){
+  if(!ev||ev._y572)return false;
+  var raw=String(ev.rawText||ev.text||'').trim(), t=String(ev.type||''), ubah=false, m;
+  var umum=(t===''||t==='Sampling'||t==='Other'||t==='Lainnya');
+  if((m=RE_PERJ.exec(raw))&&(umum||t==='Perjalanan')){
+    var dari=siteKode(m[1]),ke=siteKode(m[2]);
+    ev.rawText=raw;ev.type='Perjalanan';ev.tahap='-';ev.from=dari;ev.to=ke;ev.text=dari+' → '+ke;
+    if(!ev.site)ev.site=dari; if(!ev.ppc&&m[3])ev.ppc=m[3].trim();
+    ubah=true;
+  } else if((m=RE_SAMP.exec(raw))&&(umum||t.toLowerCase()===m[2].toLowerCase())){
+    var tipe=/^lev/i.test(m[2])?'Leveling':(m[2].toUpperCase()==='CSD'?'CSD':cap(m[2]));
+    ev.rawText=raw;ev.type=tipe;ev.tahap=cap(m[1]);ev.text=(m[3]||'').trim()||raw;
+    ubah=true;
+  } else if(RE_DUMP.test(raw)&&(umum||t==='Offshore Dumping')){
+    if(t!=='Offshore Dumping'){ev.rawText=raw;ev.type='Offshore Dumping';ubah=true;}
+    if(!ev.tahap||ev.tahap==='-'){ev.tahap='During';ubah=true;}
+  } else if(/^maintenance\b/i.test(raw)&&umum){
+    ev.rawText=raw;ev.type='Maintenance';ev.tahap='-';ubah=true;
+  }
+  ev._y572=1;
+  return ubah;
+}
+/* "TN-S254/255" -> TN-S254, TN-S255 ; "TN-AA751/752/753 to TN-AA712/713" -> lima nama */
+function pecahWell(w){
+  var out=[];
+  // "TN-AA303 (co-slot TN-AA304)" -> TN-AA303, TN-AA304
+  String(w||'').toUpperCase().replace(/\(([^)]*)\)/g,'/$1').replace(/CO-?SLOT/g,'').replace(/\s+/g,'').split(/,|&|TO(?=[A-Z]{1,3}-)|;/).forEach(function(seg){
+    var bag=seg.split('/'),dasar='';
+    bag.forEach(function(b,i){
+      if(!b)return;
+      if(i===0||/[A-Z]/.test(b)){out.push(b);var mm=/^(.*?)(\d+)$/.exec(b);dasar=mm?mm[1]:'';}
+      else out.push(dasar+b);
+    });
+  });
+  return out.filter(Boolean);
+}
+function wellToken(ev){
+  var t=String(ev.text||'').split(/\s+[—–-]\s+/)[0].trim();
+  return t.replace(/\s*\(PPC[^)]*\)/i,'').replace(/\s+(point|titik).*$/i,'').trim();
+}
+/* token titik dari teks event mana pun (impor atau bukan): "Sampling After Dredging TN-AA303" -> TN-AA303 */
+function tokenEv(e){
+  var t=String((e&&(e.rawText||e.text))||'').trim(), m=RE_SAMP.exec(t);
+  if(m)t=m[3]||'';
+  return t.split(/\s+[—–-]\s+/)[0].replace(/\s*\(PPC[^)]*\)/i,'').replace(/\s+(point|titik).*$/i,'').trim();
+}
+function cocokWell(a,b){var A=pecahWell(a),B=pecahWell(b);return A.some(function(x){return B.indexOf(x)>=0;});}
+function hariAntara(a,b){var x=Date.parse(a),y=Date.parse(b);return (isFinite(x)&&isFinite(y))?Math.abs(x-y)/864e5:1e9;}
+/* rentang waktu sebuah kegiatan: dari tanggal paling awal sampai paling akhir
+   yang tercatat (mulai, selesai, sampling, termasuk tanggal tambahan) */
+function rentang(a){
+  var d=[a.ds,a.de,a.sb,a.sd,a.sa,a.drd,a.dra,a.drds,a.drde];
+  if(a._sampExtra)Object.keys(a._sampExtra).forEach(function(k){d=d.concat(a._sampExtra[k]||[]);});
+  d=d.filter(function(x){return /^\d{4}-\d{2}-\d{2}$/.test(String(x||''));}).sort();
+  return d.length?[d[0],d[d.length-1]]:null;
+}
+function geser(iso,hari){var t=Date.parse(iso);return isFinite(t)?new Date(t+hari*864e5).toISOString().slice(0,10):iso;}
+function cariAct(ev,token){
+  var jenis=SAMP_TYPES[ev.type]||[ev.type];
+  // kegiatan dengan titik yang sama tetapi dari kampanye lain (bertahun-tahun
+  // sebelumnya) BUKAN kegiatan ini: tanggal event harus masuk rentangnya
+  // (90 hari sebelum awal sampai 180 hari sesudah akhir)
+  var cand=acts().filter(function(a){
+    if(!(a&&jenis.indexOf(a.type)>=0&&(!ev.site||!a.site||siteKode(a.site)===siteKode(ev.site))&&cocokWell(a.well,token)))return false;
+    var r=rentang(a); if(!r)return true;
+    return ev.date>=geser(r[0],-90)&&ev.date<=geser(r[1],180);
+  });
+  if(cand.length<=1)return cand[0]||null;
+  var dalam=cand.filter(function(a){return a.ds&&ev.date>=a.ds&&(!a.de||ev.date<=a.de);});
+  if(dalam.length===1)return dalam[0];
+  var l=(dalam.length?dalam:cand).slice().sort(function(a,b){return hariAntara(a.ds,ev.date)-hariAntara(b.ds,ev.date);});
+  return l[0];
+}
+function tulisTanggalSampling(a,ev){
+  var isDrill=ev.type==='Drilling';
+  var MAP=isDrill?{Before:'sb',During:'drd',After:'dra'}:{Before:'sb',During:'sd',After:'sa'};
+  var f=MAP[ev.tahap]; if(!f)return;
+  if(!a[f])a[f]=ev.date;
+  else if(a[f]!==ev.date){a._sampExtra=a._sampExtra||{};a._sampExtra[f]=a._sampExtra[f]||[];if(a._sampExtra[f].indexOf(ev.date)<0)a._sampExtra[f].push(ev.date);}
+  try{if(typeof _actRecomputeStatus==='function')_actRecomputeStatus(a);}catch(e){}
+}
+function tautkan(ev,lap){
+  if(SAMP.indexOf(ev.type)<0||ev.status==='Cancelled')return;
+  var token=wellToken(ev); if(!token)return;
+  if(!ev.actId){
+    var a=cariAct(ev,token);
+    // aplikasi menegakkan SATU event per kegiatan+tanggal+tahap saat memuat
+    // (loadStorage: yang pertama di daftar menang). Event impor yang mencatat
+    // sampling yang sama dengan event yang sudah ada digabung ke event itu di
+    // sini -- yang sudah ada (biasanya input manual) selalu dipertahankan --
+    // supaya tidak ada event manual yang terbuang diam-diam. Dicek SEBELUM
+    // kegiatan baru dibuat, supaya tidak tersisa kegiatan tanpa event.
+    var jenis=SAMP_TYPES[ev.type]||[ev.type];
+    var kembar=evs().find(function(e){
+      return e&&e!==ev&&!e._y572hapus&&e.date===ev.date&&(e.tahap||'')===(ev.tahap||'')
+        &&((a&&e.actId===a.id)||(jenis.indexOf(e.type)>=0&&cocokWell(tokenEv(e),token)));
+    });
+    if(kembar){
+      rfas().forEach(function(r){if(r.calEventId===ev.id)r.calEventId=kembar.id;});
+      if(!kembar.ppc&&ev.ppc)kembar.ppc=ev.ppc;
+      // tautan kembaran TIDAK diubah: memberi actId ke event lama yang belum
+      // tertaut membuatnya kembar resmi dengan event kegiatan itu, dan
+      // loadStorage lalu membuang salah satunya (terukur: 10 event manual hilang)
+      kembar.rawText=kembar.rawText||ev.rawText||ev.text;
+      ev._y572hapus=1;lap.gabung++;
+      return;
+    }
+    if(!a){
+      a={id:'act-u-'+nid(),src:'Import Raw Schedule',site:siteKode(ev.site)||'',type:ev.type==='Drilling'?'Drilling':ev.type,act:'',well:token,
+        ds:ev.date,de:'',dur:'',sra:ev.sra||'',met:'',dis:'',rem:'',st:'Planned',sb:'',sd:'',sa:'',drd:'',dra:'',ex:[],drds:'',drde:'',
+        coordMain:'',coordDatum:'wgs84',_edited:true,_createdAt:new Date().toISOString()};
+      acts().push(a);lap.actBaru++;
+    } else lap.actTaut++;
+    ev.actId=a.id;
+    tulisTanggalSampling(a,ev);
+  }
+  // RFA: pakai RFA yang sudah ada (impor Monitoring Backup / RFA & CoC) bila
+  // tanggal dan titiknya sama; RFA pending baru hanya untuk jadwal ke depan
+  var R=rfas(); if(R.some(function(r){return r.calEventId===ev.id;}))return;
+  var cocok=R.filter(function(r){return !r.calEventId&&r.tglSampling===ev.date&&r.titik&&cocokWell(r.titik,token);});
+  if(cocok.length){cocok.forEach(function(r){r.calEventId=ev.id;if(!r.actId)r.actId=ev.actId||'';});lap.rfaTaut+=cocok.length;return;}
+  if(ev.status!=='Completed'&&ev.date>=hariIni()&&typeof rfaAutoGenSilent==='function'){
+    var n0=R.length;try{rfaAutoGenSilent(ev.id);}catch(e){}lap.rfaBaru+=Math.max(0,rfas().length-n0);
+  }
+}
+function prosesImpor(daftar){
+  var lap={norm:0,actTaut:0,actBaru:0,rfaTaut:0,rfaBaru:0,gabung:0,diperiksa:0};
+  daftar.forEach(function(ev){
+    if(!ev||ev.source!=='Import Raw Schedule')return;
+    lap.diperiksa++;
+    if(normEv(ev))lap.norm++;
+    tautkan(ev,lap);
+  });
+  if(lap.gabung){try{CAL_EVENTS=CAL_EVENTS.filter(function(e){return !(e&&e._y572hapus);});}catch(e){}}
+  return lap;
+}
+window._y572ProsesImpor=prosesImpor;
+window._y572NormEv=normEv;
+window._y572PecahWell=pecahWell;
+
+/* migrasi sekali untuk event impor yang sudah tersimpan: sesudah SEMUA data
+   (termasuk RFA dari IndexedDB) pulih, supaya tidak menulis di atas data
+   yang belum termuat */
+function migrasi(){
+  var E=evs(); if(!E||!E.length)return;
+  var perlu=E.filter(function(e){return e&&e.source==='Import Raw Schedule'&&(!e._y572||(!e.actId&&SAMP.indexOf(e.type)>=0&&e.status!=='Cancelled'));});
+  // Perjalanan manual lama: deskripsi jadi rute
+  var perj=0;E.forEach(function(e){if(e&&e.type==='Perjalanan'&&e.from&&e.to&&/^sampling\s/i.test(e.text||'')){e.rawText=e.text;e.text=e.from+' → '+e.to;perj++;}});
+  if(!perlu.length&&!perj)return;
+  var lap=prosesImpor(perlu); lap.perjalanan=perj;
+  window._y572Migrasi=lap;
+  // ringkasan terakhir (kunci non-env26_, jadi tidak ikut Data Pack)
+  try{lap.waktu=new Date().toISOString();localStorage.setItem('envmon_y572_migrasi',JSON.stringify(lap));}catch(e){}
+  try{if(typeof rfaSave==='function'&&(lap.rfaTaut||lap.rfaBaru))rfaSave('Tautkan RFA ke kegiatan hasil impor');}catch(e){}
+  simpan('Tautkan kegiatan hasil impor raw Schedule');
+  try{if(typeof renderCalendar==='function')renderCalendar();if(typeof renderActList==='function')renderActList();}catch(e){}
+}
+if(typeof window._onDataReady==='function')window._onDataReady(function(){setTimeout(migrasi,0);});
+window._y572Migrasi_jalankan=migrasi;
+
+/* impor baru: buang yang sudah ada (teks asli disimpan di rawText), lalu normalkan + tautkan */
+var _applyAsli=window._rsSchedApply;
+if(typeof _applyAsli==='function'){
+  window._rsSchedApply=function(recs){
+    var norm=function(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();};
+    var raw={};evs().forEach(function(e){if(e&&e.rawText&&e.date)(raw[e.date]=raw[e.date]||{})[norm(e.rawText)]=1;});
+    var sisa=(recs||[]).filter(function(r){return !(r&&raw[r.date]&&raw[r.date][norm(r.text)]);});
+    var sebelum={};evs().forEach(function(e){if(e)sebelum[e.id]=1;});
+    var hasil=_applyAsli.call(this,sisa);
+    var baru=evs().filter(function(e){return e&&!sebelum[e.id];});
+    var lap=prosesImpor(baru); window._y572ImporTerakhir=lap;
+    try{if(typeof rfaSave==='function'&&(lap.rfaTaut||lap.rfaBaru))rfaSave('RFA kegiatan hasil impor');}catch(e){}
+    simpan('Tautkan kegiatan hasil impor raw Schedule');
+    try{if(typeof renderCalendar==='function')renderCalendar();if(typeof renderActList==='function')renderActList();}catch(e){}
+    if(hasil&&typeof hasil==='object'){hasil.dilewatiSudahAda=((hasil.dilewatiSudahAda)||0)+((recs||[]).length-sisa.length);hasil.y572=lap;}
+    return hasil;
+  };
+}
+
+/* ---------- D. form Tambah Event ---------- */
+var _rdfAsli=window.renderDayForm;
+if(typeof _rdfAsli==='function'){
+  window.renderDayForm=function(prefill){
+    dayDred={};
+    var r=_rdfAsli.apply(this,arguments);
+    try{
+      var sel=document.getElementById('day-type');
+      var og=sel&&[].slice.call(sel.querySelectorAll('optgroup')).find(function(g){return /lain/i.test(g.label);});
+      if(og&&!og.querySelector('option[value="Offshore Dumping"]')){
+        var o=document.createElement('option');o.value='Offshore Dumping';o.textContent='Dumping Offshore';
+        og.insertBefore(o,og.firstChild);
+      }
+      var tw=document.getElementById('day-tahap-wrap');
+      if(tw&&!document.getElementById('day-y572-desc-wrap')){
+        var d=document.createElement('div');d.id='day-y572-desc-wrap';d.className='fg';d.style.display='none';
+        d.innerHTML='<label for="day-y572-desc">Deskripsi</label><input id="day-y572-desc" type="text" placeholder="mis. Maintenance alat OSR CPU" autocomplete="off">';
+        tw.parentNode.insertBefore(d,tw);
+        var da=document.createElement('div');da.id='day-y572-area-wrap';da.className='fg';da.style.display='none';
+        da.innerHTML='<label for="day-y572-area">Dumping area (ENV Mon Program)</label><select id="day-y572-area"><option value="">- Pilih -</option>'
+          +window._y572DumpingAreas().map(function(n){return '<option>'+esc(n)+'</option>';}).join('')+'</select>';
+        tw.parentNode.insertBefore(da,tw);
+        var dr=document.createElement('div');dr.id='day-y572-dred';dr.style.display='none';
+        tw.parentNode.insertBefore(dr,tw.nextSibling);
+      }
+    }catch(e){}
+    return r;
+  };
+}
+var _dtcAsli=window.onDayTypeChange;
+if(typeof _dtcAsli==='function'){
+  window.onDayTypeChange=function(){
+    var r=_dtcAsli.apply(this,arguments);
+    try{
+      var t=(document.getElementById('day-type')||{}).value||'';
+      var lain=LAIN.indexOf(t)>=0, dump=(t==='Offshore Dumping');
+      var dw=document.getElementById('day-y572-desc-wrap');if(dw)dw.style.display=lain&&!dump?'block':'none';
+      var aw=document.getElementById('day-y572-area-wrap');if(aw)aw.style.display=dump?'block':'none';
+      var tw=document.getElementById('day-tahap-wrap');
+      if(dump&&tw){tw.style.display='block';var th=document.getElementById('day-tahap');if(th&&(th.value==='-'||!th.value))th.value='During';}
+      var pw=document.getElementById('day-ppc-wrap');if(pw&&dump)pw.style.display='block';
+      var dr=document.getElementById('day-y572-dred');
+      if(dr){dr.style.display=(t==='Dredging')?'block':'none';if(t==='Dredging')dr.innerHTML=editorHtml('day-y572',dayDred,'_y572DayUbah');}
+    }catch(e){}
+    return r;
+  };
+}
+var _sdeAsli=window.saveDayEvent;
+if(typeof _sdeAsli==='function'){
+  window.saveDayEvent=function(){
+    var t=(document.getElementById('day-type')||{}).value||'';
+    if(LAIN.indexOf(t)>=0){
+      var dump=(t==='Offshore Dumping');
+      var area=dump?((document.getElementById('day-y572-area')||{}).value||''):'';
+      var desk=((document.getElementById('day-y572-desc')||{}).value||'').trim();
+      if(dump&&!area){if(typeof toast==='function')toast('Pilih dumping area dulu.');return;}
+      if(!dump&&!desk){if(typeof toast==='function')toast('Isi deskripsi dulu.');return;}
+      var ppc='';try{ppc=daySelectedPPCs.map(function(id){var p=PPC_LIST.find(function(x){return x.id===id;});return p&&p.name;}).filter(Boolean).join(', ');}catch(e){}
+      var ev={id:'u-ev-'+nid(),date:activeDayStr,type:t,tahap:dump?((document.getElementById('day-tahap')||{}).value||'During'):'-',
+        text:dump?('Sampling Dumping Offshore — '+area):desk,ppc:ppc,site:'',sra:'',status:'Planned',source:'Manual Input',
+        rem:(document.getElementById('day-rem')||{}).value||''};
+      if(dump){ev.point=area;ev.points=[area];}
+      evs().push(ev);
+      try{pushChangeLog('Tambah event: '+(LABEL_TIPE[t]||t)+' ('+activeDayStr+')');}catch(e){}
+      simpan('Tambah event');
+      try{renderCalendar();closeMODay2();updateUndoRedoUI();}catch(e){}
+      if(typeof toast==='function')toast('Event ditambahkan ke kalender');
+      return;
+    }
+    var nAct=acts().length, nEv=evs().length, extra=Object.assign({},dayDred);
+    var r=_sdeAsli.apply(this,arguments);
+    try{
+      var baru=evs().slice(nEv);
+      if(t==='Perjalanan')baru.forEach(function(e){if(e.type==='Perjalanan'&&e.from&&e.to){e.rawText=e.text;e.text=e.from+' → '+e.to;}});
+      if(t==='Dredging'&&(extra.met||extra.dis||extra.dumpTemp)){
+        baru.forEach(function(e){
+          var a=e.actId&&acts().find(function(x){return x.id===e.actId;});
+          if(!a)return;
+          if(extra.met&&!a.met)a.met=extra.met;
+          if(extra.dis&&!a.dis)a.dis=extra.dis;
+          if(extra.dumpTemp&&!a.dumpTemp)a.dumpTemp=extra.dumpTemp;
+          window._y572SyncTda(a);
+        });
+      }
+      if(baru.length&&(t==='Perjalanan'||t==='Dredging'))simpan('Tambah event');
+    }catch(e){}
+    return r;
+  };
+}
+
+/* ---------- C. kartu kegiatan ---------- */
+var _oaAsli=window.openAct;
+if(typeof _oaAsli==='function'){
+  window.openAct=function(id){
+    var r=_oaAsli.apply(this,arguments);
+    try{
+      var a=acts().find(function(x){return x.id===id;});
+      var jenis=document.getElementById('mo-jenis-'+id);
+      if(a&&a.type==='Dredging'&&jenis){
+        var baris=jenis.closest('.mo-row');
+        // ganti tampilan baca-saja Metode/Disposal dengan pemilih
+        [].slice.call(baris.children).forEach(function(c){var l=c.querySelector&&c.querySelector('label');if(l&&/^(metode|disposal)$/i.test(l.textContent.trim()))c.remove();});
+        var w=document.createElement('div');w.style.flexBasis='100%';
+        w.innerHTML=editorHtml('mo-y572-'+id,a,'_y572ActUbahBound');
+        baris.appendChild(w);
+        window._y572ActAktif=id;
+      }
+      if(a&&a.src==='Import Raw Schedule'){
+        [].slice.call(document.querySelectorAll('#mo-body .mo-row')).forEach(function(rw){var l=rw.querySelector('label');if(l&&l.textContent.trim()==='Sumber'){var p=rw.querySelector('p');if(p)p.textContent='Import Raw Schedule';}});
+      }
+    }catch(e){}
+    return r;
+  };
+}
+window._y572ActUbahBound=function(k,v){if(window._y572ActAktif)window._y572ActUbah(window._y572ActAktif,k,v);};
+
+/* ---------- C. Panduan Sampling (ENV Tools) ---------- */
+var _grAsli=window._etRenderGuide;
+if(typeof _grAsli==='function'){
+  window._etRenderGuide=function(){
+    try{if(ET_GUIDE&&ET_GUIDE.type==='Dredging')window._y572SyncTda(ET_GUIDE);}catch(e){}
+    var r=_grAsli.apply(this,arguments);
+    try{
+      if(ET_GUIDE&&ET_GUIDE.type==='Dredging'){
+        var sel=document.querySelector('select[onchange*="_etSetField(\'type\'"]');
+        var fg=sel&&sel.closest('.fg'), baris=fg&&fg.parentNode;
+        if(baris&&!document.querySelector('[data-y572="et-y572"]')){
+          var w=document.createElement('div');w.style.flexBasis='100%';
+          w.innerHTML=editorHtml('et-y572',ET_GUIDE,'_y572GuideUbah');
+          baris.appendChild(w);
+        }
+      }
+    }catch(e){}
+    return r;
+  };
+}
+
+/* ---------- B. kartu event: Lihat + keterangan ↩ ---------- */
+function pasangTombolEvent(){
+  var box=document.getElementById('mo-ev-actions'); if(!box)return;
+  var balik=box.querySelector('button[onclick="setEvStatus(\'Planned\')"]');
+  if(balik){balik.title='Kembalikan status ke Planned (batalkan Selesai/Ditunda)';balik.setAttribute('aria-label',balik.title);}
+  var lihat=[].slice.call(box.querySelectorAll('button')).find(function(b){return /^lihat$/i.test(b.textContent.trim());});
+  if(lihat&&!lihat.dataset.y572){
+    lihat.dataset.y572='1';lihat.removeAttribute('onclick');
+    lihat.title='Lihat kegiatan ini di Kalender, Daftar Kegiatan, RFA List atau Hasil Sampling';
+    lihat.setAttribute('aria-haspopup','menu');
+    lihat.addEventListener('click',function(e){e.stopPropagation();window._y572LihatMenu(lihat);});
+  }
+}
+function tujuanLihat(ev){
+  var rows=rfas().filter(function(r){return r.calEventId===ev.id;});
+  var no=(rows.find(function(r){return r.noRfa;})||{}).noRfa||'';
+  var a=ev.actId&&acts().find(function(x){return x.id===ev.actId;});
+  var titik=(a&&a.well)||wellToken(ev)||ev.text||'';
+  var rutin=['Monthly','Semesterly','Yearly'].indexOf(ev.type)>=0;
+  return [
+    {k:'kal',t:'Kalender',ok:true},
+    {k:'act',t:'Daftar Kegiatan',ok:!!ev.actId||rutin,alasan:'belum tertaut ke kegiatan'},
+    {k:'rfa',t:'RFA List'+(rows.length?' ('+rows.length+')':''),ok:rows.length>0,alasan:'belum ada RFA',q:no||titik},
+    {k:'hasil',t:'Hasil Sampling',ok:!!(no||titik),alasan:'tidak ada No RFA atau titik',q:no||titik}
+  ];
+}
+function isiCari(sel,q){
+  var tunda=0;
+  (function coba(){
+    var el=[].slice.call(document.querySelectorAll(sel)).find(function(x){return x.getClientRects().length&&getComputedStyle(x).display!=='none';});
+    if(!el){if(tunda++<20)setTimeout(coba,100);return;}
+    el.value=q;el.dispatchEvent(new Event('input',{bubbles:true}));
+    try{el.focus();el.scrollIntoView({block:'center'});}catch(e){}
+  })();
+}
+window._y572Lihat=function(k,q){
+  var ev=evs().find(function(e){return e.id===activeEvId;}); if(!ev)return;
+  var tj=tujuanLihat(ev).find(function(x){return x.k===k;})||{};
+  q=q||tj.q||'';
+  if(k==='kal'){if(typeof highlightCalEvent==='function')highlightCalEvent(ev.id);return;}
+  try{closeMOEv2();}catch(e){}
+  if(k==='act'){
+    if(ev.actId&&typeof highlightActRow==='function')highlightActRow(ev.actId);
+    else if(typeof _rtGoTo==='function')_rtGoTo(ev);
+    return;
+  }
+  if(k==='rfa'){
+    switchTab('rfa',document.getElementById('tb-rfa'));
+    setTimeout(function(){
+      var pil=[].slice.call(document.querySelectorAll('#view-rfa button')).find(function(b){return /^rfa list/i.test(b.textContent.trim())&&b.getClientRects().length;});
+      if(pil&&!pil.classList.contains('active'))pil.click();
+      isiCari('#rfa-search-inp',q);
+    },250);
+    return;
+  }
+  if(k==='hasil'){switchTab('hasil',document.getElementById('tb-hasil'));setTimeout(function(){isiCari('#hs-q',q);},250);}
+};
+window._y572LihatMenu=function(anchor){
+  document.querySelectorAll('.ev-tag-picker,.y572-lihat').forEach(function(p){p.remove();});
+  var ev=evs().find(function(e){return e.id===activeEvId;}); if(!ev)return;
+  var m=document.createElement('div');m.className='ev-tag-picker y572-lihat';m.setAttribute('role','menu');m.setAttribute('aria-label','Lihat di');
+  m.style.cssText='position:fixed;z-index:99999;background:#fff;border:1px solid var(--g2);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.22);padding:4px;display:flex;flex-direction:column;gap:2px;min-width:200px';
+  tujuanLihat(ev).forEach(function(o){
+    var b=document.createElement('button');b.type='button';b.setAttribute('role','menuitem');b.textContent=o.t;b.dataset.tujuan=o.k;
+    b.style.cssText='text-align:left;padding:7px 10px;border:none;border-radius:6px;font-size:13px;font-family:inherit;background:transparent;cursor:'+(o.ok?'pointer':'not-allowed')+';color:'+(o.ok?'var(--g5)':'var(--g3)');
+    if(!o.ok){b.disabled=true;b.title='Tidak tersedia: '+o.alasan;b.textContent=o.t+' - '+o.alasan;}
+    b.onclick=function(){m.remove();window._y572Lihat(o.k,o.q);};
+    m.appendChild(b);
+  });
+  document.body.appendChild(m);
+  var r=anchor.getBoundingClientRect(), h=m.offsetHeight, w=m.offsetWidth;
+  m.style.left=Math.max(8,Math.min(r.left,innerWidth-w-8))+'px';
+  m.style.top=(r.top-h-6>8?r.top-h-6:r.bottom+6)+'px';
+  var b0=m.querySelector('button:not([disabled])');if(b0)b0.focus();
+  var tutup=function(e){if(e.type==='keydown'&&e.key!=='Escape')return;if(e.type==='mousedown'&&m.contains(e.target))return;m.remove();document.removeEventListener('mousedown',tutup,true);document.removeEventListener('keydown',tutup,true);if(e.type==='keydown')try{anchor.focus();}catch(_){}};
+  setTimeout(function(){document.addEventListener('mousedown',tutup,true);document.addEventListener('keydown',tutup,true);},0);
+};
+var _oceAsli=window.openCalEv;
+if(typeof _oceAsli==='function'){
+  window.openCalEv=function(id){
+    var r=_oceAsli.apply(this,arguments);
+    try{
+      pasangTombolEvent();
+      var ev=evs().find(function(e){return e.id===id;});
+      if(ev&&ev.type==='Offshore Dumping'){var tt=document.getElementById('mo-ev-title');if(tt)tt.textContent='Dumping Offshore — '+(typeof fmtDate==='function'?fmtDate(ev.date):ev.date);}
+    }catch(e){}
+    return r;
+  };
+}
+if(document.readyState!=='loading')pasangTombolEvent();else document.addEventListener('DOMContentLoaded',pasangTombolEvent);
+
+/* ---------- E. garis penghubung label peta ikut zoom aplikasi ---------- */
+var _ucAsli=window._updateConnector;
+if(typeof _ucAsli==='function'){
+  window._updateConnector=function(marker,el,map){
+    var r=_ucAsli.apply(this,arguments);
+    try{
+      var line=marker&&marker._connectorLine; if(!line||!el||!map)return r;
+      var c=map.getContainer(), cr=c.getBoundingClientRect(), br=el.getBoundingClientRect();
+      // getBoundingClientRect ikut skala transform #zoom-root; latLngToContainerPoint tidak
+      var s=c.offsetWidth?cr.width/c.offsetWidth:1; if(!(s>0))s=1;
+      line.setAttribute('x1',(br.left+br.width/2-cr.left)/s);
+      line.setAttribute('y1',(br.top+br.height/2-cr.top)/s);
+    }catch(e){}
+    return r;
+  };
 }
 })();
 
