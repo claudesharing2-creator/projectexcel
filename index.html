@@ -5796,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'a8dcf58f'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'5fb64ff7'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -54066,6 +54066,164 @@ window._emfArialkanStyles=async function(parts){
 };
 })();
 
+/* debit_bpn.js — Y576: impor debit harian BPN (STP-1/2/3) dari "BPN - 2026.xlsx".
+ *
+ * Format raw (permintaan pemilik 2026-10-07): satu sheet per bulan (Januari..Desember); di tiap sheet
+ * kolom B = tanggal, D:E = STP 1, F:G = STP 2, H:I = STP 3, masing-masing (Flowmeter, Debit). Flowmeter =
+ * pembacaan meter (m3), Debit = selisih pembacaan terhadap pembacaan sebelumnya (m3). Hari tanpa pembacaan
+ * ("Libur", "Libur Isra Miraj", sel kosong) tidak ada petugas.
+ *
+ * Aturan pemilik: debit yang terbaca pada hari pembacaan mencakup semua hari tanpa pembacaan di
+ * depannya + hari pembacaan itu sendiri, jadi dibagi RATA ke semua hari tersebut. Contoh: libur 8-9 Agustus,
+ * pembacaan 10 Agustus (selisih terhadap pembacaan 7 Agustus) -> tanggal 8, 9, 10 masing-masing sepertiganya.
+ * Selisih dihitung ULANG dari kolom Flowmeter berurutan lintas sheet (bukan memercayai kolom Debit), dan
+ * berlaku juga lintas bulan (libur akhir bulan sampai pembacaan pertama bulan berikutnya). Hanya pembacaan
+ * pertama di berkas (tanpa pembacaan sebelumnya di berkas) memakai kolom Debit milik sheet.
+ *
+ * Liter/orang/hari = m3/hari x 1000 / POB titik (STP-1 40, STP-2 135, STP-3 220 orang; jawaban pemilik
+ * 2026-10-05). POB bisa diganti lewat localStorage "env26_stp_pob" ({"Outlet STP-1":40,...}). */
+(function () {
+  'use strict';
+  if (window.__debitBpnY576) return; window.__debitBpnY576 = true;
+
+  var TITIK = { 1: 'Outlet STP-1', 2: 'Outlet STP-2', 3: 'Outlet STP-3' };
+  var POB_BAWAAN = { 'Outlet STP-1': 40, 'Outlet STP-2': 135, 'Outlet STP-3': 220 };
+  var BM_L_ORG_HARI = 100;              // izin Walikota Balikpapan 658.31/24/DLH/2017: 100 L/orang/hari
+  var MAKS_HARI_BAGI = 14;              // lebih dari ini bukan libur, melainkan meter tidak dibaca
+  var BULAN = { januari: 1, january: 1, februari: 2, february: 2, maret: 3, march: 3, april: 4, mei: 5, may: 5, juni: 6, june: 6, juli: 7, july: 7, agustus: 8, august: 8, september: 9, oktober: 10, october: 10, november: 11, desember: 12, december: 12 };
+
+  window._bpnPob = function (titik) {
+    try {
+      var o = JSON.parse(localStorage.getItem('env26_stp_pob') || 'null');
+      var v = o && parseFloat(o[titik]);
+      if (isFinite(v) && v > 0) return v;
+    } catch (e) { }
+    return POB_BAWAAN[titik] || null;
+  };
+  window._bpnTitikStp = function (titik) { return /^Outlet STP-[123]$/.test(String(titik || '')); };
+
+  function p2(n) { return (n < 10 ? '0' : '') + n; }
+  function kunci(t) { return new Date(t).toISOString().slice(0, 10); }
+  function utc(y, m, d) { return Date.UTC(y, m - 1, d); }
+  function angka(v) { return (typeof v === 'number' && isFinite(v)) ? v : null; }
+  function serialKeTgl(v) { var d = new Date(Math.round((v - 25569) * 86400000)); return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1 }; }
+
+  /* sheets: [{nama, rows}] (rows = sheet_to_json header:1, raw:true, cellDates:true). Mengembalikan null bila
+     berkas bukan format ini (tidak ada sheet bertajuk "STP n" + "Flowmeter"). */
+  window._bpnBacaDebit = function (sheets) {
+    var per = { 1: [], 2: [], 3: [] }, catatan = [], adaSheet = 0;
+    sheets.forEach(function (sh) {
+      var rows = sh.rows || [], hdr = -1, kolom = {}, dateCol = -1, y = null, m = BULAN[String(sh.nama || '').trim().toLowerCase()] || null;
+      for (var i = 0; i < Math.min(rows.length, 8); i++) {
+        var r = rows[i] || [];
+        for (var c = 0; c < r.length; c++) {
+          var v = r[c];
+          if (v instanceof Date && !isNaN(v)) { y = v.getFullYear(); m = v.getMonth() + 1; }
+          else if (typeof v === 'number' && v > 40000 && v < 80000 && y == null) { var s = serialKeTgl(v); y = s.y; m = s.m; }
+          var mm = /^\s*STP\s*-?\s*([123])\s*$/i.exec(String(v == null ? '' : v));
+          if (mm && !kolom[mm[1]]) { kolom[mm[1]] = c; }
+          if (/^\s*date\s*$/i.test(String(v == null ? '' : v)) || /^\s*tanggal\s*$/i.test(String(v == null ? '' : v))) dateCol = c;
+        }
+        if (/flowmeter/i.test(r.join('|'))) hdr = i;
+      }
+      if (hdr < 0 || !Object.keys(kolom).length || dateCol < 0 || y == null || !m) return;
+      adaSheet++;
+      for (var rr = hdr + 1; rr < rows.length; rr++) {
+        var row = rows[rr] || [], dv = row[dateCol];
+        if (/jumlah|total/i.test(String(dv == null ? '' : dv))) break;
+        var hari = parseInt(dv, 10);
+        if (!(hari >= 1 && hari <= 31) || String(dv).trim() !== String(hari)) continue;
+        var tgl = utc(y, m, hari);
+        if (new Date(tgl).getUTCMonth() + 1 !== m) continue;
+        [1, 2, 3].forEach(function (n) {
+          if (kolom[n] == null) return;
+          per[n].push({ t: tgl, baca: angka(row[kolom[n]]), debitSheet: angka(row[kolom[n] + 1]) });
+        });
+      }
+    });
+    if (!adaSheet) return null;
+    var data = {}, ringkas = {}, dibagi = 0;
+    [1, 2, 3].forEach(function (n) {
+      var e = per[n].sort(function (a, b) { return a.t - b.t; });
+      if (!e.length) return;
+      var titik = TITIK[n], out = {}, prev = null, awal = e[0].t, bagiHari = 0;
+      e.forEach(function (x) {
+        if (x.baca == null) return;
+        var total, mulai;
+        if (prev) { total = x.baca - prev.baca; mulai = prev.t + 86400000; }
+        else { total = x.debitSheet; mulai = awal; }
+        var hariList = [];
+        if (total != null) { for (var t = mulai; t <= x.t; t += 86400000) hariList.push(t); }
+        prev = x;
+        if (total == null || !hariList.length) return;
+        if (total < 0) { catatan.push(titik + ': pembacaan ' + kunci(x.t) + ' lebih kecil dari sebelumnya (' + total.toFixed(3) + ' m3), dilewati'); return; }
+        if (hariList.length > MAKS_HARI_BAGI) { catatan.push(titik + ': ' + hariList.length + ' hari tanpa pembacaan sebelum ' + kunci(x.t) + ', tidak dibagi rata, dilewati'); return; }
+        var per1 = Math.round(total / hariList.length * 1e6) / 1e6;
+        hariList.forEach(function (t) { out[kunci(t)] = per1; });
+        if (hariList.length > 1) { bagiHari += hariList.length; dibagi += hariList.length; }
+      });
+      var ks = Object.keys(out).sort();
+      if (ks.length) {
+        data[titik] = out;
+        var jum = 0; ks.forEach(function (k) { jum += out[k]; });
+        ringkas[titik] = { hari: ks.length, dari: ks[0], sampai: ks[ks.length - 1], total: jum, dibagi: bagiHari };
+      }
+    });
+    return { data: data, ringkas: ringkas, catatan: catatan, dibagi: dibagi };
+  };
+
+  /* ---- impor: berkas bentuk ini diisikan ke SEMUA STP sekaligus, dari kartu STP mana pun ---- */
+  var _asli = window._hsDebitImportFile;
+  if (typeof _asli === 'function') {
+    window._hsDebitImportFile = async function (rid, file) {
+      if (file && /\.xlsx?$/i.test(file.name || '')) {
+        try {
+          var buf = await file.arrayBuffer();
+          var wb = XLSX.read(new Uint8Array(buf), { type: 'array', cellDates: true });
+          var sheets = wb.SheetNames.map(function (sn) { return { nama: sn, rows: XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '', raw: true }) }; });
+          var hasil = window._bpnBacaDebit(sheets);
+          if (hasil && Object.keys(hasil.data).length) {
+            var jml = 0;
+            Object.keys(hasil.data).forEach(function (t) {
+              HASIL_DEBIT_DAILY[t] = Object.assign({}, HASIL_DEBIT_DAILY[t] || {}, hasil.data[t]);
+              jml += Object.keys(hasil.data[t]).length;
+            });
+            _hsSaveDebitDaily();
+            if (typeof saveStorage === 'function') saveStorage('Import debit harian BPN (STP-1/2/3)');
+            var ket = Object.keys(hasil.ringkas).map(function (t) { var r = hasil.ringkas[t]; return t + ' ' + r.hari + ' hari (' + r.dari + ' s/d ' + r.sampai + ')'; }).join('; ');
+            if (typeof toast === 'function') toast('✓ Debit BPN: ' + ket + '. ' + hasil.dibagi + ' hari tanpa pembacaan dibagi rata dengan hari pembacaan.' + (hasil.catatan.length ? ' ⚠ ' + hasil.catatan.length + ' catatan: ' + hasil.catatan.slice(0, 2).join('; ') : ''));
+            renderHasilSampling();
+            return;
+          }
+        } catch (e) { /* bukan format ini: jalur lama */ }
+      }
+      return _asli.apply(this, arguments);
+    };
+  }
+
+  /* ---- kartu Recording Debit: tambah rata-rata dan maksimum L/orang/hari untuk STP ---- */
+  var _grid = window._hsDebitGridHtml;
+  if (typeof _grid === 'function') {
+    window._hsDebitGridHtml = function (titik, yearNum, monthNum) {
+      var h = _grid.apply(this, arguments);
+      try {
+        if (!window._bpnTitikStp(titik) || !yearNum || !monthNum) return h;
+        var pob = window._bpnPob(titik), d = (HASIL_DEBIT_DAILY[titik] || {}), pre = yearNum + '-' + p2(monthNum) + '-', n = 0, jum = 0, mx = 0;
+        Object.keys(d).forEach(function (k) {
+          if (k.indexOf(pre) !== 0) return;
+          var v = parseFloat(d[k]); if (!isFinite(v) || v < 0) return;
+          var l = v * 1000 / pob; n++; jum += l; if (l > mx) mx = l;
+        });
+        if (!n) return h;
+        var avg = jum / n, lewat = mx > BM_L_ORG_HARI;
+        var tambah = '<div>Rata-rata: <b>' + avg.toFixed(2) + '</b> L/orang/hari <span style="color:#888;font-size:11px">(POB ' + pob + ' orang)</span></div>'
+          + '<div>Maksimum: <b' + (lewat ? ' style="color:#c0392b"' : '') + '>' + mx.toFixed(2) + '</b> L/orang/hari <span style="color:#888;font-size:11px">(izin ' + BM_L_ORG_HARI + ')</span></div>';
+        return h.replace(/(<div>Rata-rata: <b>[^<]*<\/b> m³\/hari<\/div>)/, '$1' + tambah);
+      } catch (e) { return h; }
+    };
+  }
+})();
+
 /* y575/dwi.js -- EMF Bagian Air untuk DWI: KHUSUS data pengerukan (dredging).
  *
  * Permintaan pemilik (2026-10-07): DWI tidak punya titik penaatan air limbah /
@@ -55744,5 +55902,9 @@ R12 sebelumnya.
   - EMF DWI mengikuti dokumen dasar DWI S1 2026 terbaru: periode Tabel 5 dan kalimat pengantarnya jadi 2026,
     baris Subjek tidak diubah hurufnya, keterangan B3/sampah (datanya tidak ada di aplikasi) tidak ikut berganti
     periode, kalimat penutup pengerukan berhuruf dan bergaya sama dengan isi dokumen.
+  - Debit harian BPN (STP-1/2/3) dari berkas raw "BPN - 2026.xlsx" (satu sheet per bulan, Flowmeter dan Debit per STP):
+    tombol Import di kartu Recording Debit mana pun mengisi ketiga STP sekaligus. Hari libur / tanpa pembacaan dibagi
+    rata dengan hari pembacaan setelahnya (juga lintas bulan). Kartu STP menampilkan rata-rata dan maksimum
+    L/orang/hari dari POB (40 / 135 / 220 orang).
 ENVMON-CHANGELOG-Y571 -->
 </html>
