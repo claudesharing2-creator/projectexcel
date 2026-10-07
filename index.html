@@ -5796,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'eba26f77'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'7f1065dd'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -44740,6 +44740,7 @@ window._emfSetWarnaSel=_emfSetWarnaSel;
 function _emfLebihBM(nilai,baku){
   if(nilai==null||nilai===''||nilai===EMF_KOSONG)return null;
   if(baku==null||!String(baku).trim())return null;
+  /*Y575f*/if(/natural|alami/i.test(String(baku))&&!/[<>\u2264\u2265]|s\/d|maks|max/i.test(String(baku)))return null;
   try{
     if(typeof _hsEvalCompliance!=='function')return null;
     var e=_hsEvalCompliance(nilai,baku);
@@ -44781,6 +44782,7 @@ function _emfPatchTitikTable(tbl,idx,year,months,cap){
     var sat=cells.length>L.col0+L.ncol?_emfCellText(cells[cells.length-1]):'';
     // kolom "Baku Mutu Berlaku" ada tepat sesudah kolom-kolom bulan
     var bm=cells.length>L.col0+L.ncol?_emfCellText(cells[L.col0+L.ncol]):'';
+    /*Y575f*/if(/salinit/i.test(param)&&/natural|alami/i.test(bm))bm='s/d 34';
     daftar.push({cells:cells,titik:cur,param:param,sat:sat,bm:bm});
   }
   // Y505b: satu kolom bulan = satu kali pengambilan. Tanggal kolom dipilih
@@ -46586,6 +46588,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
   // akan muncul berulang begitu merge-nya diubah atau tabelnya dikonversi.
   var selMergeBersih=0;
   try{selMergeBersih=_emfBersihkanSelMerge(doc);}catch(_eMg){}
+  /*Y575g*/if(typeof window._emfArialkan==='function')window._emfArialkan(doc);
   var outXml=new XMLSerializer().serializeToString(doc);
   // every other part is passed through as its ORIGINAL compressed bytes --
   // that is what keeps the output byte-identical outside the patched cells
@@ -46599,6 +46602,7 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
     }
   }
   parts[docName]={data:new TextEncoder().encode(outXml)};
+  /*Y575g*/if(typeof window._emfArialkanStyles==='function')await window._emfArialkanStyles(parts);
   var blob=await _emfZipWrite(parts,z.order);
   // Y468: kalau dokumen ini hanya punya SATU tabel pengerukan gabungan, tapi
   // periodenya juga membawa kegiatan trenching, dokumennya perlu tabel kedua.
@@ -52432,9 +52436,59 @@ var A_NS='http://schemas.openxmlformats.org/drawingml/2006/main';
 var C_NS='http://schemas.openxmlformats.org/drawingml/2006/chart';
 var R_NS='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 
+
+/* ---------- 0. debit maksimum menurut TABEL dokumen dasar ----------
+ * Tabel air limbah domestik memuat baris "Debit" dengan kolom Baku Mutu berisi
+ * debit maksimum SLO ("7068*", catatan "* Debit maksimum sesuai SLO"); tabel
+ * air terproduksi memuat baris "Debit rata-rata" dengan baku mutu "144000 BWPD".
+ * Garis pembanding grafik harus SAMA dengan angka itu, bukan angka isian lain. */
+function _tcTeks(tc){return String(tc.textContent||'').replace(/\s+/g,' ').trim();}
+function _angkaDoc(t){
+  var m=/^\s*([0-9][0-9.,]*)\s*\**\s*$/.exec(t); if(!m)return null;
+  var x=m[1], v=parseFloat(x.indexOf(',')>=0?x.replace(/\./g,'').replace(',','.'):x);
+  return (isFinite(v)&&v>0)?v:null;
+}
+function _bacaDebitMaks(doc){
+  var hasil={dom:[],pw:null}, trs=doc.getElementsByTagNameNS(W_NS,'tr'), titik='';
+  for(var i=0;i<trs.length;i++){
+    var tcs=[].slice.call(trs[i].childNodes).filter(function(n){return n.nodeType===1&&n.localName==='tc';});
+    var teks=tcs.map(_tcTeks), p=-1;
+    for(var k=0;k<teks.length;k++){if(/^debit\b/i.test(teks[k])){p=k;break;}}
+    if(p<0){
+      for(var q=1;q<teks.length;q++){if(/^(benda terapung|minyak bebas)/i.test(teks[q])&&teks[q-1]&&!/^\d+$/.test(teks[q-1])){titik=teks[q-1];break;}}
+      continue;
+    }
+    var u=-1;
+    for(var j=teks.length-1;j>p;j--){if(/(bwpd|m\s*3|m³)/i.test(teks[j])){u=j;break;}}
+    if(u<p+2)continue;
+    var v=_angkaDoc(teks[u-1]); if(!v)continue;
+    if(/bwpd/i.test(teks[u]))hasil.pw=v;
+    else{var nm=(p>0&&teks[p-1]&&!/^\d+$/.test(teks[p-1]))?teks[p-1]:titik;if(nm)hasil.dom.push({titik:nm,nilai:v});}
+  }
+  return hasil;
+}
+function _kompak(s){return _normT(s).join('');}
+function _debitMaksUntuk(nama){
+  var d=window._emfDebitMaksDoc; if(!d||!nama)return null;
+  var a=_kompak(nama); if(!a)return null;
+  var c=d.dom.filter(function(x){var b=_kompak(x.titik);return b&&(a===b||a.indexOf(b)>=0||b.indexOf(a)>=0);});
+  return c.length===1?c[0].nilai:null;
+}
+function _pasangGarisMaks(r){
+  if(!r)return r;
+  var v=null;
+  if(r.type==='bar'&&/domestik/i.test(r.title||''))v=_debitMaksUntuk(r.seriesLabel||r.subtitle);
+  else if(r.type==='line'&&/^debit/i.test(r.title||'')&&window._emfDebitMaksDoc)v=window._emfDebitMaksDoc.pw;
+  if(!(v>0))return r;
+  r.lines=(r.lines||[]).filter(function(l){return !/debit/i.test(l.label||'');});
+  r.lines.push({value:v,color:'#c0504d',label:r.type==='bar'?'Debit Maksimum (SLO)':'Debit Maksimum',marker:true});
+  return r;
+}
+
 /* ---------- 1. slot grafik ---------- */
 window._emfChartSlots=function(doc){
   var body=doc.getElementsByTagNameNS(W_NS,'body')[0], out=[], queue=[], pending=[];
+  try{window._emfDebitMaksDoc=_bacaDebitMaks(doc);}catch(e){window._emfDebitMaksDoc={dom:[],pw:null};}
   if(!body)return out;
   var ps=body.getElementsByTagNameNS(W_NS,'p');
   for(var i=0;i<ps.length;i++){
@@ -52500,7 +52554,7 @@ if(typeof _specAsli==='function'){
   window._emfChartSpec=function(label,ctx,idx,months,year,sem){
     var r=_specAsli.apply(this,arguments);
     var ada=function(x){return x&&(x.values||[]).some(function(v){return typeof v==='number'&&isFinite(v);});};
-    if(ada(r))return r;
+    if(ada(r))return _pasangGarisMaks(r);
     var lab=_emfSq?_emfSq(label):String(label||'');
     var m=/^debit\s+(.+)$/i.exec(lab), nama=m?m[1]:lab;
     if(!m&&/^(ph|minyak|sulfida|debit)$/i.test(lab))return r;
@@ -52513,6 +52567,7 @@ if(typeof _specAsli==='function'){
     if(!ada(r2))return r;
     // judul tetap memakai nama di dokumen (yang dibaca orang), datanya dari titik yang cocok
     r2.subtitle=nama; r2.seriesLabel=nama;
+    _pasangGarisMaks(r2);
     try{_emfAmbigu('grafik',lab,['dicocokkan ke titik data "'+t+'"']);}catch(e){}
     return r2;
   };
@@ -52531,8 +52586,8 @@ if(typeof _genAsli==='function'){
 }
 
 /* ---------- 3. XML grafik tanpa teks bertumpuk ---------- */
-// lebar rata-rata huruf Calibri ~0,5 em; tinggi baris 1,2 em (inci = pt/72)
-function lebarTeks(t,sz){return String(t).length*(sz/100)*0.52/72;}
+// lebar rata-rata huruf Arial ~0,56 em; tinggi baris 1,2 em (inci = pt/72)
+function lebarTeks(t,sz){return String(t).length*(sz/100)*0.58/72;}
 function tinggiBaris(sz){return (sz/100)*1.25/72;}
 function fmtAngka(v,code){
   if(!/0\.00/.test(code||''))return String(parseFloat(v.toPrecision(6)));
@@ -52616,7 +52671,7 @@ window._emfChartXml=function(spec){
   var judulBaris=[spec.title,spec.subtitle].filter(function(x){return x;}).map(function(x){return String(x).trim();});
   var sk=_emfSkalaNilai(ds);
   var L=window._emfTataLetakY570(spec,ds,cats,sk,judulBaris);
-  var rPr=function(sz,b){return '<a:rPr lang="id-ID" sz="'+sz+'"'+(b?' b="1"':' b="0"')+'><a:solidFill><a:srgbClr val="404040"/></a:solidFill><a:latin typeface="Calibri"/><a:cs typeface="Calibri"/></a:rPr>';};
+  var rPr=function(sz,b){return '<a:rPr lang="id-ID" sz="'+sz+'"'+(b?' b="1"':' b="0"')+'><a:solidFill><a:srgbClr val="404040"/></a:solidFill><a:latin typeface="Arial"/><a:cs typeface="Arial"/></a:rPr>';};
   var judul=judulBaris.length
     ?('<c:title><c:tx><c:rich><a:bodyPr rot="0" spcFirstLastPara="1" vertOverflow="ellipsis" wrap="square" anchor="ctr" anchorCtr="1"/><a:lstStyle/>'
       +judulBaris.map(function(t){return '<a:p><a:pPr algn="ctr"><a:defRPr sz="'+L.szJ+'" b="1"/></a:pPr><a:r>'+rPr(L.szJ,1)+'<a:t>'+esc(t)+'</a:t></a:r></a:p>';}).join('')
@@ -52625,7 +52680,7 @@ window._emfChartXml=function(spec){
   var skala='<c:scaling><c:orientation val="minMax"/>'+(sk?'<c:max val="'+sk.max+'"/><c:min val="'+sk.min+'"/>':'')+'</c:scaling>';
   var satuan=sk?'<c:majorUnit val="'+sk.unit+'"/>':'';
   var fmt=spec.numFmt?('<c:numFmt formatCode="'+esc(spec.numFmt)+'" sourceLinked="0"/>'):'<c:numFmt formatCode="General" sourceLinked="1"/>';
-  var huruf=function(sz,rot){return '<c:txPr><a:bodyPr rot="'+(rot||0)+'" vert="horz"/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="'+sz+'" b="0"><a:solidFill><a:srgbClr val="595959"/></a:solidFill><a:latin typeface="Calibri"/></a:defRPr></a:pPr><a:endParaRPr lang="id-ID"/></a:p></c:txPr>';};
+  var huruf=function(sz,rot){return '<c:txPr><a:bodyPr rot="'+(rot||0)+'" vert="horz"/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="'+sz+'" b="0"><a:solidFill><a:srgbClr val="595959"/></a:solidFill><a:latin typeface="Arial"/></a:defRPr></a:pPr><a:endParaRPr lang="id-ID"/></a:p></c:txPr>';};
   var judulSumbu=spec.axisTitle
     ?('<c:title><c:tx><c:rich><a:bodyPr rot="-5400000" vert="horz"/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="'+L.szA+'" b="1"/></a:pPr><a:r>'+rPr(L.szA,1)+'<a:t>'+esc(spec.axisTitle)+'</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>')
     :'';
@@ -52646,7 +52701,7 @@ window._emfChartXml=function(spec){
      +'<c:x val="'+L.legX+'"/><c:y val="'+L.legY+'"/><c:w val="'+L.legW+'"/><c:h val="'+L.legH+'"/></c:manualLayout></c:layout>'
      +'<c:overlay val="0"/>'+huruf(L.szL,0)+'</c:legend>'
    +'<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart>'
-   +'<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr><a:latin typeface="Calibri"/></a:defRPr></a:pPr><a:endParaRPr lang="id-ID"/></a:p></c:txPr>'
+   +'<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr><a:latin typeface="Arial"/></a:defRPr></a:pPr><a:endParaRPr lang="id-ID"/></a:p></c:txPr>'
    +'<c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData>'
    +'</c:chartSpace>';
 };
@@ -53930,6 +53985,76 @@ if(document.readyState!=='loading'){ikonPanelInput();daerahGulir();}else documen
 window.addEventListener('load',ikonPanelInput);
 })();
 
+/* arial.js — Y575g: SELURUH teks hasil export EMF berhuruf Arial. Pemilik: "Masih ada
+ * export emf yg fontnya times new roman dan calibri, bukan arial". Dokumen dasar
+ * sebagian (SPS: 522 run, SPU: 8 run) memakai Calibri, dan gaya bawaan dokumen
+ * (docDefaults / Normal) bisa Times New Roman atau tema Calibri, sehingga teks tanpa
+ * rFonts eksplisit ikut berubah. Ditangani dua lapis: (1) setiap run bertulisan diberi
+ * rFonts Arial eksplisit (ascii/hAnsi/cs/eastAsia, atribut tema dibuang);
+ * (2) styles.xml: rFonts docDefaults dan semua gaya dijadikan Arial. Font simbol
+ * (Symbol, Wingdings, Webdings, Cambria Math) dan monospasi dibiarkan. */
+(function(){
+'use strict';
+if(window.__emfArialY575)return; window.__emfArialY575=true;
+var W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+var BIARKAN=/symbol|wingdings|webdings|cambria math|courier|consolas/i;
+function fontRun(rf){
+  return rf?(rf.getAttributeNS(W,'ascii')||rf.getAttributeNS(W,'hAnsi')||''):'';
+}
+function setArial(rf){
+  ['asciiTheme','hAnsiTheme','eastAsiaTheme','cstheme'].forEach(function(a){rf.removeAttributeNS(W,a);});
+  ['ascii','hAnsi','cs','eastAsia'].forEach(function(a){rf.setAttributeNS(W,'w:'+a,'Arial');});
+}
+window._emfArialkan=function(doc){
+  var n=0, runs=doc.getElementsByTagNameNS(W,'r');
+  for(var i=0;i<runs.length;i++){
+    var r=runs[i];
+    if(!r.getElementsByTagNameNS(W,'t').length)continue;
+    var rpr=null;
+    for(var c=r.firstChild;c;c=c.nextSibling){if(c.nodeType===1&&c.localName==='rPr'){rpr=c;break;}}
+    if(!rpr){
+      rpr=doc.createElementNS(W,'w:rPr');
+      r.insertBefore(rpr,r.firstChild);
+    }
+    var rf=null;
+    for(var d=rpr.firstChild;d;d=d.nextSibling){if(d.nodeType===1&&d.localName==='rFonts'){rf=d;break;}}
+    if(rf){
+      if(BIARKAN.test(fontRun(rf)))continue;
+      if(fontRun(rf)==='Arial'&&!rf.getAttributeNS(W,'asciiTheme')&&rf.getAttributeNS(W,'cs')==='Arial'&&rf.getAttributeNS(W,'eastAsia')==='Arial')continue;
+    }else{
+      rf=doc.createElementNS(W,'w:rFonts');
+      var sesudah=null;
+      for(var e=rpr.firstChild;e;e=e.nextSibling){if(e.nodeType===1&&e.localName==='rStyle'){sesudah=e;break;}}
+      if(sesudah)rpr.insertBefore(rf,sesudah.nextSibling); else rpr.insertBefore(rf,rpr.firstChild);
+    }
+    setArial(rf); n++;
+  }
+  // tanda paragraf (w:pPr/w:rPr) yang sudah punya rFonts ikut diseragamkan
+  var pp=doc.getElementsByTagNameNS(W,'pPr');
+  for(var k=0;k<pp.length;k++){
+    for(var g=pp[k].firstChild;g;g=g.nextSibling){
+      if(g.nodeType===1&&g.localName==='rPr'){
+        for(var h=g.firstChild;h;h=h.nextSibling){
+          if(h.nodeType===1&&h.localName==='rFonts'&&!BIARKAN.test(fontRun(h)))setArial(h);
+        }
+      }
+    }
+  }
+  return n;
+};
+window._emfArialkanStyles=async function(parts){
+  var p=parts['word/styles.xml']; if(!p)return false;
+  var buf=p.data?p.data:(p.method===8?await _emfInflate(p.raw):p.raw);
+  var xml=new TextDecoder('utf-8').decode(buf);
+  var baru=xml.replace(/<w:rFonts\b[^>]*\/>/g,function(t){
+    return BIARKAN.test(t)?t:'<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/>';
+  });
+  if(baru===xml)return false;
+  parts['word/styles.xml']={data:new TextEncoder().encode(baru)};
+  return true;
+};
+})();
+
 /* y575/dwi.js -- EMF Bagian Air untuk DWI: KHUSUS data pengerukan (dredging).
  *
  * Permintaan pemilik (2026-10-07): DWI tidak punya titik penaatan air limbah /
@@ -53986,14 +54111,17 @@ window._emfDwiHanyaDredging=function(doc,siteKe){
   var iPend=cariPar(L,/^Pendahuluan$/i);
   var iAir=cariPar(L,/^Air Limbah$/i,Math.max(iPend,0));
   var iDre=cariPar(L,/^Pengerukan\s*\(Dredging\)$/,Math.max(iAir,0));   // judul bagian: "Dredging" berhuruf besar (butir daftar: "dredging")
-  var iHid=iDre>=0?cariPar(L,/^Uji Hidrostatik$/i,iDre+1):-1;
-  if(iAir<0||iDre<0||iHid<0)return {ok:false,alasan:'struktur dokumen dasar tidak dikenali (Air Limbah/Pengerukan/Uji Hidrostatik)'};
+  var iHid=iDre>=0?cariPar(L,/^Uji Hidrostatik$/i,iDre+1):cariPar(L,/^Uji Hidrostatik$/i);
+  // Dokumen DWI asli (raw-data/EMF 2026/08 DWI) HANYA berisi tabel pengerukan: tidak ada judul Air Limbah /
+  // Uji Hidrostatik, jadi tidak ada yang dibuang dan dokumen dipakai apa adanya. Bagian yang dikenali saja yang dipangkas.
   var info={ok:true,dibuang:0};
+  if(iAir<0&&iHid<0)return {ok:true,dibuang:0,catatan:'dokumen sudah khusus pengerukan'};
+  if(iDre<0)return {ok:false,alasan:'judul "Pengerukan (Dredging)" tidak ditemukan di dokumen dasar'};
   /* 1. bagian belakang dulu (indeks depan tetap sah): Uji Hidrostatik -> akhir */
   var akhir=L.length; while(akhir>0&&L[akhir-1].localName==='sectPr')akhir--;
-  info.dibuang+=buangRentang(L,iHid,akhir);
+  if(iHid>=0)info.dibuang+=buangRentang(L,iHid,akhir);
   /* 2. Air Limbah + Badan air: [iAir, iDre) */
-  info.dibuang+=buangRentang(L,iAir,iDre);
+  if(iAir>=0&&iAir<iDre)info.dibuang+=buangRentang(L,iAir,iDre);
   /* 3. Pendahuluan: butir daftar dan paragraf yang membahas aspek lain */
   L=kids(body);
   iPend=cariPar(L,/^Pendahuluan$/i);
@@ -55581,5 +55709,8 @@ R13 (2026-10-06) Revamp UI v2 "ENV•MONITOR"
     sama dengan dokumen; kalimat penutup pengerukan berhuruf dan berjarak sama dengan sekitarnya.
   - Optimasi tab Hasil, ENV Program, dan tab lain (waktu muat dan peralihan tab turun jauh pada perangkat lambat).
 R12 sebelumnya.
+  - EMF: semua teks hasil export berhuruf Arial (dokumen dasar yang masih Calibri/Times New Roman ikut diseragamkan,
+    termasuk gaya bawaan dan grafik); salinitas dinilai terhadap BM 34 (30,6 tidak lagi merah); grafik debit
+    mengikuti angka debit maksimum di tabel dokumen (SPS air terproduksi 144000, domestik 7068 / 4712).
 ENVMON-CHANGELOG-Y571 -->
 </html>
