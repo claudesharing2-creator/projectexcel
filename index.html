@@ -5796,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'a4e00f7e'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'8b97f3ef'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -18951,7 +18951,8 @@ function renderEnvProgram(){
   const pkgCnt=Object.keys(SP.parameterPackages||{}).length;
   const singCnt=((SP.singleParameters||{}).water||[]).length+((SP.singleParameters||{}).soil||[]).length;
   const TABS=[
-    {k:'map',        label:'Peta',      cnt:null,                       col:'#00695c', sepAfter:true},
+    {k:'map',        label:'Peta',      cnt:null,                       col:'#00695c'},
+    /*Y580*/{k:'sumur',label:'Sumur',cnt:(typeof _sumurCount==='function'?_sumurCount():null),col:'#00695c',sepAfter:true},
     {k:'monthly',    label:'Monthly',     cnt:(SP.monthly||[]).length,    col:'#1565c0'},
     {k:'semesterly', label:'Semesterly',  cnt:(SP.semesterly||[]).length, col:'#6a1b9a'},
     {k:'yearly',     label:'Yearly',      cnt:(SP.yearly||[]).length,     col:'#b71c1c'},
@@ -19192,6 +19193,10 @@ function renderEnvProgram(){
     const sSec=SIL&&fS.length?`<div style="font-size:13px;font-weight:700;color:#880e4f;padding:6px 9px;background:#fdf2f8;border-radius:6px;margin-bottom:6px">Single Parameter – Soil / Sediment / Sludge (${fS.length})</div>
       <div style="display:flex;flex-wrap:wrap;margin-bottom:14px">${fS.map(r=>singleChip(r.name,r.price,'#880e4f','#fce4ec')).join('')}</div>`:'';
     tbl=pfBar+pkgSec+wSec+sSec;
+  }else if(_epSub==='sumur'){/*Y580*/
+    const _smRes=(typeof _sumurHtml==='function')?_sumurHtml(_epQ):{count:0,html:''};
+    rowCount=_smRes.count;
+    tbl=_smRes.html;
   }else if(_epSub==='map'){
     rowCount=0;
     tbl=''; // map rendered after innerHTML set
@@ -19209,6 +19214,7 @@ function renderEnvProgram(){
     yearly:'ROUTINE MONITORING — YEARLY 2026',nonRoutine:'NON ROUTINE MONITORING — PANDUAN AKTIVITAS',
     parameter:'PARAMETER REFERENCE — Package diutamakan, kemudian Single',
     map:'PETA TITIK SAMPLING — Monthly & Semesterly',
+    sumur:'SUMUR — Daftar sumur dari lapisan GIS (classified, muncul bila Data Pack dimuat)',/*Y580*/
     bm:'BAKU MUTU MASTER — Routine per titik penaatan, Non-routine per jenis aktivitas',
     izin:'IZIN AIR LIMBAH — Status, nomor, dan masa berlaku per titik penaatan'};
 
@@ -50529,6 +50535,11 @@ function resolveTitik(sheetNorm,raw,peta){
   var s=strict(nm),hit=cek(s);
   if(hit)return hit;
   hit=cek(ALIAS_TITIK[s]);                                   if(hit)return hit;
+  /*Y579g*/if(/\binlet\b/i.test(nm)){   // inlet yang sudah pernah dibuat sebagai arsip: "X Inlet" / "INLET X" -> "Inlet <titik app X>"
+    var _ob=nm.replace(/\binlet\b/ig,' ').replace(/\s+/g,' ').trim(),_ho=null;
+    if(_ob){var _o1=resolveTitik(sheetNorm,_ob,peta);_ho=(_o1&&_o1!==_ob)?_o1:(cek(strict(_ob))||cek(strict(_ob.replace(/^DWW\s*\d+\s*\(([^)]*)\)\s*$/i,'$1'))));}
+    if(_ho){var _hi=cek(strict('Inlet '+_ho));if(_hi)return _hi;}
+  }
   /*Y579c*/var _ar=ALIAS_RAW[s];if(_ar){for(var _i=0;_i<_ar.length;_i++){hit=cek(strict(_ar[_i]));if(hit)return hit;}}
   var p=parenIn(nm);
   // titik inlet tidak boleh dipetakan lewat isi kurungnya: "INLET DWW 4 (NPU Camp II)"
@@ -50697,6 +50708,15 @@ window._rsRecapRunImport=function(wbx){
           // Drainase Jul-Sep); yang nol tetap dilewati (bawaan rumus untuk bulan yang belum terisi) dan Beban Pencemar tetap dihitung aplikasi.
           if(nol||ym<'2026-01'||(turunan&&!/^(debit|debit m3 bulan|produksi)$/.test(kP))){unmatched++;return;}
           var t=(tpl[sh]||{})[kTs+'‖'+kP]||(kP==='debit m3 bulan'?(tpl[sh]||{})[kTs+'‖debit']:(kP.indexOf('beban pencemar ')===0?(tpl[sh]||{})[kTs+'‖beban pencemar']:null));
+          /*Y579g*/// Titik tambahan yang bukan kewajiban (inlet CPU/SPU di DWW Full) diarsipkan di app (keputusan pemilik 2026-10-07): dibuat sebagai
+          // "Inlet <titik>" dengan templat outlet-nya, tanpa baku mutu, bertanda extra.arsip supaya tidak dianggap titik penaatan.
+          if(!t&&/\binlet\b/i.test(String(dr.titikRaw||dr.titik))){
+            var _ob2=String(dr.titikRaw||dr.titik).replace(/\binlet\b/ig,' ').replace(/\s+/g,' ').trim();
+            var _outlet=resolveTitik(sh,_ob2,peta),_to=(tpl[sh]||{})[strict(_outlet)+'‖'+kP];
+            if(_to&&strict(_outlet)!==kTs){
+              t=Object.assign({},_to,{titik:'Inlet '+_outlet,bakuMutu:null,satuanBakuMutu:'',peraturan:'',extra:Object.assign({},_to.extra,{arsip:true,jenis:'Inlet'})});
+            }
+          }
           var rfaV=((pt.rfa[dr.excelRow]||[])[parseInt(cj,10)]),tglV=((pt.tgl[dr.excelRow]||[])[parseInt(cj,10)]);
           rfaV=rfaV==null?'':String(rfaV).trim();
           tglV=typeof tglV==='number'?_rsSerialToIso(tglV):(tglV?String(tglV).slice(0,10):'');
@@ -50722,7 +50742,7 @@ window._rsRecapRunImport=function(wbx){
           /*Y578*/delete ex.siteAsli;delete ex.satuanAsli;delete ex.bakuMutuAsli;delete ex.tanggalAsli;   // catatan perbaikan milik baris templat, bukan baris baru
           baruRows.push({group:t.group||'Monthly',category:t.category||'routine',noRfa:rl,site:_siteT,titik:t.titik,tanggal:[tglV],
             parameter:t.parameter,nilai:rs,satuan:_sat,bakuMutu:_bmT,satuanBakuMutu:t.satuanBakuMutu||'',
-            peraturan:t.peraturan||'',catatan:'Impor Water Monitoring Recap (raw)',computed:0,status:ev.status,nilaiNum:ev.nilaiNum,extra:ex});
+            peraturan:t.peraturan||'',catatan:(t.extra&&t.extra.arsip)?'Arsip: titik tambahan (bukan kewajiban), dari Water Monitoring Recap (raw)':'Impor Water Monitoring Recap (raw)',computed:0,status:ev.status,nilaiNum:ev.nilaiNum,extra:ex});
           rl.forEach(function(n){rfaAda[n+'‖'+kTs+'‖'+kP]=1;});
           dibuat++;return;
         }
@@ -50909,7 +50929,7 @@ window._rsPickImport=function(inp){
  *
  * Isi (semuanya fungsi murni atas baris biasa, tanpa DOM; dipakai di aplikasi DAN oleh
  * scripts/pulihkan_pack.mjs yang membenahi berkas Data Pack):
- *   siteEfektif   sumur Handil (H-xxx, HNA-xxx, HU-xxx ...) = HCA, apa pun yang tertulis di kolom site
+ *   siteEfektif   semua titik berawalan H (H-xxx, HNA-xxx, HU-xxx, HDA, HVB ...) = HCA, apa pun yang tertulis di kolom site
  *                 (keputusan pemilik 2026-10-07; seluruh kegiatan Handil di kalender kegiatan memang HCA);
  *                 ejaan lama CPA/HDL -> HCA, SNB -> SPU, SNP -> SPS, Tunu -> TUNU;
  *                 TM- selalu CPU, SUP- selalu SPU, TN- selalu SPU atau NPU dan GTS- tidak tentu: kustodian di GIS (buatGis)
@@ -50925,10 +50945,16 @@ window._rsPickImport=function(inp){
   var R = {};
 
   /* ---------- site ---------- */
-  // "H-L-264", "H-NA-12", "HNA-113/107", "HU-91/924", "HLB-274/169", "HZE-604/411": awalan H diikuti
-  // satu sampai tiga huruf sumur lalu tanda hubung dan angka, atau "H-" langsung.
-  var RE_SUMUR_H = /^\s*H(?:-|[A-Z]{1,3}-\d)/i;
-  R.sumurHandil = function (titik) { return RE_SUMUR_H.test(String(titik == null ? '' : titik)); };
+  // Keputusan pemilik 2026-10-07: "semua yang depannya H itu HCA". Dibaca dari KATA PERTAMA nama titik: H, HNA, HU, HLB, HZE, HDL, HCA,
+  // HDA, HVB, HGL ... (huruf H diikuti sampai empat huruf/angka lain). Bukan sumur Handil walau berawalan H: kapal dan kata biasa
+  // (HB LSM 10, HB Valerie = kapal keruk; HOPPER; HYDROTEST; HWBM = contoh lumpur) -- daftar kecualinya di bawah. "Handil ..." sudah HCA di datanya.
+  var BUKAN_H = { HB: 1, HOPPER: 1, HYDROTEST: 1, HYDRO: 1, HWBM: 1, HSE: 1 };
+  R.sumurHandil = function (titik) {
+    var m = /^\s*([A-Za-z0-9]+)/.exec(String(titik == null ? '' : titik));
+    if (!m) return false;
+    var t = m[1].toUpperCase();
+    return /^H[A-Z0-9]{0,4}$/.test(t) && !BUKAN_H[t];
+  };
   R.siteN = function (s) { var u = String(s == null ? '' : s).toUpperCase().trim(); return (u === 'CPA' || u === 'HDL') ? 'HCA' : u; };
   // ejaan lama site -> nama kanonik (keputusan pemilik: CPA/HDL = HCA; SNB = Sisi Nubi = SPU; SNP = Senipah/Peciko = SPS; Tunu = TUNU)
   var ALIAS_SITE = { CPA: 'HCA', HDL: 'HCA', SNB: 'SPU', SNP: 'SPS', TUNU: 'TUNU' };
@@ -52598,6 +52624,191 @@ window._rsBacaDatar=function(wbx,sn,rep,ctx){
   if(low==='sw full pp22'){var ba=ambil(_rsBadanAirImport(wbx,sn,rep)); if(ba){sapu();return ba;} return null;}   // bentuk kuartalan: grid
   return null;
 };
+
+</script><script id="sumur-y580">
+/* Y580: tab "Sumur" di ENV Monitoring Program (permintaan pemilik 2026-10-07: "samping tab peta tambahkan tab sumur yang
+ * berisi info sumur dari data yang ada. Data ini classified, jadi muncul kalau datapacknya di load").
+ * Sumbernya SATU: lapisan GIS `well` di GIS_LAYERS_RAW, yang hanya terisi dari Data Pack. Tidak ada satu pun data sumur
+ * di berkas ini; tanpa Data Pack tab hanya menampilkan pesan. Site tiap sumur ditentukan oleh aturan yang sama dengan
+ * pemulihan data (PemulihanY578.siteEfektif: H- = HCA, TM- = CPU, SUP- = SPU, TN- = SPU/NPU, GTS- lewat kustodian GIS).
+ * Tabel polos dengan kepala yang bisa diurutkan (aturan UI 2), sel kosong "-" (aturan UI 3), dipotong per halaman. */
+(function () {
+  'use strict';
+  if (typeof window === 'undefined') return;
+  var UKURAN = 100;
+  var S = window._sumurS = window._sumurS || { field: '', status: '', sort: 'well', dir: 1, page: 0 };
+  var _cache = null, _cacheDari = null;
+
+  function esc(v) { return (typeof _ep === 'function') ? _ep(v) : String(v == null ? '' : v).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function tgl(ms) {
+    if (ms == null || ms === '' || isNaN(+ms)) return '';
+    var d = new Date(+ms); if (isNaN(d.getTime())) return '';
+    return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+  }
+  function teks(v) { return v == null ? '' : String(v).trim(); }
+  function lapisan() {
+    try {
+      var L = (typeof GIS_LAYERS_RAW !== 'undefined') ? GIS_LAYERS_RAW : null;
+      if (L && L.well && (L.well.features || []).length) return L;
+    } catch (e) { }
+    return null;
+  }
+
+  // Baris sumur; dibangun sekali per muatan lapisan GIS.
+  function baris() {
+    var L = lapisan();
+    if (!L) return null;
+    if (_cacheDari === L && _cache) return _cache;
+    var R = window.PemulihanY578, gis = null;
+    try { if (R && L.well_cluster && (L.well_cluster.features || []).length) gis = R.buatGis(L); } catch (e) { gis = null; }
+    var out = L.well.features.map(function (f, i) {
+      var p = f.properties || {}, c = (f.geometry && f.geometry.coordinates) || [];
+      var well = teks(p.WELL), site = '';
+      try {
+        if (R && gis) {
+          site = R.siteEfektif(well, '', gis) || '';
+          if (!site) site = gis(teks(p.CLUSTERNAME) || teks(p.GTS)) || '';
+        }
+      } catch (e) { site = ''; }
+      return {
+        i: i, p: p,
+        well: well, nama: teks(p.WELLNAME), lapangan: teks(p.FIELDNAME).toUpperCase(), kluster: teks(p.CLUSTERNAME) || teks(p.GTS),
+        site: site, status: teks(p.STATUS), kondisi: teks(p.GRPSTATUS) || teks(p.CRSTATUS), kelas: teks(p.CLASS),
+        lat: (c.length >= 2 && isFinite(c[1])) ? +c[1] : null, lng: (c.length >= 2 && isFinite(c[0])) ? +c[0] : null,
+        spud: tgl(p.SPUD_DATE)
+      };
+    });
+    _cache = out; _cacheDari = L;
+    return out;
+  }
+
+  window._sumurCount = function () { var r = baris(); return r ? r.length : null; };
+
+  var KOLOM = [
+    ['well', 'Well'], ['nama', 'Nama Sumur'], ['lapangan', 'Lapangan'], ['kluster', 'Kluster / GTS'], ['site', 'Site'],
+    ['status', 'Status'], ['kondisi', 'Kondisi'], ['kelas', 'Kelas'], ['lat', 'Lintang'], ['lng', 'Bujur'], ['spud', 'Spud']
+  ];
+  var TH = 'padding:6px 9px;text-align:left;font-size:13px;font-weight:700;white-space:nowrap;border:1px solid #d0d0d0;background:#f2f2f2;color:#333;cursor:pointer;';
+  var TD = 'padding:5px 8px;vertical-align:top;border:1px solid #e8e8e8;font-size:13px;';
+
+  function unik(arr, k) {
+    var seen = {}, out = [];
+    arr.forEach(function (r) { var v = r[k]; if (v && !seen[v]) { seen[v] = 1; out.push(v); } });
+    return out.sort();
+  }
+  function tombol(aktif, label, onclick) {
+    return '<button onclick="' + onclick + '" style="border:1px solid ' + (aktif ? '#444' : '#ddd') + ';padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:' + (aktif ? '#444' : '#fff') + ';color:' + (aktif ? '#fff' : '#555') + '">' + esc(label) + '</button>';
+  }
+  function barisFilter(label, isi) {
+    return '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">' + label + '</span>' + isi + '</div>';
+  }
+  function bandingkan(a, b, k) {
+    var x = a[k], y = b[k];
+    if (typeof x === 'number' || typeof y === 'number') {
+      if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return x - y;
+    }
+    x = String(x || ''); y = String(y || '');
+    if (!x && !y) return 0; if (!x) return 1; if (!y) return -1;
+    return x.localeCompare(y, 'id', { numeric: true, sensitivity: 'base' });
+  }
+
+  window._sumurSet = function (k, v) {
+    if (k === 'sort') { if (S.sort === v) S.dir = -S.dir; else { S.sort = v; S.dir = 1; } }
+    else { S[k] = v; }
+    if (k !== 'page') S.page = 0;
+    if (typeof renderEnvProgram === 'function') renderEnvProgram();
+  };
+
+  window._sumurHtml = function (q) {
+    var semua = baris();
+    if (!semua) {
+      return { count: 0, html: '<div style="padding:32px;border:1px solid #e0e0e0;border-radius:8px;background:#fafafa;color:#555;font-size:13px;line-height:1.6;max-width:640px">' +
+        '<div style="font-weight:700;color:#111;margin-bottom:6px">Data sumur belum dimuat</div>' +
+        'Daftar sumur berasal dari lapisan GIS yang bersifat classified, jadi tidak ikut tersimpan di aplikasi. ' +
+        'Muat Data Pack lewat ENV Tools &rarr; Data Pack, lalu buka tab ini lagi.</div>' };
+    }
+    var site = (typeof _epSite !== 'undefined') ? _epSite : '';
+    var ql = String(q || '').toLowerCase();
+    var cocok = semua.filter(function (r) {
+      if (site && r.site !== site) return false;
+      if (S.field && r.lapangan !== S.field) return false;
+      if (S.status && r.status !== S.status) return false;
+      if (ql) {
+        var gabung = [r.well, r.nama, r.lapangan, r.kluster, r.site, r.status, r.kondisi, r.kelas, r.p.UWI, r.p.REMARKS, r.p.RIG_NAME, r.p.CONTRACTOR].join(' ').toLowerCase();
+        if (gabung.indexOf(ql) < 0) return false;
+      }
+      return true;
+    });
+    cocok = cocok.slice().sort(function (a, b) { return S.dir * bandingkan(a, b, S.sort); });
+    var halaman = Math.max(1, Math.ceil(cocok.length / UKURAN));
+    if (S.page >= halaman) S.page = halaman - 1;
+    var irisan = cocok.slice(S.page * UKURAN, S.page * UKURAN + UKURAN);
+
+    var tanpaSite = semua.filter(function (r) { return !r.site; }).length;
+    var siteList = unik(semua, 'site');
+    var f = barisFilter('Site:', tombol(!site, 'Semua', "_epSite='';_sumurS.page=0;renderEnvProgram()") +
+      siteList.map(function (s) { return '<button data-s="' + esc(s) + '" onclick="_epSite=(this.dataset.s===_epSite?\'\':this.dataset.s);_sumurS.page=0;renderEnvProgram()" style="border:1px solid ' + (site === s ? '#444' : '#ddd') + ';padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:' + (site === s ? '#444' : '#fff') + ';color:' + (site === s ? '#fff' : '#555') + '">' + esc(s) + '</button>'; }).join(''));
+    var lap = unik(semua, 'lapangan');
+    f += barisFilter('Lapangan:', '<select onchange="_sumurSet(\'field\',this.value)" style="border:1px solid #ddd;border-radius:6px;padding:3px 8px;font-size:13px;font-family:inherit"><option value="">Semua</option>' +
+      lap.map(function (v) { return '<option value="' + esc(v) + '"' + (S.field === v ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('') + '</select>');
+    var sts = unik(semua, 'status');
+    f += barisFilter('Status:', tombol(!S.status, 'Semua', "_sumurSet('status','')") +
+      sts.map(function (v) { return '<button data-s="' + esc(v) + '" onclick="_sumurSet(\'status\',this.dataset.s===_sumurS.status?\'\':this.dataset.s)" style="border:1px solid ' + (S.status === v ? '#444' : '#ddd') + ';padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:' + (S.status === v ? '#444' : '#fff') + ';color:' + (S.status === v ? '#fff' : '#555') + '">' + esc(v) + '</button>'; }).join(''));
+
+    var kepala = KOLOM.map(function (k) {
+      var tanda = S.sort === k[0] ? (S.dir > 0 ? ' ▲' : ' ▼') : '';
+      return '<th onclick="_sumurSet(\'sort\',\'' + k[0] + '\')" style="' + TH + '" title="Klik untuk mengurutkan">' + k[1] + tanda + '</th>';
+    }).join('');
+    var badan = irisan.map(function (r, n) {
+      var dash = function (v) { return v === '' || v == null ? '-' : esc(v); };
+      var desimal = function (v) { return v == null ? '-' : v.toFixed(6); };
+      return '<tr onclick="_sumurDetail(' + r.i + ')" title="Klik untuk detail lengkap" style="cursor:pointer;background:' + (n % 2 ? '#fafafa' : '#fff') + '">' +
+        '<td style="' + TD + 'font-weight:700;white-space:nowrap">' + dash(r.well) + '</td>' +
+        '<td style="' + TD + '">' + dash(r.nama) + '</td>' +
+        '<td style="' + TD + 'white-space:nowrap">' + dash(r.lapangan) + '</td>' +
+        '<td style="' + TD + 'white-space:nowrap">' + dash(r.kluster) + '</td>' +
+        '<td style="' + TD + 'font-weight:700;color:#1565c0;white-space:nowrap">' + dash(r.site) + '</td>' +
+        '<td style="' + TD + 'white-space:nowrap">' + dash(r.status) + '</td>' +
+        '<td style="' + TD + 'white-space:nowrap">' + dash(r.kondisi) + '</td>' +
+        '<td style="' + TD + 'white-space:nowrap">' + dash(r.kelas) + '</td>' +
+        '<td style="' + TD + 'white-space:nowrap;text-align:right">' + desimal(r.lat) + '</td>' +
+        '<td style="' + TD + 'white-space:nowrap;text-align:right">' + desimal(r.lng) + '</td>' +
+        '<td style="' + TD + 'white-space:nowrap">' + dash(r.spud) + '</td></tr>';
+    }).join('');
+    var tabel = cocok.length
+      ? '<div style="overflow-x:auto"><table style="width:100%;border-collapse:separate;border-spacing:0"><thead><tr style="position:sticky;top:0;z-index:2">' + kepala + '</tr></thead><tbody>' + badan + '</tbody></table></div>'
+      : '<div style="padding:24px;color:#777;font-size:13px">Tidak ada sumur yang cocok dengan filter.</div>';
+
+    var awal = cocok.length ? S.page * UKURAN + 1 : 0, akhir = Math.min(cocok.length, S.page * UKURAN + UKURAN);
+    var nav = '<div style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;color:#555">' +
+      '<button ' + (S.page <= 0 ? 'disabled ' : '') + 'onclick="_sumurSet(\'page\',_sumurS.page-1)" style="border:1px solid #ddd;border-radius:6px;padding:2px 10px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">&lsaquo; Sebelumnya</button>' +
+      '<span>' + awal + '&ndash;' + akhir + ' dari ' + cocok.length + ' sumur (halaman ' + (S.page + 1) + '/' + halaman + ')</span>' +
+      '<button ' + (S.page >= halaman - 1 ? 'disabled ' : '') + 'onclick="_sumurSet(\'page\',_sumurS.page+1)" style="border:1px solid #ddd;border-radius:6px;padding:2px 10px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">Berikutnya &rsaquo;</button>' +
+      (tanpaSite ? '<span style="margin-left:auto">' + tanpaSite + ' sumur belum punya site (kustodian GIS tidak tunggal)</span>' : '') + '</div>';
+    return { count: cocok.length, html: f + nav + tabel + (cocok.length > UKURAN ? nav : '') };
+  };
+
+  // Detail lengkap satu sumur: semua atribut lapisan GIS, tanggal dibaca dari milidetik.
+  window._sumurDetail = function (i) {
+    var semua = baris(); if (!semua || !semua[i]) return;
+    var r = semua[i], p = r.p;
+    var lama = document.getElementById('sumur-detail'); if (lama) lama.remove();
+    var kunci = Object.keys(p).filter(function (k) { return /^(SPUD_DATE|FIN_DRILL)$/.test(k) || (p[k] != null && p[k] !== ''); });
+    var isi = kunci.map(function (k) {
+      var v = /_DATE$|^FIN_DRILL$/.test(k) ? tgl(p[k]) : teks(p[k]);
+      return '<tr><td style="' + TD + 'font-weight:600;color:#555;white-space:nowrap">' + esc(k) + '</td><td style="' + TD + '">' + (v === '' ? '-' : esc(v)) + '</td></tr>';
+    }).join('');
+    var ov = document.createElement('div');
+    ov.id = 'sumur-detail';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.onclick = function (e) { if (e.target === ov) ov.remove(); };
+    ov.innerHTML = '<div style="background:#fff;border-radius:10px;max-width:560px;width:100%;max-height:85vh;overflow:auto;padding:16px 18px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:15px;font-weight:700">' + esc(r.well || r.nama || '-') + (r.site ? ' &middot; ' + esc(r.site) : '') + '</div>' +
+      '<button onclick="document.getElementById(\'sumur-detail\').remove()" style="border:1px solid #ddd;border-radius:6px;background:#fff;padding:2px 10px;font-size:13px;cursor:pointer;font-family:inherit">Tutup</button></div>' +
+      '<table style="width:100%;border-collapse:collapse"><tbody>' + isi + '</tbody></table></div>';
+    document.body.appendChild(ov);
+  };
+})();
 
 </script><style id="envmon-fonts-y569">
 /* fonts.css — Inter + Inter Display, Latin subset, WOFF2 base64 (OFL). Tempel ke dalam <style> di file HTML. */
@@ -58122,5 +58333,12 @@ R12 sebelumnya.
     bisa lima kolom sampling, RFA 06/06A/06B/06C); baris app tanpa nomor RFA ditautkan lewat tanggal. Nama titik raw ("STP-1",
     "HDL Camp I", "Outlet DWWTU (Laundry & Restaurant - BKP)") dipetakan ke titik app lewat pasangan yang dibuktikan dengan
     pencocokan nilai; DWW Full dan PW Inlet yang tidak punya baris RFA di raw tetap dibuat (tanpa nomor).
+  - Aturan H diperluas (permintaan pemilik 2026-10-07): SEMUA titik berawalan H adalah HCA (H-xxx, HDA, HVB, HL, HDL, HCA, H4-N ...),
+    kecuali kapal keruk dan kata umum yang kebetulan berawalan H (HB, HOPPER, Hydrotest, HWBM, HSE).
+  - Titik tambahan di raw yang bukan kewajiban (69 sel inlet CPU/SPU di DWW Full) kini dibuat di app sebagai arsip ("Inlet <titik>",
+    tanpa baku mutu, bertanda arsip) lewat Sinkron Raw; impor ulang tidak menggandakannya.
+  - ENV Monitoring Program: tab baru "Sumur" di samping Peta. Isinya daftar sumur dari lapisan GIS (Well, nama, lapangan, kluster,
+    site, status, kondisi, kelas, koordinat, spud) dengan filter site/lapangan/status, pencarian, urut per kolom, dan detail lengkap.
+    Data sumur classified: tab hanya terisi bila Data Pack dimuat; tanpa itu hanya pesan.
 ENVMON-CHANGELOG-Y571 -->
 </html>
