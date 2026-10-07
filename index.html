@@ -5796,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'5fb64ff7'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'1fed4bec'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -37674,7 +37674,7 @@ async function _gtBatchHandleExcel(file){
     const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
     window._gtBatch.rows=raw.map(function(r){
       const o={};Object.keys(r).forEach(function(k){o[String(k).toLowerCase().replace(/[\s_]+/g,'')]=r[k];});
-      return {nama_file:o.namafile||o.nama||o.filename||o.file||'',latitude:o.latitude||o.lat||'',longitude:o.longitude||o.lng||o.long||'',judul:o.judul||o.title||'',alamat:o.alamat||o.address||'',tanggal_jam:o.tanggaljam||o.tanggal||o.datetime||o.waktu||'',watermark:(o.watermark||o.wm||''),tampilkan_peta:o.tampilkanpeta||o.peta||o.map||'',tampilkan_judul:o.tampilkanjudul||'',tampilkan_alamat:o.tampilkanalamat||'',tampilkan_koordinat:o.tampilkankoordinat||'',tampilkan_waktu:o.tampilkanwaktu||'',tampilkan_watermark:o.tampilkanwatermark||'',tampilkan_bendera:o.tampilkanbendera||''};
+      return {nama_file:o.namafile||o.nama||o.filename||o.file||'',latitude:o.latitude||o.lat||'',longitude:o.longitude||o.lng||o.long||'',judul:o.judul||o.title||'',alamat:o.alamat||o.address||'',tanggal_jam:o.tanggaljam||o.tanggal||o.datetime||o.waktu||'',watermark:(o.watermark||o.wm||''),tampilkan_peta:o.tampilkanpeta||o.peta||o.map||'',tampilkan_judul:o.tampilkanjudul||'',tampilkan_alamat:o.tampilkanalamat||'',tampilkan_koordinat:o.tampilkankoordinat||'',tampilkan_waktu:o.tampilkanwaktu||'',tampilkan_watermark:o.tampilkanwatermark||'',tampilkan_bendera:o.tampilkanbendera||'',tampilkan_cone:o.tampilkancone||'',arah_cone:(o.arahcone!==undefined&&o.arahcone!==''?o.arahcone:(o.arah||'')),label_google:(o.labelgoogle!==undefined?o.labelgoogle:'')};
     }).filter(function(r){return r.nama_file||r.latitude||r.judul;});
     _gtBatchStatus(''+window._gtBatch.rows.length+' baris Excel dimuat. '+(Object.keys(window._gtBatch.photos).length?Object.keys(window._gtBatch.photos).length+' foto siap.':'Unggah foto untuk mencocokkan.'));
   }catch(e){_gtBatchStatus('⚠ Gagal membaca Excel: '+String(e).slice(0,120));}
@@ -37701,7 +37701,7 @@ async function _gtBatchProcess(){
       title:(String(row.judul||'')!==''?String(row.judul):_rmx.title),addr:(String(row.alamat||'')!==''?String(row.alamat):_rmx.addr),
       dt:((row.tanggal_jam!==''&&row.tanggal_jam!=null)?(_gtExcelDate(row.tanggal_jam)||_rmx.dt):_rmx.dt),wm:(String(row.watermark||'')!==''?String(row.watermark):_rmx.wm),
       showMap:showMap,showTitle:bl(row.tampilkan_judul,_rmx.showTitle),showAddr:bl(row.tampilkan_alamat,_rmx.showAddr),showCoord:bl(row.tampilkan_koordinat,_rmx.showCoord),
-      showDt:bl(row.tampilkan_waktu,_rmx.showDt),showWm:bl(row.tampilkan_watermark,_rmx.showWm),showFlag:bl(row.tampilkan_bendera,_rmx.showFlag),_mapCanvas:null});
+      showDt:bl(row.tampilkan_waktu,_rmx.showDt),showWm:bl(row.tampilkan_watermark,_rmx.showWm),showFlag:bl(row.tampilkan_bendera,_rmx.showFlag),/*Y577*/showCone:bl(row.tampilkan_cone,_rmx.showCone),coneDeg:((row.arah_cone!==''&&row.arah_cone!=null&&isFinite(parseFloat(row.arah_cone)))?parseFloat(row.arah_cone):_rmx.coneDeg),showGoogle:((row.label_google!==''&&row.label_google!=null)?true:_rmx.showGoogle),googleText:((row.label_google!==''&&row.label_google!=null)?String(row.label_google):_rmx.googleText),_mapCanvas:null});
     if(showMap){
       const ck=st.lat+','+st.lng;
       if(mapCache[ck]===undefined)mapCache[ck]=await _gtFetchMapCanvas(parseFloat(st.lat),parseFloat(st.lng),_gtState().mapStyle);
@@ -37738,9 +37738,9 @@ async function _gtBatchProcess(){
 function _gtDownloadTemplate(){
   const XL=window.XLSXS||window.XLSX;
   if(!XL){if(typeof toast==='function')toast('⚠ Library Excel belum siap.');return;}
-  const header=['nama_file','latitude','longitude','judul','alamat','tanggal_jam','watermark','tampilkan_peta'];
-  const ex1=['IMG_TITIK-05.jpg',-1.239277,116.846077,'CPU, Kalimantan Timur, Indonesia','SW-05, CPU, Wilayah Kerja Mahakam, Kalimantan Timur, Indonesia','2026-07-15 09:30','GPS Map Camera','ya'];
-  const ex2=['IMG_TITIK-06.jpg',-1.241000,116.848000,'CPU, Kalimantan Timur, Indonesia','SW-06, CPU, Wilayah Kerja Mahakam, Kalimantan Timur, Indonesia','2026-07-15 10:05','GPS Map Camera','ya'];
+  const header=['nama_file','latitude','longitude','judul','alamat','tanggal_jam','watermark','tampilkan_peta','tampilkan_cone','arah_cone','label_google'];
+  const ex1=['IMG_TITIK-05.jpg',-1.239277,116.846077,'CPU, Kalimantan Timur, Indonesia','SW-05, CPU, Wilayah Kerja Mahakam, Kalimantan Timur, Indonesia','2026-07-15 09:30','GPS Map Camera','ya','ya',105,'Google'];
+  const ex2=['IMG_TITIK-06.jpg',-1.241000,116.848000,'CPU, Kalimantan Timur, Indonesia','SW-06, CPU, Wilayah Kerja Mahakam, Kalimantan Timur, Indonesia','2026-07-15 10:05','GPS Map Camera','ya','ya',120,'Google'];
   // Y454: kalau fotonya sudah di-drop, kolom nama_file diisi otomatis dari
   // nama berkas aslinya -- itu bagian yang paling mudah salah ketik, dan
   // salah ketik di sini berarti fotonya tidak pernah cocok.
@@ -37765,7 +37765,7 @@ function _gtDownloadTemplateWithDropdowns(XL,wb,header){
     const colLetter=function(name){const i=header.indexOf(name);return i<0?null:XL.utils.encode_col(i);};
     // hanya kolom yang BENAR ADA di header sekarang
     const yesNoCols=['tampilkan_peta','tampilkan_judul','tampilkan_alamat','tampilkan_koordinat',
-                     'tampilkan_waktu','tampilkan_watermark','tampilkan_bendera'].map(colLetter).filter(Boolean);
+                     'tampilkan_waktu','tampilkan_watermark','tampilkan_bendera','tampilkan_cone'].map(colLetter).filter(Boolean);
     if(!yesNoCols.length){FALLBACK();return;}
     const buf=XL.write(wb,{bookType:'xlsx',type:'array'});
     const zip=fflate.unzipSync(new Uint8Array(buf));
@@ -37949,7 +37949,7 @@ async function _gtPtsRefreshPreview(){
       template:_gtPtsEffTemplate(),mapStyle:(S.mapStyle||'street'),tz:(S.tz||'WITA'),weather:(S.weather||''),weatherIcon:(S.weatherIcon||'cloudy'),report:(S.report||''),
       note:(S.note!=null?S.note:'Captured by GPS Map Camera'),
       brightness:(S.brightness!=null?S.brightness:82),scalePct:(S.scalePct!=null?S.scalePct:100),
-      showMap:flags.showMap,showTitle:flags.showTitle,showAddr:flags.showAddr,showCoord:flags.showCoord,showDt:flags.showDt,showWm:flags.showWm,showFlag:flags.showFlag,showIcon:flags.showIcon,boxW:S.boxW,boxH:S.boxH,coordFmt:S.coordFmt,dateFmt:S.dateFmt,gmt:flags.gmt};
+      showMap:flags.showMap,showTitle:flags.showTitle,showAddr:flags.showAddr,showCoord:flags.showCoord,showDt:flags.showDt,showWm:flags.showWm,showFlag:flags.showFlag,showIcon:flags.showIcon,boxW:S.boxW,boxH:S.boxH,coordFmt:S.coordFmt,dateFmt:S.dateFmt,gmt:flags.gmt,/*Y577*/showCone:flags.showCone,coneDeg:flags.coneDeg,coneWidth:flags.coneWidth,showGoogle:flags.showGoogle,googleText:flags.googleText};
     // fetch (and cache) the real mini-map tile for this point/style so the
     // preview's map thumbnail tracks site/coordinate/gaya-peta changes just
     // like Stempel Foto's preview does, instead of always showing the
@@ -37988,7 +37988,7 @@ async function _gtPointsGenerate(){
       template:_gtPtsEffTemplate(),mapStyle:(S.mapStyle||'street'),tz:(S.tz||'WITA'),weather:(S.weather||''),weatherIcon:(S.weatherIcon||'cloudy'),report:(S.report||''),
       note:(S.note!=null?S.note:'Captured by GPS Map Camera'),
       brightness:(S.brightness!=null?S.brightness:82),scalePct:(S.scalePct!=null?S.scalePct:100),
-      showMap:flags.showMap,showTitle:flags.showTitle,showAddr:flags.showAddr,showCoord:flags.showCoord,showDt:flags.showDt,showWm:flags.showWm,showFlag:flags.showFlag,showIcon:flags.showIcon,boxW:S.boxW,boxH:S.boxH,coordFmt:S.coordFmt,dateFmt:S.dateFmt,gmt:flags.gmt};
+      showMap:flags.showMap,showTitle:flags.showTitle,showAddr:flags.showAddr,showCoord:flags.showCoord,showDt:flags.showDt,showWm:flags.showWm,showFlag:flags.showFlag,showIcon:flags.showIcon,boxW:S.boxW,boxH:S.boxH,coordFmt:S.coordFmt,dateFmt:S.dateFmt,gmt:flags.gmt,/*Y577*/showCone:flags.showCone,coneDeg:flags.coneDeg,coneWidth:flags.coneWidth,showGoogle:flags.showGoogle,googleText:flags.googleText};
     if(S.autoAddr){const ad=await _gtReverseAddr(pt.lat,pt.lng);if(ad){if(ad.title)st.title=ad.title;if(ad.addr)st.addr=ad.addr;}await new Promise(function(r){setTimeout(r,1100);});}
     if(st.showMap){const ck=st.lat+','+st.lng;if(mapCache[ck]===undefined)mapCache[ck]=await _gtFetchMapCanvas(parseFloat(st.lat),parseFloat(st.lng),st.mapStyle);st._mapCanvas=mapCache[ck]||null;}
     const stx=flags.remix?_gtApplyRemix(st,flags):st;
@@ -54365,6 +54365,380 @@ window._emfDwiJaga=function(doc){
 };
 })();
 
+/* geotag.js — Y577: Geotag Foto (ENV Tools).
+ * Permintaan pemilik 2026-10-07 (dengan foto stempel GPS Map Camera asli):
+ *  1. Peta mini stempel meniru foto acuan: pin merah ala Google (titik tengah gelap), cone biru arah
+ *     (tampil/sembunyi + derajat arah + lebar) dan label "Google" di kiri-bawah peta dengan teks yang bisa diedit.
+ *     Berlaku untuk template Classic dan template Cuaca, satuan, batch Excel dan overlay titik.
+ *  2. Pemrosesan batch memiliki menu pengaturan stempel yang sama dengan Stempel Foto (satuan). Datanya SATU
+ *     (state stempel bersama), jadi mengubah di salah satu menu ikut mengubah yang lain.
+ *  3. Menu Stempel Foto (satuan), Pemrosesan Batch, Overlay Transparan dan Hapus Stempel bisa ditampilkan
+ *     atau disembunyikan (tersimpan di localStorage env26_gt_menu).
+ * Arah cone: derajat kompas, 0 = utara, searah jarum jam (90 = timur). */
+(function () {
+  'use strict';
+  if (window.__geotagY577) return; window.__geotagY577 = true;
+
+  /* ---------- 1. nilai efektif cone / label dari state ---------- */
+  function ex(st) {
+    st = st || {};
+    var cuaca = st.template === 'gmc_weather';
+    var on = (st.showCone === undefined) ? cuaca : !!st.showCone;     // template Cuaca dulu selalu punya kipas
+    var d = parseFloat(st.coneDeg); if (!isFinite(d)) d = cuaca ? 231 : 105;
+    d = ((d % 360) + 360) % 360;
+    var w = parseFloat(st.coneWidth); if (!isFinite(w)) w = 56; w = Math.max(20, Math.min(120, w));
+    var label = st.showGoogle ? String(st.googleText == null ? 'Google' : st.googleText).trim() : '';
+    return { cone: on, deg: d, width: w, label: label };
+  }
+  window._gtGeoEx = ex;
+
+  /* ---------- 2. gambar ---------- */
+  function gambarCone(ctx, tx, ty, len, deg, width) {
+    var c = (deg - 90) * Math.PI / 180, h = width / 2 * Math.PI / 180;
+    var g = ctx.createRadialGradient(tx, ty, 0, tx, ty, len);
+    g.addColorStop(0, 'rgba(66,133,244,1)'); g.addColorStop(1, 'rgba(66,133,244,0.8)');
+    ctx.save(); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(tx, ty);
+    ctx.arc(tx, ty, len, c - h, c + h); ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  function gambarPinGoogle(ctx, tx, ty, r) {            // ujung pin tepat di (tx, ty)
+    var hy = ty - 2.1 * r, phi = Math.acos(1 / 2.1);
+    ctx.save();
+    ctx.fillStyle = '#F0535B'; ctx.strokeStyle = 'rgba(120,20,20,0.35)'; ctx.lineWidth = Math.max(1, r * 0.07);
+    ctx.beginPath(); ctx.moveTo(tx, ty);
+    ctx.lineTo(tx - r * Math.sin(phi), hy + r * Math.cos(phi));
+    ctx.arc(tx, hy, r, Math.PI / 2 + phi, Math.PI / 2 - phi + 2 * Math.PI, false);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#7A0F10'; ctx.beginPath(); ctx.arc(tx, hy, r * 0.42, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  function gambarLabelGoogle(ctx, x0, y0, size, teks, fsFrac, yFrac) {
+    if (!teks) return;
+    var fam = '"Product Sans","Google Sans",Poppins,Montserrat,Roboto,Arial,sans-serif';
+    var fs = size * (fsFrac || 0.17);
+    ctx.save(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.font = '600 ' + fs + 'px ' + fam;
+    var tw = ctx.measureText(teks).width, maks = size * 0.84;
+    if (tw > maks) { fs = fs * maks / tw; ctx.font = '600 ' + fs + 'px ' + fam; }
+    var x = x0 + size * 0.07, y = y0 + size * (yFrac || 0.85);
+    ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(2, fs * 0.2); ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.strokeText(teks, x, y);
+    ctx.fillStyle = '#ffffff'; ctx.fillText(teks, x, y);
+    ctx.restore();
+  }
+
+  /* mesin Classic: pin digambar di tengah peta yang sedang di-clip; di situ cone dan label ditambahkan */
+  var pinAsli = window._gmcPin;
+  if (typeof pinAsli === 'function') {
+    window._gmcPin = function (ctx, cx, cy, r) {
+      var e = window.__gmcEx;
+      if (!e || !(e.cone || e.label)) return pinAsli.apply(this, arguments);
+      var size = r * 20, x0 = cx - size / 2, y0 = cy - size / 2, rp = r * 1.2;
+      if (e.cone) gambarCone(ctx, cx, cy, size * 0.25, e.deg, e.width);
+      gambarPinGoogle(ctx, cx, cy, rp);
+      gambarLabelGoogle(ctx, x0, y0, size, e.label);
+    };
+  }
+  var klasikAsli = window._gtDrawGmcClassic;
+  if (typeof klasikAsli === 'function') {
+    window._gtDrawGmcClassic = function (ctx, W, H, st) {
+      window.__gmcEx = ex(st);
+      try { return klasikAsli.apply(this, arguments); } finally { window.__gmcEx = null; }
+    };
+  }
+  var cuacaAsli = window._gtDrawGmcWeather;
+  if (typeof cuacaAsli === 'function') {
+    window._gtDrawGmcWeather = function (ctx, W, H, st) {
+      window.__gmcExSt = st;
+      try { return cuacaAsli.apply(this, arguments); } finally { window.__gmcExSt = null; }
+    };
+  }
+  /* peta mini template Cuaca / lama: sama dengan aslinya, hanya kipas tetapnya diganti cone yang bisa diatur */
+  if (typeof window._gtDrawMiniMap === 'function') {
+    window._gtDrawMiniMap = function (ctx, x, y, w, h, lat, lng) {
+      var st = window.__gmcExSt || _gtState(), e = ex(st), gs = _gtState();
+      ctx.save();
+      if (gs._mapCanvas) {
+        ctx.drawImage(gs._mapCanvas, 0, 0, gs._mapCanvas.width, gs._mapCanvas.height, x, y, w, h);
+      } else {
+        ctx.fillStyle = '#e8eef2'; ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#c6d4dd'; ctx.lineWidth = 1;
+        for (var i = 1; i < 4; i++) {
+          ctx.beginPath(); ctx.moveTo(x + w * i / 4, y); ctx.lineTo(x + w * i / 4, y + h); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x, y + h * i / 4); ctx.lineTo(x + w, y + h * i / 4); ctx.stroke();
+        }
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(3, w * 0.05);
+        ctx.beginPath(); ctx.moveTo(x, y + h * 0.7); ctx.quadraticCurveTo(x + w * 0.5, y + h * 0.45, x + w, y + h * 0.6); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x + w * 0.3, y); ctx.quadraticCurveTo(x + w * 0.42, y + h * 0.5, x + w * 0.35, y + h); ctx.stroke();
+      }
+      var px = x + w / 2, py = y + h * 0.5, r = Math.max(6, w * 0.085);
+      if (e.cone) gambarCone(ctx, px, py + r * 1.15, w * 0.30, e.deg, e.width);
+      ctx.fillStyle = '#ea4335';
+      ctx.beginPath(); ctx.arc(px, py - r * 0.6, r, Math.PI, 0); ctx.lineTo(px, py + r * 1.15); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#8a1c12'; ctx.beginPath(); ctx.arc(px, py - r * 0.6, r * 0.4, 0, 7); ctx.fill();
+      gambarLabelGoogle(ctx, x, y, w, e.label, 0.14, 0.66);   // di atas pita koordinat template Cuaca
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h);
+      ctx.restore();
+    };
+  }
+
+  /* ---------- 3. state ---------- */
+  var stateAsli = window._gtState;
+  if (typeof stateAsli === 'function') {
+    window._gtState = function () {
+      var s = stateAsli.apply(this, arguments);
+      if (s.coneWidth === undefined) s.coneWidth = 56;
+      if (s.showGoogle === undefined) s.showGoogle = false;
+      if (s.googleText === undefined) s.googleText = 'Google';
+      return s;
+    };
+  }
+
+  /* ---------- 4. menu pengaturan: kelompok cone + label ---------- */
+  var KUNCI_UI = { showCone: 1, coneDeg: 1, coneWidth: 1, showGoogle: 1, googleText: 1 };
+  function lblS() { return 'font-size:13px;color:var(--g3)'; }
+  function fldS() { return 'display:block;width:100%;margin-top:4px;font-size:13px;border:1px solid var(--g2);border-radius:6px;padding:5px 8px;font-family:inherit;background:transparent;color:var(--text)'; }
+  function esc(s) { return (typeof _ep === 'function') ? _ep(s) : String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function kelompokGoogleHtml(setter) {
+    var st = _gtState(), e = ex(st), L = lblS();
+    return '<div class="gt-groupbox gt-google-box" style="grid-column:1/-1;margin:6px 0 0">'
+      + '<div class="gt-groupbox-title">Peta mini ala Google (cone arah dan label)</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end">'
+      + '<label style="' + L + ';display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px"><input type="checkbox" ' + (e.cone ? 'checked' : '') + ' onchange="' + setter + '(\'showCone\',this.checked)"> Tampilkan cone arah</label>'
+      + '<label style="' + L + '">Arah cone: <b class="gt-lbl-coneDeg">' + Math.round(e.deg) + '°</b>'
+      + '<input type="range" min="0" max="359" step="1" value="' + Math.round(e.deg) + '" oninput="' + setter + '(\'coneDeg\',parseFloat(this.value))" style="display:block;width:100%;margin-top:8px"></label>'
+      + '<label style="' + L + '">Derajat (0 = utara, 90 = timur)'
+      + '<input type="number" min="0" max="359" step="1" value="' + Math.round(e.deg) + '" onchange="' + setter + '(\'coneDeg\',parseFloat(this.value)||0)" style="' + fldS() + '"></label>'
+      + '<label style="' + L + '">Lebar cone: <b class="gt-lbl-coneWidth">' + Math.round(e.width) + '°</b>'
+      + '<input type="range" min="20" max="120" step="1" value="' + Math.round(e.width) + '" oninput="' + setter + '(\'coneWidth\',parseFloat(this.value))" style="display:block;width:100%;margin-top:8px"></label>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end;margin-top:10px">'
+      + '<label style="' + L + ';display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:6px"><input type="checkbox" ' + (st.showGoogle ? 'checked' : '') + ' onchange="' + setter + '(\'showGoogle\',this.checked)"> Tampilkan label di peta</label>'
+      + '<label style="' + L + ';grid-column:span 2">Teks label (bisa diedit)'
+      + '<input type="text" value="' + esc(st.googleText == null ? 'Google' : st.googleText) + '" placeholder="Google" oninput="' + setter + '(\'googleText\',this.value)" style="' + fldS() + '"></label>'
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--g3);margin-top:6px">Berlaku untuk template Classic dan Cuaca (yang memakai peta mini). Pin berubah mengikuti gaya Google Maps saat cone atau label aktif.</div>'
+      + '</div>';
+  }
+
+  /* ---------- 5. menu pengaturan stempel untuk Pemrosesan Batch (state yang sama dengan Stempel Foto satuan) ---------- */
+  function panelBatchHtml() {
+    var st = _gtState(), L = lblS(), F = fldS();
+    var h = '<div class="gt-groupbox" id="gt-bt-pengaturan" style="margin-top:10px"><div class="gt-groupbox-title">Pengaturan Stempel (dipakai semua foto batch)</div>'
+      + '<div style="font-size:13px;color:var(--g3);margin-bottom:8px">Menu yang sama dengan Stempel Foto (satuan) dan satu pengaturan bersama: mengubah di sini ikut mengubah di sana. Sel kosong di Excel memakai pengaturan ini.</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:8px">'
+      + '<div style="grid-column:1/-1" id="gtbt-tpl">' + String(_gtTemplatePickerHtml(st.template)).replace(/id="gt-tpl-thumb-/g, 'id="gtbt-tpl-thumb-') + '</div>'
+      + (st.showMap ? ('<label style="' + L + ';grid-column:1/-1">Gaya peta mini<select onchange="_gtSetMapStyle(this.value)" style="' + F + '">'
+        + [['street', 'Peta jalan (OpenStreetMap)'], ['satellite', 'Satelit (Esri)'], ['terrain', 'Topografi / kontur'], ['hybrid', 'Satelit + label']].map(function (p) { return '<option value="' + p[0] + '"' + (st.mapStyle === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('')
+        + '</select></label>') : '')
+      + '<label style="' + L + ';display:block">Watermark' + _gtRichFieldHtml('gtbt-rich-wm', 'wm', st.wm, '', 'margin-top:2px;' + F, '_gtSet') + '</label>';
+    if (st.template === 'classic') {
+      h += '<label style="' + L + '">Offset GMT<input value="' + esc(st.gmt) + '" onchange="_gtSet(\'gmt\',this.value)" placeholder="+08:00" style="' + F + '"></label>'
+        + '<label style="' + L + ';grid-column:1/-1;display:block">Note (baris bawah)' + _gtRichFieldHtml('gtbt-rich-note', 'note', st.note, 'Captured by GPS Map Camera', 'margin-top:2px;' + F, '_gtSet') + '</label>';
+    }
+    if (st.template === 'gmc_weather') {
+      h += '<label style="' + L + '">Cuaca (suhu)<input value="' + esc(st.weather) + '" onchange="_gtSet(\'weather\',this.value)" placeholder="mis. 31°C" style="' + F + '"></label>'
+        + '<label style="' + L + '">Ikon cuaca<select onchange="_gtSet(\'weatherIcon\',this.value)" style="' + F + '">'
+        + [['cloudy', 'Berawan'], ['sunny', 'Cerah'], ['partly', 'Cerah Berawan'], ['rain', 'Hujan'], ['storm', 'Badai/Petir'], ['fog', 'Berkabut'], ['snow', 'Bersalju']].map(function (p) { return '<option value="' + p[0] + '"' + ((st.weatherIcon || 'cloudy') === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('')
+        + '</select></label>'
+        + '<label style="' + L + '">Report<input value="' + esc(st.report) + '" onchange="_gtSet(\'report\',this.value)" placeholder="mis. Work Progress" style="' + F + '"></label>';
+    }
+    if (st.template === 'simple_bl' || st.template === 'network_top') {
+      h += '<label style="' + L + ';grid-column:1/-1">Posisi stempel<select onchange="_gtSet(\'pos\',this.value)" style="' + F + '">'
+        + [['tl', 'Kiri atas'], ['tr', 'Kanan atas'], ['bl', 'Kiri bawah'], ['br', 'Kanan bawah']].map(function (p) { return '<option value="' + p[0] + '"' + ((st.pos || 'bl') === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('')
+        + '</select></label>'
+        + '<label style="' + L + '">Nama lokasi (baris tebal)<input value="' + esc(st.loc) + '" onchange="_gtSet(\'loc\',this.value)" placeholder="mis. Sanipah" style="' + F + '"></label>'
+        + '<label style="' + L + '">Kecamatan<input value="' + esc(st.kec) + '" onchange="_gtSet(\'kec\',this.value)" style="' + F + '"></label>'
+        + '<label style="' + L + '">Kabupaten<input value="' + esc(st.kab) + '" onchange="_gtSet(\'kab\',this.value)" style="' + F + '"></label>'
+        + '<label style="' + L + '">Provinsi<input value="' + esc(st.prov) + '" onchange="_gtSet(\'prov\',this.value)" style="' + F + '"></label>';
+    }
+    if (st.template === 'network_top') h += '<label style="' + L + '">Zona waktu<input value="' + esc(st.tz) + '" onchange="_gtSet(\'tz\',this.value)" placeholder="WITA" style="' + F + '"></label>';
+    h += '</div>'
+      + '<details open><summary style="cursor:pointer;' + L + '">Elemen stempel (tampil/sembunyi)</summary>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:6px">'
+      + ['showMap:Peta mini', 'showTitle:Judul', 'showFlag:Bendera negara', 'showIcon:Ikon badge (logo)', 'showAddr:Alamat', 'showCoord:Koordinat', 'showDt:Tanggal/Jam', 'showWm:Watermark'].map(function (pair) {
+        var k = pair.split(':')[0], t = pair.split(':')[1];
+        return '<label style="' + L + ';display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" ' + (st[k] ? 'checked' : '') + ' onchange="_gtSet(\'' + k + '\',this.checked)"> ' + t + '</label>';
+      }).join('')
+      + '</div></details>'
+      + kelompokGoogleHtml('_gtSet')
+      + '</div>'
+      + _gtBrightnessScaleHtml('gtbt', '_gtSet', st.brightness, st.scalePct, st)
+      + _gtExifFieldsHtml('gtbt', st, '_gtSet');
+    return h;
+  }
+  async function gambarThumbBatch() {
+    try {
+      var img = await _gtPlaceholderPhoto(); if (!img) return;
+      var sample = _gtSampleState();
+      ['classic', 'gmc_weather', 'simple_bl', 'network_top'].forEach(function (tpl) {
+        var el = document.getElementById('gtbt-tpl-thumb-' + tpl); if (!el) return;
+        try {
+          var out = _gtStamp({ img: img, st: Object.assign({}, sample, { template: tpl }) }, { noUpscale: true });
+          var g = el.getContext('2d'); g.clearRect(0, 0, el.width, el.height); g.imageSmoothingQuality = 'high'; g.drawImage(out, 0, 0, el.width, el.height);
+        } catch (e) { }
+      });
+    } catch (e) { }
+  }
+
+  /* ---------- 6. sinkron antar menu (satu state, beberapa tampilan) ---------- */
+  function nilaiEfektif(k, st) {
+    var e = ex(st);
+    if (k === 'showCone') return e.cone;
+    if (k === 'coneDeg') return Math.round(e.deg);
+    if (k === 'coneWidth') return Math.round(e.width);
+    return st[k];
+  }
+  function sinkron() {
+    var host = window._gtHostEl; if (!host) return;
+    var st = _gtState(), act = document.activeElement;
+    var re = /_gt(?:Set|PtsSetFlag)\('(\w+)',(this\.checked|this\.value|parseFloat\(this\.value\)(?:\|\|\d+)?)/;
+    var reMap = /_gtSetMapStyle\(this\.value\)/, reRich = /_gtRichFieldInput\(this,'(\w+)','_gtSet'\)/;
+    [].forEach.call(host.querySelectorAll('input,select,[contenteditable]'), function (el) {
+      if (el === act) return;
+      var a = el.getAttribute('onchange') || el.getAttribute('oninput') || '', m;
+      if (el.hasAttribute('contenteditable')) {
+        m = reRich.exec(a); if (!m) return;
+        var v = _gtSanitizeRich(st[m[1]] == null ? '' : st[m[1]]);
+        if (el.innerHTML !== v) el.innerHTML = v;
+        return;
+      }
+      var k = null, tipe = null;
+      if ((m = re.exec(a))) { k = m[1]; tipe = m[2]; }
+      else if (reMap.test(a)) { k = 'mapStyle'; tipe = 'this.value'; }
+      if (!k || !(k in st || k in KUNCI_UI)) return;
+      var val = nilaiEfektif(k, st);
+      if (el.type === 'checkbox') { var c = !!val; if (el.checked !== c) el.checked = c; }
+      else { var s2 = (val == null ? '' : String(val)); if (el.value !== s2) el.value = s2; }
+    });
+    ['coneDeg', 'coneWidth'].forEach(function (k) {
+      [].forEach.call(host.querySelectorAll('.gt-lbl-' + k), function (b) { b.textContent = nilaiEfektif(k, st) + '°'; });
+    });
+    var bri = st.brightness, sc = st.scalePct;
+    ['gt', 'gtbt'].forEach(function (p) {
+      var b1 = document.getElementById(p + '-bri-val'); if (b1 && bri != null) b1.textContent = bri + '%';
+      var b2 = document.getElementById(p + '-scale-val'); if (b2 && sc != null) b2.textContent = sc + '%';
+    });
+  }
+  var setAsli = window._gtSet;
+  if (typeof setAsli === 'function') {
+    window._gtSet = function (k) {
+      var r = setAsli.apply(this, arguments);
+      try { sinkron(); if (KUNCI_UI[k] && typeof _gtPtsRefreshPreview === 'function') _gtPtsRefreshPreview(); } catch (e) { }
+      return r;
+    };
+  }
+  var flagAsli = window._gtPtsSetFlag;
+  if (typeof flagAsli === 'function') {
+    window._gtPtsSetFlag = function () {
+      var r = flagAsli.apply(this, arguments);
+      try { if (typeof _gtRefreshPreview === 'function') _gtRefreshPreview(); sinkron(); } catch (e) { }
+      return r;
+    };
+  }
+  var mapAsli = window._gtSetMapStyle;
+  if (typeof mapAsli === 'function') {
+    window._gtSetMapStyle = function () { var r = mapAsli.apply(this, arguments); try { sinkron(); } catch (e) { } return r; };
+  }
+
+  /* ---------- 7. tampil / sembunyi menu ---------- */
+  var MENU = [['stamp', 'Stempel Foto (satuan)'], ['batch', 'Pemrosesan Batch'], ['overlay', 'Overlay Transparan'], ['clean', 'Hapus Stempel']];
+  function menuState() {
+    var o = {}; try { o = JSON.parse(localStorage.getItem('env26_gt_menu') || '{}') || {}; } catch (e) { }
+    return o;
+  }
+  function menuSimpan(o) { try { localStorage.setItem('env26_gt_menu', JSON.stringify(o)); } catch (e) { } }
+  function menuTampak(key) { return menuState()[key] !== false; }
+  function terapkanMenu() {
+    var host = window._gtHostEl; if (!host) return;
+    MENU.forEach(function (m) {
+      var on = menuTampak(m[0]);
+      var sec = host.querySelector('[data-gt-sec="' + m[0] + '"]'); if (sec) sec.style.display = on ? '' : 'none';
+      var btn = host.querySelector('[data-gt-menu="' + m[0] + '"]');
+      if (btn) { btn.classList.toggle('active', on); if (btn.getAttribute('role') === 'tab') btn.setAttribute('aria-selected', on ? 'true' : 'false'); }
+    });
+  }
+  window._gtMenuToggle = function (key) {
+    var o = menuState(); o[key] = (o[key] === false); menuSimpan(o); terapkanMenu();
+    if (o[key] !== false && key === 'overlay' && typeof _gtPtsRefreshPreview === 'function') _gtPtsRefreshPreview();
+  };
+  window._gtMenuSemua = function (tampil) {
+    var o = {}; MENU.forEach(function (m) { o[m[0]] = !!tampil; }); menuSimpan(o); terapkanMenu();
+  };
+  (function () {
+    if (document.getElementById('gt-menu-css')) return;
+    var st = document.createElement('style'); st.id = 'gt-menu-css';
+    st.textContent = '.gt-menu-aksi{border:1px solid var(--g2);background:transparent;color:var(--text);border-radius:7px;padding:5px 11px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}.gt-menu-aksi:hover{border-color:var(--g3)}';
+    (document.head || document.documentElement).appendChild(st);
+  })();
+  function batangMenuHtml() {
+    return '<div id="gt-menu-bar" style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-bottom:12px">'
+      + '<span style="font-size:13px;color:var(--g3)">Menu:</span>'
+      + '<div id="gt-menu-chips" style="display:flex;flex-wrap:wrap;gap:6px">'
+      + MENU.map(function (m) { return '<button class="et-sub-btn gt-menu-btn" data-gt-menu="' + m[0] + '" onclick="_gtMenuToggle(\'' + m[0] + '\')" title="Klik untuk menampilkan atau menyembunyikan menu ini">' + m[1] + '</button>'; }).join('')
+      + '</div>'
+      + '<span style="flex:1"></span>'
+      + '<button class="gt-menu-aksi" onclick="_gtMenuSemua(true)" title="Tampilkan semua menu">Tampilkan semua</button>'
+      + '<button class="gt-menu-aksi" onclick="_gtMenuSemua(false)" title="Sembunyikan semua menu">Sembunyikan semua</button>'
+      + '</div>';
+  }
+
+  /* ---------- 8. rakit ulang: dekorasi sesudah _etRenderGeotag ---------- */
+  function dekorasi(host) {
+    var box = host.firstElementChild; if (!box) return;
+    [].forEach.call(box.children, function (s) {
+      if (!s.classList || !s.classList.contains('et-sec')) return;
+      var t = ((s.querySelector('.et-sec-title') || {}).textContent) || '', key = null;
+      if (/Stempel Foto \(satuan\)/.test(t)) key = 'stamp';
+      else if (/Pemrosesan Batch/.test(t)) key = 'batch';
+      else if (s.querySelector('#gt-pts-section')) key = 'overlay';
+      else if (/Hapus Stempel/.test(t)) key = 'clean';
+      if (key) s.setAttribute('data-gt-sec', key);
+    });
+    if (!host.querySelector('#gt-menu-bar')) {
+      var dl = box.querySelector('datalist');
+      var tmp = document.createElement('div'); tmp.innerHTML = batangMenuHtml();
+      if (dl && dl.nextSibling) box.insertBefore(tmp.firstChild, dl.nextSibling); else box.insertBefore(tmp.firstChild, box.firstChild);
+    }
+    // kelompok cone + label di Stempel Foto (satuan) dan Overlay
+    [['stamp', '_gtSet'], ['overlay', '_gtPtsSetFlag']].forEach(function (p) {
+      var sec = host.querySelector('[data-gt-sec="' + p[0] + '"]'); if (!sec || sec.querySelector('.gt-google-box')) return;
+      var det = [].filter.call(sec.querySelectorAll('details'), function (d) { return /Elemen stempel/.test((d.querySelector('summary') || {}).textContent || ''); })[0];
+      if (det) det.insertAdjacentHTML('afterend', kelompokGoogleHtml(p[1]));
+    });
+    // menu pengaturan stempel di Pemrosesan Batch
+    var bt = host.querySelector('[data-gt-sec="batch"]');
+    if (bt && !bt.querySelector('#gt-bt-pengaturan')) {
+      var hint = bt.querySelector('#gt-bt-tplhint'), anchor = hint && hint.parentNode;
+      if (anchor) { anchor.insertAdjacentHTML('afterend', panelBatchHtml()); gambarThumbBatch(); }
+    }
+    terapkanMenu();
+  }
+  var renderAsli = window._etRenderGeotag;
+  if (typeof renderAsli === 'function') {
+    window._etRenderGeotag = function (host) {
+      var r = renderAsli.apply(this, arguments);
+      try { if (typeof GEO_MODE === 'undefined' || GEO_MODE !== 'csv') dekorasi(host); } catch (e) { if (window.console) console.error('geotag.js', e); }
+      return r;
+    };
+  }
+  /* pengisian ulang bagian overlay saat sumber diganti membuat ulang kelompok cone */
+  var ptsSetAsli = window._gtPtsSet;
+  if (typeof ptsSetAsli === 'function') {
+    window._gtPtsSet = function () {
+      var r = ptsSetAsli.apply(this, arguments);
+      try { if (window._gtHostEl) dekorasi(window._gtHostEl); } catch (e) { }
+      return r;
+    };
+  }
+  var srcAsli = window._gtPtsSetSource;
+  if (typeof srcAsli === 'function') {
+    window._gtPtsSetSource = function () {
+      var r = srcAsli.apply(this, arguments);
+      try { if (window._gtHostEl) dekorasi(window._gtHostEl); } catch (e) { }
+      return r;
+    };
+  }
+})();
+
 /* y575/hasil_cache.js -- baris Hasil Sampling dihitung SEKALI per render.
  *
  * _hsRowsFor(grup) menormalkan daftar RFA, memperbaiki bulanan, lalu membuat ulang
@@ -55906,5 +56280,10 @@ R12 sebelumnya.
     tombol Import di kartu Recording Debit mana pun mengisi ketiga STP sekaligus. Hari libur / tanpa pembacaan dibagi
     rata dengan hari pembacaan setelahnya (juga lintas bulan). Kartu STP menampilkan rata-rata dan maksimum
     L/orang/hari dari POB (40 / 135 / 220 orang).
+  - Geotag Foto: peta mini stempel kini bisa menampilkan cone arah (tampil/sembunyi, derajat, lebar) dan label
+    "Google" yang teksnya bisa diedit, dengan pin gaya Google Maps (sesuai foto GPS Map Camera asli). Berlaku untuk
+    stempel satuan, batch Excel (kolom opsional tampilkan_cone, arah_cone, label_google) dan overlay titik.
+  - Pemrosesan Batch memiliki menu pengaturan stempel yang sama dengan Stempel Foto (satuan), satu pengaturan bersama.
+  - Menu Stempel Foto (satuan), Pemrosesan Batch, Overlay Transparan dan Hapus Stempel bisa ditampilkan/disembunyikan.
 ENVMON-CHANGELOG-Y571 -->
 </html>
