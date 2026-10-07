@@ -5796,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'4e960101'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'67aefdf4'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -22321,6 +22321,7 @@ function _hsRowsFor(group){
     _hsNormalizeRfaLists(HS_GROUPS_DATA[group]);
     _hsNormalizeRfaLists(HASIL_MANUAL);
   }
+  /*Y578b*/if(typeof _hsPulihkan==='function'){_hsPulihkan(HS_GROUPS_DATA[group]);_hsPulihkan(HASIL_MANUAL);}
   /*Y551b*/_hsFixBulanan(HS_GROUPS_DATA[group]);_hsFixBulanan(HASIL_MANUAL);
   const base=(HS_GROUPS_DATA[group]||[]).concat(HASIL_MANUAL.filter(r=>r.group===group));
   return base.map(r=>{
@@ -27344,7 +27345,7 @@ function _rsRecapReportHtml(res){
   rep.forEach(function(r){
     var lewat=(r.status!=='ok');
     var note=lewat?('dilewati — '+_ep(r.alasan||''))
-      :(r.kolomBulan+' kolom bulan · '+r.baris+' baris'+(r.unmatched?(' · '+r.unmatched+' tanpa padanan'):''));
+      :((r.catatanBaca||(r.kolomBulan+' kolom bulan'))+' · '+r.baris+' baris'+(r.unmatched?(' · '+r.unmatched+' tanpa padanan'):''));/*Y579b*/
     h+='<tr style="border-top:1px solid var(--g2)'+(lewat?';color:#8a6d00':'')+'">'
       +'<td style="padding:2px 4px">'+_ep(r.sheet)+'</td>'
       +'<td style="text-align:right;padding:2px 4px">'+(lewat?'–':r.changed)+'</td>'
@@ -50492,6 +50493,35 @@ function titikAppPerSheet(){
   return peta;
 }
 var ALIAS_TITIK={'handil base new office':'handil ii base new office'};
+/*Y579c*/// Nama titik di raw Recap memakai nama izin/lapangan yang berbeda dari nama titik di app. Pasangan di bawah dibuktikan dengan
+// MENCOCOKKAN NILAI: tiap nama raw dipetakan ke titik app yang memuat (parameter, tanggal, nilai) yang sama paling banyak
+// (DWW Full 2026: 49 titik, pemenang 55-69 dari ~63 sel, pesaing terbaik <=38); sebagian sudah dijawab pemilik 2026-08-19 di
+// cabang claude/envmon-dashboard-context-migration-mfkrhd (RS_TITIK_FULL_ALIAS, RS_TITIK_ALIAS). Kuncinya strict(nama raw);
+// nilainya daftar nama app, dicoba satu per satu terhadap titik yang ADA di sheet itu (jadi 'CPU Camp' di sheet DWW dan
+// 'DWW 3 CPU Camp A, B, ...' di DWW Full bisa memakai satu pasangan). Titik raw tanpa pasangan (mis. inlet CPU/SPU, Biofilter
+// OFN) sengaja TIDAK ditebak: dilaporkan sebagai "titik belum ada di app".
+var ALIAS_RAW_PAIR=[
+ ['Outlet DWWTU (Laundry & Restaurant - BKP)',['Outlet DWWTU (Restaurant)']],
+ ['Outlet DWWTU (Toilet - BKP)',['Outlet DWWTU (Toilet)']],
+ ['HDL Camp I',['Handil Camp']],['HDL Camp II',['Handil New Camp']],
+ ['HDL CPA New Office',['Handil CPA Office']],['HDL Bravo 2',['Bravo 2']],
+ ['HDL ICT Warehouse',['Handil ICT Warehouse']],['HDL Septic Tank Warehouse, ICT',['Handil ICT Warehouse']],
+ ['HDL Base New Office',['HDL II Base New Office']],
+ ['DWW 3 (CPU Camp)',['CPU Camp','DWW 3 CPU Camp A, B, C, D, E, F, H, I']],
+ ['DWW 2 (NPU Restaurant)',['NPU Restaurant']],['DWW 1 (NPU Office)',['NPU Office']],
+ ['DWW 3 (NPU Camp I)',['NPU Camp I']],['DWW 4 (NPU Camp II)',['NPU Camp II']],
+ ['DWW 5 (NPU New Accommodation)',['NPU New Accommodation']],
+ ['INLET DWW 1 (NPU Office)',['Inlet NPU Office']],['INLET DWW 2 (NPU Restaurant)',['Inlet NPU Restaurant']],
+ ['INLET DWW 3 (NPU Camp I)',['Inlet NPU Camp I']],['INLET DWW 4 (NPU Camp II)',['Inlet NPU Camp II']],
+ ['INLET DWW 5 (NPU New Accommodation)',['Inlet NPU New Accommodation']],
+ ['STP-1',['Outlet STP-1']],['STP-2',['Outlet STP-2']],['STP-3',['Outlet STP-3']],['STP 1',['Outlet STP-1']],['STP 2',['Outlet STP-2']],['STP 3',['Outlet STP-3']],
+ ['Wetland 1 Outlet Sepinggan',['Wetland 1']],['Wetland 2 Outlet Sepinggan',['Wetland 2']],
+ ['New CWW Outlet',['CWW Outlet']],['New DWW Outlet',['Clinic DWW Outlet']],['DWW Mess Oultet',['DWW Mess Outlet']],
+ ['Outlet Wemco (BKP)',['Outlet WEMCO']],['Inlet Wemco (BKP)',['Inlet WEMCO']],['PW NPU Flotator',['NPU Flotator']],
+ ['Backwash RO dan Desalinasi',['Backwash RO & Desalinasi']]
+];
+var ALIAS_RAW={};
+ALIAS_RAW_PAIR.forEach(function(p){ALIAS_RAW[strict(p[0])]=p[1];});
 function resolveTitik(sheetNorm,raw,peta){
   var daftar=(peta&&peta[sheetNorm])||{},nm=String(raw==null?'':raw);
   if(!nm)return nm;
@@ -50499,6 +50529,7 @@ function resolveTitik(sheetNorm,raw,peta){
   var s=strict(nm),hit=cek(s);
   if(hit)return hit;
   hit=cek(ALIAS_TITIK[s]);                                   if(hit)return hit;
+  /*Y579c*/var _ar=ALIAS_RAW[s];if(_ar){for(var _i=0;_i<_ar.length;_i++){hit=cek(strict(_ar[_i]));if(hit)return hit;}}
   var p=parenIn(nm);
   // titik inlet tidak boleh dipetakan lewat isi kurungnya: "INLET DWW 4 (NPU Camp II)"
   // bukan "NPU Camp II" (outlet); isi kurung membuang penanda inlet-nya
@@ -50554,7 +50585,7 @@ function petaRfaTanggal(rows){
     if(a==='rfa')lr=r;else if(a.indexOf('tanggal')===0)lt=r;
     rfaAt[i+1]=lr;tglAt[i+1]=lt;
   });
-  return {rfa:rfaAt,tgl:tglAt};
+  return {rfa:rfaAt,tgl:tglAt,adaRfa:!!lr||rows.some(function(r){return _rsNorm((r||[])[0])==='rfa';})};
 }
 /* Y570e: sheet "Produksi Fix" (Jumlah Produksi Kumulatif BOE per bulan) ->
    LAPORAN_PROD_SEED (env26_lap_prod_seed). Raw bulanan ini yang dipakai
@@ -50608,7 +50639,7 @@ window._rsRecapRunImport=function(wbx){
   var prodHasil=null; try{prodHasil=imporProduksiFix(wbx);}catch(e){prodHasil={galat:String(e.message||e)};}
   var base=window._rsRecapAppIndex(true),peta=titikAppPerSheet();
   var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE!=='replace');
-  var changed=0,same=0,unmatched=0,dilindungi=0,dibuat=0,nolDilewati=0,report=[],gagalBaru=[],manualUbah=0,ubah=[];
+  var changed=0,same=0,unmatched=0,dilindungi=0,dibuat=0,nolDilewati=0,report=[],gagalBaru=[],manualUbah=0,ubah=[],datarSentuh=0,reaBaru=0;
   // templat baris untuk membuat bulan baru: sheet -> titik‖param -> baris app terbaru
   var tpl={};
   Object.keys(HS_GROUPS_DATA||{}).concat(['__manual']).forEach(function(){});
@@ -50620,9 +50651,23 @@ window._rsRecapRunImport=function(wbx){
     if(!m[k]||t>((m[k].tanggal&&m[k].tanggal[0])||''))m[k]=r;
   });
   var rfaAda={};
-  (typeof _hsAllRows==='function'?_hsAllRows():[]).forEach(function(r){(r.noRfa||[]).forEach(function(n){rfaAda[n+'‖'+strict(r.titik)+'‖'+_rsNormKey(r.parameter)]=1;});});
+  (typeof _hsAllRows==='function'?_hsAllRows():[]).forEach(function(r){(r.noRfa||[]).forEach(function(n){rfaAda[n+'‖'+strict(r.titik)+'‖'+kunciParamApp(r.parameter,r.satuan)]=1;});});
   var baruRows=[];
+  if(typeof window._rsSiteReset==='function')window._rsSiteReset();
   wbx.SheetNames.forEach(function(sn){
+    /*Y579*/if(typeof window._rsBacaDatar==='function'&&!(prodHasil&&prodHasil.sheet===sn)){   // sheet datar/bukan grid: pembaca khusus (importer_flat.js)
+      var rp=[],dr=null;
+      try{dr=window._rsBacaDatar(wbx,sn,rp,{strict:strict,resolveTitik:resolveTitik,sama:sama,peta:peta});}catch(e){rp.push({sheet:sn,status:'lewat',alasan:'galat saat membaca: '+String(e&&e.message||e).slice(0,90)});dr={changed:0,added:0,same:0,unmatched:0,rea:0};}
+      if(dr){
+        changed+=dr.changed;same+=dr.same;unmatched+=dr.unmatched;dibuat+=dr.added;datarSentuh+=dr.added+dr.changed;reaBaru+=(dr.rea||0);
+        rp.forEach(function(x){
+          if(x.status!=='ok'){report.push(x);return;}
+          report.push({sheet:x.sheet,status:'ok',baris:x.baris,kolomBulan:0,catatanBaca:(typeof x.kolomParam==='string'?x.kolomParam:(x.kolomParam?(x.kolomParam+' kolom parameter'):(x.kolomTitik?(x.kolomTitik+' kolom titik'):'sheet datar')))+(x.added?(' · +'+x.added+' baris baru'):''),
+            changed:x.changed,same:x.same,unmatched:x.unmatched,dilindungi:0,dibuat:x.added||0});
+        });
+        return;
+      }
+    }
     var sh=_rsNorm(sn),b=base[sh];
     if(!b){
       if(prodHasil&&prodHasil.sheet===sn){report.push({sheet:sn,status:'ok',baris:prodHasil.blok.length,kolomBulan:12,changed:prodHasil.diubah+prodHasil.baru,same:prodHasil.sama,unmatched:0,dilindungi:0,dibuat:prodHasil.baru});return;}
@@ -50648,27 +50693,37 @@ window._rsRecapRunImport=function(wbx){
         var hit=ambilCocok(b,kT,kP,mn,yr);
         if(!hit){
           // bulan yang belum punya baris: buat dari templat (hanya 2026 dst., bukan turunan/nol)
-          if(turunan||nol||ym<'2026-01'){unmatched++;return;}
+          /*Y579f*/// Debit dan Produksi yang BERNILAI di raw tetapi barisnya belum ada di app dibuat (audit K4: Debit CPA Outlet OWTU Jul-Agu, DWW Agu,
+          // Drainase Jul-Sep); yang nol tetap dilewati (bawaan rumus untuk bulan yang belum terisi) dan Beban Pencemar tetap dihitung aplikasi.
+          if(nol||ym<'2026-01'||(turunan&&!/^(debit|debit m3 bulan|produksi)$/.test(kP))){unmatched++;return;}
           var t=(tpl[sh]||{})[kTs+'‖'+kP]||(kP==='debit m3 bulan'?(tpl[sh]||{})[kTs+'‖debit']:(kP.indexOf('beban pencemar ')===0?(tpl[sh]||{})[kTs+'‖beban pencemar']:null));
           var rfaV=((pt.rfa[dr.excelRow]||[])[parseInt(cj,10)]),tglV=((pt.tgl[dr.excelRow]||[])[parseInt(cj,10)]);
           rfaV=rfaV==null?'':String(rfaV).trim();
           tglV=typeof tglV==='number'?_rsSerialToIso(tglV):(tglV?String(tglV).slice(0,10):'');
           var rec={sheet:sn.trim(),titik:dr.titikRaw||dr.titik,param:dr.param,ym:ym,raw:String(raw).trim(),rfa:rfaV,tgl:tglV};
           var alasan=null;
+          /*Y579d*/// DWW Full dan PW INLET memang tidak punya baris RFA di raw (hanya tanggal sampling): nomor RFA tidak diwajibkan,
+          // baris dibuat tanpa nomor dan ditautkan belakangan (audit T1)
+          var perluRfa=!!pt.adaRfa;
           if(!t)alasan='titik/parameter ini belum punya baris di app';
-          else if(!/^\d{6}-\d{2}[A-Z]?/.test(rfaV)||!/^\d{4}-\d{2}-\d{2}$/.test(tglV))alasan='RFA/tanggal sampling tidak terbaca';
+          else if((perluRfa&&!/^\d{6}-\d{2}[A-Z]?/.test(rfaV))||!/^\d{4}-\d{2}-\d{2}$/.test(tglV))alasan='RFA/tanggal sampling tidak terbaca';
           else if(tglV.slice(0,7)!==ym)alasan='tanggal sampling tidak sebulan dengan kolom';
           if(alasan){rec.alasan=alasan;gagalBaru.push(rec);unmatched++;return;}
           var rl=rfaV.split(/[\/,;\s]+/).filter(Boolean);
-          if(rl.some(function(n){return rfaAda[n+'‖'+kTs+'‖'+kP.replace(/ m3 bulan$/,'')];})){same++;return;}
+          if(rl.some(function(n){return rfaAda[n+'‖'+kTs+'‖'+kP];})){same++;return;}
           var rs=String(raw).trim();
-          var ev=_hsEvalCompliance(rs,t.bakuMutu==null?null:t.bakuMutu,{satuan:t.satuan,satuanBaku:t.satuanBakuMutu,tanggal:[tglV]});
+          /*Y578*/var _pl=window.PemulihanY578;   // templat bisa membawa kesalahan lama (satuan berisi nilai, site salah): jangan diwarisi
+          var _sat=(_pl&&_pl.satuanRusak(t.satuan))?_pl.satuanBenar(t,null):t.satuan;
+          var _bmT=(_pl&&_pl.bmSampah(t.bakuMutu))?null:(t.bakuMutu==null?null:t.bakuMutu);
+          var _siteT=(typeof window._siteEfektif==='function')?window._siteEfektif(t.titik,t.site):t.site;
+          var ev=_hsEvalCompliance(rs,_bmT,{satuan:_sat,satuanBaku:t.satuanBakuMutu,tanggal:[tglV]});
           var ex=Object.assign({},t.extra,{bulan:BLN[mn-1],manualId:'hm-rc-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+baruRows.length});
           delete ex.overridden;delete ex.overriddenAt;
-          baruRows.push({group:t.group||'Monthly',category:t.category||'routine',noRfa:rl,site:t.site,titik:t.titik,tanggal:[tglV],
-            parameter:t.parameter,nilai:rs,satuan:t.satuan,bakuMutu:t.bakuMutu==null?null:t.bakuMutu,satuanBakuMutu:t.satuanBakuMutu||'',
+          /*Y578*/delete ex.siteAsli;delete ex.satuanAsli;delete ex.bakuMutuAsli;delete ex.tanggalAsli;   // catatan perbaikan milik baris templat, bukan baris baru
+          baruRows.push({group:t.group||'Monthly',category:t.category||'routine',noRfa:rl,site:_siteT,titik:t.titik,tanggal:[tglV],
+            parameter:t.parameter,nilai:rs,satuan:_sat,bakuMutu:_bmT,satuanBakuMutu:t.satuanBakuMutu||'',
             peraturan:t.peraturan||'',catatan:'Impor Water Monitoring Recap (raw)',computed:0,status:ev.status,nilaiNum:ev.nilaiNum,extra:ex});
-          rl.forEach(function(n){rfaAda[n+'‖'+kTs+'‖'+kP.replace(/ m3 bulan$/,'')]=1;});
+          rl.forEach(function(n){rfaAda[n+'‖'+kTs+'‖'+kP]=1;});
           dibuat++;return;
         }
         var row=hit.row,isManual=!!(row.extra&&row.extra.manualId);
@@ -50696,9 +50751,10 @@ window._rsRecapRunImport=function(wbx){
       changed:changed-c0,same:same-s0,unmatched:unmatched-u0,dilindungi:dilindungi-p0,dibuat:dibuat-d0});
   });
   if(baruRows.length){HASIL_MANUAL.push.apply(HASIL_MANUAL,baruRows);}
-  if(manualUbah||baruRows.length){try{_hsSaveManual();}catch(e){}}
+  if(manualUbah||baruRows.length||datarSentuh){try{_hsSaveManual();}catch(e){}}
   if(changed){try{_hsSaveOverride();}catch(e){}}
-  if(changed||baruRows.length){if(typeof saveStorage==='function')saveStorage('Import raw Water Monitoring Recap ('+changed+' diperbarui, '+dibuat+' baris baru)');}
+  if(reaBaru&&typeof _reaSave==='function'){try{_reaSave();}catch(e){}}   /*Y579: catatan reanalisis dari pembaca datar ikut disimpan*/
+  if(changed||baruRows.length||datarSentuh){if(typeof saveStorage==='function')saveStorage('Import raw Water Monitoring Recap ('+changed+' diperbarui, '+dibuat+' baris baru)');}
   if(prodHasil&&prodHasil.ubah)prodHasil.ubah.forEach(function(u){ubah.push({sheet:prodHasil.sheet,row:'',col:'',titikRaw:u.site,titikApp:u.site,param:'Produksi (BOE)',ym:u.tahun+'-'+String(PROD_BLN.indexOf(u.bulan)+1).padStart(2,'0'),lama:String(u.lama),baru:String(u.baru),jenis:'produksi bulanan'});});
   if(prodHasil&&(prodHasil.diubah||prodHasil.baru)&&typeof saveStorage==='function')saveStorage('Import Produksi Fix ('+(prodHasil.diubah+prodHasil.baru)+' angka bulanan)');
   window._rsRecapLast={prod:prodHasil,ubah:ubah,changed:changed,same:same,unmatched:unmatched,dilindungi:dilindungi,dibuat:dibuat,nolDilewati:nolDilewati,manualUbah:manualUbah,gagalBaru:gagalBaru,report:report};
@@ -50779,6 +50835,7 @@ function buatRfaBaru(recs){
     var tipe=!suf?'Normal':((kode==='01'||kode==='02'||kode==='03'||kode==='04')&&suf==='A'?'Duplikat':'Resampling');
     var an=rec.analysisRaw==='1'?'100%':(rec.analysisRaw==='0.5'?'50%':(rec.analysisRaw&&isNaN(Number(rec.analysisRaw))?rec.analysisRaw:'Normal'));
     var site=SITE_ALIAS[rec.site]||rec.site||'';
+    /*Y578*/if(typeof window._siteEfektif==='function')site=window._siteEfektif(rec.titik,site);   // sumur H- = HCA walau raw menulis site lain
     var sampel=/^drain$/i.test(rec.sampelRaw||'')?'DRAIN':(rec.sampelRaw||'');
     var row=rfaMkRow({noRfa:rec.noRfa,year:'2000'===''?'':('20'+m[3]),sheet:'2026',bulan:BLN[bn-1],jenis:rec.jenisRaw,jenisRaw:rec.jenisRaw,sampel:sampel,sampelRaw:rec.sampelRaw,
       site:site,titik:rec.titik||'',coc:rec.coc||'',analysis:an,tipeSuffix:tipe,tglSampling:rec.tglSampling||'',tglKirimCbt:rec.tglKirimCbt||'',
@@ -50841,6 +50898,1635 @@ window._rsPickImport=function(inp){
   return _pickLama.apply(this,arguments);
 };
 })();
+
+</script><script id="pemulihan-y578">
+/* repair/pemulihan.js -- Y578: perbaikan data hasil yang bisa dijalankan berulang (idempoten).
+ *
+ * Latar (audit data pack 2026-10-07, permintaan pemilik "HLB masuk ke SPU ... rootcause tidak sesimpel
+ * salah masuk EMF"): kesalahan di data bukan hanya di generate EMF. Tiga jalur menulis site/satuan/tanggal
+ * tanpa menyaringnya -- seed ETL lama, impor manual lama, dan templat baris yang diwarisi impor baru -- jadi
+ * sebuah kesalahan yang sekali masuk ikut tersalin ke baris berikutnya.
+ *
+ * Isi (semuanya fungsi murni atas baris biasa, tanpa DOM; dipakai di aplikasi DAN oleh
+ * scripts/pulihkan_pack.mjs yang membenahi berkas Data Pack):
+ *   siteEfektif   sumur Handil (H-xxx, HNA-xxx, HU-xxx ...) = HCA, apa pun yang tertulis di kolom site
+ *                 (keputusan pemilik 2026-10-07; seluruh kegiatan Handil di kalender kegiatan memang HCA);
+ *                 ejaan lama CPA/HDL -> HCA, SNB -> SPU, SNP -> SPS, Tunu -> TUNU
+ *   satuanRusak   satuan yang isinya ternyata nilai ("7.89", "< 1", "Negative"): sel sebelah terbaca
+ *                 sebagai kolom satuan oleh impor sheet DWW Full dan BPN
+ *   bmSampah      baku mutu yang isinya nomor RFA atau kata "Drainase" (kolom catatan terbaca sebagai BM)
+ *   tanggalGanda  "12 & 13-Feb-26" / "7-May-26\n8-May-26" -> daftar tanggal ISO
+ * pulihkanBaris/pulihkanDaftar menerapkannya di tempat, mencatat nilai asli di row.extra.*Asli, dan menilai ulang
+ * status hanya bila satuan/BM yang dipakai penilai berubah. */
+(function (root) {
+  'use strict';
+  if (root.__pemulihanY578) return; root.__pemulihanY578 = true;
+  var R = {};
+
+  /* ---------- site ---------- */
+  // "H-L-264", "H-NA-12", "HNA-113/107", "HU-91/924", "HLB-274/169", "HZE-604/411": awalan H diikuti
+  // satu sampai tiga huruf sumur lalu tanda hubung dan angka, atau "H-" langsung.
+  var RE_SUMUR_H = /^\s*H(?:-|[A-Z]{1,3}-\d)/i;
+  R.sumurHandil = function (titik) { return RE_SUMUR_H.test(String(titik == null ? '' : titik)); };
+  R.siteN = function (s) { var u = String(s == null ? '' : s).toUpperCase().trim(); return (u === 'CPA' || u === 'HDL') ? 'HCA' : u; };
+  // ejaan lama site -> nama kanonik (keputusan pemilik: CPA/HDL = HCA; SNB = Sisi Nubi = SPU; SNP = Senipah/Peciko = SPS; Tunu = TUNU)
+  var ALIAS_SITE = { CPA: 'HCA', HDL: 'HCA', SNB: 'SPU', SNP: 'SPS', TUNU: 'TUNU' };
+  R.siteEfektif = function (titik, site) {
+    if (R.sumurHandil(titik)) return 'HCA';
+    var u = String(site == null ? '' : site).toUpperCase().trim();
+    if (ALIAS_SITE[u]) return ALIAS_SITE[u];
+    return site == null ? '' : site;
+  };
+
+  /* ---------- satuan ---------- */
+  var RE_NILAI = /^[<>≤≥]?\s*-?\d+(?:[.,]\d+)?\s*\**$/;
+  var RE_KUAL = /^(negati[vf]e?|nihil|positi[vf]e?|nd|n\/a|ada|tidak ada)$/i;
+  R.satuanRusak = function (s) {
+    var t = String(s == null ? '' : s).trim();
+    if (!t || t === '-') return false;
+    if (RE_NILAI.test(t) || RE_KUAL.test(t)) return true;
+    if (/^[<>≤≥]/.test(t)) return true;       // "< 1.8 ***", "> 50"
+    if (/^-?\d+(?:[.,]\d+)?\s*[<>]/.test(t)) return true;
+    return false;
+  };
+  function kunciParam(p) { return String(p == null ? '' : p).toLowerCase().replace(/\*+/g, '').replace(/[^a-z0-9]/g, ''); }
+  R.kunciParam = kunciParam;
+  // peta satuan dari BM master: kunciParam -> satuan, hanya bila master tidak bertentangan dengan dirinya
+  R.petaSatuan = function (master) {
+    var seen = {};
+    try {
+      (master && master.types || []).forEach(function (t) {
+        (t.categories || []).forEach(function (c) {
+          var ps = c.params || {};
+          Object.keys(ps).forEach(function (pn) {
+            var u = String((ps[pn] || {}).satuan || '').trim();
+            if (!u || u === '-') return;
+            var k = kunciParam(pn);
+            (seen[k] = seen[k] || {})[u] = 1;
+          });
+        });
+      });
+    } catch (e) { }
+    var out = {};
+    Object.keys(seen).forEach(function (k) { var us = Object.keys(seen[k]); if (us.length === 1) out[k] = us[0]; });
+    return out;
+  };
+  // satuan yang benar untuk baris: satuan baku mutu (bila sah dan bukan "-"), lalu BM master, lalu "-"
+  R.satuanBenar = function (r, petaSat) {
+    var sb = String(r.satuanBakuMutu == null ? '' : r.satuanBakuMutu).trim();
+    if (sb && sb !== '-' && !R.satuanRusak(sb)) return sb;
+    var u = petaSat && petaSat[kunciParam(r.parameter)];
+    if (u) return u;
+    return '-';
+  };
+
+  /* ---------- baku mutu ---------- */
+  R.bmSampah = function (bm) {
+    var t = String(bm == null ? '' : bm).trim();
+    if (!t) return false;
+    if (/^\d{5,7}-\d{2}[A-Za-z]?$/.test(t)) return true;   // nomor RFA / tanggal, bukan baku mutu
+    if (/^drainase$/i.test(t)) return true;
+    return false;
+  };
+
+  /* ---------- tanggal ---------- */
+  var BLN = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, mei: 5, jun: 6, jul: 7, aug: 8, agu: 8, agt: 8, sep: 9, oct: 10, okt: 10, nov: 11, dec: 12, des: 12 };
+  function p2(n) { return (n < 10 ? '0' : '') + n; }
+  function iso(y, m, d) { return y + '-' + p2(m) + '-' + p2(d); }
+  function th(y) { y = parseInt(y, 10); return y < 100 ? 2000 + y : y; }
+  // "12 & 13-Feb-26" -> [2026-02-12, 2026-02-13]; "7-May-26\n8-May-26" -> dua tanggal; selain itu null
+  R.tanggalGanda = function (s) {
+    var t = String(s == null ? '' : s).replace(/ /g, ' ').trim();
+    if (!t || /^\d{4}-\d{2}-\d{2}$/.test(t)) return null;
+    var m = /^(\d{1,2})\s*(?:&|dan|,|\/)\s*(\d{1,2})\s*-\s*([A-Za-z]{3,})\w*\s*-\s*(\d{2,4})$/.exec(t);
+    if (m && BLN[m[3].toLowerCase().slice(0, 3)]) {
+      var b = BLN[m[3].toLowerCase().slice(0, 3)], y = th(m[4]);
+      return [iso(y, b, +m[1]), iso(y, b, +m[2])];
+    }
+    var out = [], re = /(\d{1,2})\s*-\s*([A-Za-z]{3,})\w*\s*-\s*(\d{2,4})/g, x;
+    while ((x = re.exec(t))) {
+      var bb = BLN[x[2].toLowerCase().slice(0, 3)]; if (!bb) return null;
+      out.push(iso(th(x[3]), bb, +x[1]));
+    }
+    return out.length ? out : null;
+  };
+
+  /* ---------- baris ---------- */
+  function simpanAsli(r, kunci, nilai) {
+    r.extra = r.extra || {};
+    if (r.extra[kunci] === undefined) r.extra[kunci] = nilai;
+  }
+  // r: baris hasil. ctx: {petaSat, evalCompliance(nilai,baku,{satuan,satuanBaku,tanggal})}
+  // Mengembalikan daftar tag perubahan (kosong bila baris sudah bersih).
+  R.pulihkanBaris = function (r, ctx) {
+    var tag = [];
+    if (!r || typeof r !== 'object') return tag;
+    ctx = ctx || {};
+    // site
+    var s = R.siteEfektif(r.titik, r.site);
+    if (s !== (r.site == null ? '' : r.site)) { simpanAsli(r, 'siteAsli', r.site == null ? '' : r.site); r.site = s; tag.push('site'); }
+    // tanggal tidak ISO
+    if (Array.isArray(r.tanggal) && r.tanggal.length) {
+      var baru = [], ubah = false;
+      r.tanggal.forEach(function (t) {
+        var g = R.tanggalGanda(t);
+        if (g) { baru = baru.concat(g); ubah = true; } else baru.push(t);
+      });
+      if (ubah) { simpanAsli(r, 'tanggalAsli', r.tanggal.slice()); r.tanggal = baru; tag.push('tanggal'); }
+    }
+    // satuan berisi nilai
+    var nilaiUlang = false;
+    if (R.satuanRusak(r.satuan)) {
+      simpanAsli(r, 'satuanAsli', r.satuan);
+      r.satuan = R.satuanBenar(r, ctx.petaSat);
+      tag.push('satuan'); nilaiUlang = true;
+    }
+    // baku mutu sampah
+    if (R.bmSampah(r.bakuMutu)) {
+      simpanAsli(r, 'bakuMutuAsli', r.bakuMutu);
+      r.bakuMutu = null; tag.push('bm'); nilaiUlang = true;
+    }
+    if (nilaiUlang && typeof ctx.evalCompliance === 'function') {
+      var ev = ctx.evalCompliance(r.nilai, r.bakuMutu == null ? null : r.bakuMutu, { satuan: r.satuan, satuanBaku: r.satuanBakuMutu, tanggal: r.tanggal });
+      if (ev) { r.status = ev.status; r.nilaiNum = ev.nilaiNum; }
+    }
+    return tag;
+  };
+  // memproses daftar baris di tempat; mengembalikan {baris:n, site:n, tanggal:n, satuan:n, bm:n}
+  var sudah = (typeof WeakSet === 'function') ? new WeakSet() : null;
+  R.pulihkanDaftar = function (rows, ctx) {
+    var c = { baris: 0, site: 0, tanggal: 0, satuan: 0, bm: 0 };
+    if (!rows || !rows.length) return c;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r || typeof r !== 'object') continue;
+      var kunciCek = r.titik + '|' + r.site + '|' + r.satuan + '|' + r.bakuMutu;
+      if (sudah && sudah.has(r) && r.__pl === kunciCek) continue;
+      var tg = R.pulihkanBaris(r, ctx);
+      if (tg.length) { c.baris++; tg.forEach(function (t) { c[t]++; }); }
+      if (sudah) { sudah.add(r); try { Object.defineProperty(r, '__pl', { value: r.titik + '|' + r.site + '|' + r.satuan + '|' + r.bakuMutu, writable: true, enumerable: false, configurable: true }); } catch (e) { } }
+    }
+    return c;
+  };
+
+  root.PemulihanY578 = R;
+  if (typeof module !== 'undefined' && module.exports) module.exports = R;
+
+  /* ---------- pemasangan di aplikasi ---------- */
+  if (typeof window !== 'undefined' && root === window) {
+    var _pet = null, _petDari = null;
+    window._hsPulihkan = function (rows) {
+      try {
+        var m = (typeof BM_MASTER_SEED !== 'undefined') ? BM_MASTER_SEED : null;
+        if (m !== _petDari) { _petDari = m; _pet = R.petaSatuan(m); }
+        return R.pulihkanDaftar(rows, { petaSat: _pet, evalCompliance: (typeof _hsEvalCompliance === 'function') ? _hsEvalCompliance : null });
+      } catch (e) { return null; }
+    };
+    window._siteEfektif = R.siteEfektif;
+  }
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+</script><script id="importer-flat-y579">
+/* importer_flat.js -- Y579: pembaca sheet DATAR / bukan-grid untuk Sinkron Raw (Recap).
+ *
+ * Latar (permintaan pemilik 2026-10-07, "ada data yg miss ... rootcause tidak sesimpel salah masuk EMF"): audit
+ * menemukan 22 baris Dredging, 10 titik-tanggal Non Routine dan 1 Drilling di raw Recap Agustus-September yang tidak
+ * pernah masuk Data Pack. Sebabnya bukan salah ketik: importer di cabang kerja ini (Y568) hanya membaca sheet
+ * berbentuk GRID bulan. Pembaca sheet datar (Dredging, Non Routine, Drilling (Water), Dumping Material Keruk,
+ * SW Plankton) dan sheet berbentuk lain (Yearly, Semesterly, SW Full PP22, Hydrotest, Drainase tahunan, PW
+ * semesteran) ada di cabang claude/envmon-dashboard-context-migration-mfkrhd (commit 8b6ac4b, 5498b1e, a133b4b,
+ * e711994, a1951c0, 0ba6b22, d0ae9ce, 696f503, c26d79a ...) tetapi tidak ikut terbawa saat kerja dipindah ke cabang
+ * ini, sehingga "Sinkron Raw" untuk sheet-sheet itu diam-diam tidak melakukan apa-apa.
+ *
+ * Isi berkas ini DIPORT apa adanya dari cabang itu (artefak commit 4d8b2d5), kecuali tiga penyesuaian:
+ *   - site baris baru: TITIK_SITE/_titikCanonKey (register titik cabang itu) diganti _rsSiteUntuk (sumur Handil = HCA,
+ *     suara terbanyak dari baris yang sudah ada untuk titik yang sama, lalu awalan nama titik)
+ *   - setiap site baris baru dilewatkan _rsSiteEf (aturan H- = HCA berlaku juga bila raw sendiri menulis SPU)
+ *   - _hsWalkAll disediakan di sini (di cabang ini belum ada)
+ * Pembaca GRID (PW, DWW, DWW Full, BPN, Drainase bulanan) TIDAK diport: itu dikerjakan importer Y568 yang lebih baru.
+ * Titik masuk: window._rsBacaDatar(wbx, namaSheet, rep) dipanggil dari _rsRecapRunImport (importer_raw.js). */
+var RS_TITIK_ALIAS={'stp 1':'Outlet STP-1','stp 2':'Outlet STP-2','stp 3':'Outlet STP-3',
+ 'wetland 1 outlet sepinggan':'Wetland 1','wetland 2 outlet sepinggan':'Wetland 2',
+ 'new cww outlet':'CWW Outlet','dww mess oultet':'DWW Mess Outlet'};
+var RS_TITIK_FULL_ALIAS={
+ 'dww1npuoffice':'NPU Office','dww2npurestaurant':'NPU Restaurant',
+ 'dww3npucampi':'NPU Camp I','dww4npucampii':'NPU Camp II',
+ 'dww5npunewaccommodation':'NPU New Accommodation',
+ 'dww3cpucamp':'DWW 3 CPU Camp A, B, C, D, E, F, H, I',
+ 'hdllaundry':'Handil Laundry','hdlrestaurant':'Handil Restaurant',
+ 'hdlcamp':'Handil Camp','hdlnewcamp':'Handil New Camp',
+ 'hdlcpanewoffice':'Handil CPA Office','hdlbravo2':'Bravo 2',
+ 'hdlbasenewoffice':'HDL II Base New Office',
+ 'spumessdanrestoran':'SPU Mess & Restoran','spunewakomodasi':'SPU New Accommodation',
+ 'backwashrodandesalinasi':'Backwash RO & Desalinasi',
+ 'outletdwwtulaundryrestaurantbkp':'Outlet DWWTU (Restaurant)',
+ 'outletdwwtutoiletbkp':'Outlet DWWTU (Toilet)',
+ 'outletwemcobkp':'Outlet WEMCO',
+ 'stp1':'Outlet STP-1','stp2':'Outlet STP-2','stp3':'Outlet STP-3',
+ // answered by the user 2026-08-19, each checked against the readings first
+ 'hdlseptictankwarehouseict':'Handil ICT Warehouse',
+ 'hdlictwarehouse':'Handil ICT Warehouse',
+ 'hdlbravo4nowbravo2':'Bravo 2','hdlbravo2':'Bravo 2',
+ 'newdwwoutlet':'Clinic DWW Outlet','bpnnewdww':'Clinic DWW Outlet'
+ // NOTE: 'SPU Laundry' is deliberately absent. It is a FORMER titik
+ // penaatan, not another spelling of 'SPU New Laundry' -- 24 readings share
+ // a parameter and date between the two and all 24 disagree.
+};
+var RS_FLAT_SPEC={
+  'dredging':{group:'Dredging',sheet:'Dredging',
+    id:{tanggal:'tanggal pelaksanaan',rfa:'rfa',site:'lapangan',titik:'kode lokasi'}},
+  'non routine':{group:'NonRoutine',sheet:'Non Routine',
+    id:{tanggal:'tanggal pelaksanaan',rfa:'rfa',site:'lapangan',titik:'kode lokasi'}},
+  'drilling (water)':{group:'Drilling',sheet:'Drilling (Water)',
+    id:{tanggal:'tanggal sampling',rfa:'rfa',site:'lapangan',titik:'titik sampling'}},
+  'dumping material keruk':{group:'DumpingKeruk',sheet:'Dumping Material Keruk',
+    id:{rfa:'no rfa',site:'site',titik:'lokasi'},community:true},
+  'sw plankton':{group:'Semesterly',sheet:'SW Plankton',
+    id:{rfa:'no rfa',site:'lokasi',titik:'area operasi'},community:true},
+  // same header row as Drilling (Water); the analytes differ, the layout does not
+  'drilling (sediment)':{group:'Drilling',sheet:'Drilling (Sediment)',
+    id:{tanggal:'tanggal sampling',rfa:'rfa',site:'lapangan',titik:'titik sampling'}},
+  // same header row as SW Plankton
+  'pw plankton':{group:'Semesterly',sheet:'PW Plankton',
+    id:{rfa:'no rfa',site:'lokasi',titik:'area operasi'},community:true}
+};
+var RS_FLAT_PARAM=[
+  [/(^|[^a-z])tss([^a-z]|$)/,'TSS'],
+  [/kekeruhan|turbidity/,'Kekeruhan'],
+  [/taxa/,'Taxa S'],
+  [/abundance|kelimpahan/,'Abundance'],
+  [/diversity/,'Diversity H'],
+  [/equalization|equlization|equitability|evenness/,'Equalization E'],
+  [/domination|dominance/,'Domination D'],
+  [/ammonia|nh3/,'Ammonia (NH3-N)'],
+  [/dissolved oxygen|(^|[^a-z])do([^a-z]|$)/,'DO'],
+  [/(^|[^a-z])bod/,'BOD'],
+  [/h2s|sulfida|sulfide/,'H2S'],
+  [/fenol|phenol/,'Fenol'],
+  [/(^|[^a-z])ph([^a-z]|$)/,'pH'],
+  // Heavy metals and TDS sit in the same flat sheets (the "Non Routine"
+  // hydrotest band carries Hg, Cr6+, As, Cd, Cu, Pb, Zn, Ni, TDS) but had no
+  // entry here, so those columns were skipped without a word -- which is why
+  // eight columns of the EMF hydrotest table could never fill. Names match the
+  // ones the app already stores for BadanAir/Yearly, so the two sources agree.
+  // Appended last on purpose: matching stops at the first hit, so these can
+  // never shadow the parameters above.
+  [/mercury|merkuri|(^|[^a-z])hg([^a-z]|$)/,'Mercury (Hg)'],
+  [/hexavalent|(^|[^a-z])cr\s*6/,'Chromium Hexavalent (Cr6+)'],
+  [/arsen|(^|[^a-z])as([^a-z]|$)/,'Arsenic (As)'],
+  [/kadmium|cadmium|(^|[^a-z])cd([^a-z]|$)/,'Cadmium (Cd)'],
+  [/tembaga|copper|(^|[^a-z])cu([^a-z]|$)/,'Copper (Cu)'],
+  [/timbal|lead|(^|[^a-z])pb([^a-z]|$)/,'Lead (Pb)'],
+  [/seng|zinc|(^|[^a-z])zn([^a-z]|$)/,'Zinc (Zn)'],
+  [/nikel|nickel|(^|[^a-z])ni([^a-z]|$)/,'Nickel (Ni)'],
+  [/dissolved solid|(^|[^a-z])tds([^a-z]|$)/,'TDS']
+];
+var RS_FLAT_SATUAN={'TSS':'mg/L','Kekeruhan':'NTU','Taxa S':'taxa','Abundance':'sel/mL',
+  'Diversity H':'-','Equalization E':'-','Domination D':'-','Ammonia (NH3-N)':'mg/L',
+  'DO':'mg/L','BOD':'mg/L','H2S':'mg/L','Fenol':'mg/L','pH':'-',
+  'Mercury (Hg)':'mg/L','Chromium Hexavalent (Cr6+)':'mg/L','Arsenic (As)':'mg/L',
+  'Cadmium (Cd)':'mg/L','Copper (Cu)':'mg/L','Lead (Pb)':'mg/L','Zinc (Zn)':'mg/L',
+  'Nickel (Ni)':'mg/L','TDS':'mg/L'};
+const RS_ID_ALIAS={
+  titik:['kode lokasi','kode lapangan','titik sampling','titik penaatan','titik',
+         'area operasi','lokasi sampling','nama titik','lokasi'],
+  rfa:['rfa','no rfa','no. rfa','norfa'],
+  site:['lapangan','site','kode site','area','kode lapangan'],
+  tanggal:['tanggal pelaksanaan','tanggal sampling','tanggal','tgl sampling']
+};
+var RS_CROSSTAB=[];
+const RS_SHEET_GROUP={
+  'dww full':'Monthly','pw full parameter':'Monthly','pwt':'Monthly',
+  'pw inlet':'Monthly','drainase':'Monthly','bpn':'Monthly',
+  'sw':'BadanAir','sw full parameter':'BadanAir','sw full old regulation':'BadanAir',
+  'sw full pp22':'BadanAir',
+  'hydrotest':'NonRoutine','hydrotest - dewatering':'NonRoutine','non routine':'NonRoutine',
+  'semesterly pw':'Semesterly','semesterly':'Semesterly','sw plankton':'Semesterly',
+  'yearly':'Yearly','dredging':'Dredging','dumping material keruk':'DumpingKeruk',
+  'drilling (water)':'Drilling','drilling (sediment)':'Drilling'
+};
+var RS_YEARLY_TITIK={
+  'cpa flotator (outlet)':{titik:'CPA Outlet OWTU',site:'CPA'},
+  'npu flotator (outlet)':{titik:'NPU Flotator',site:'NPU'},
+  'bkp outlet wemco':{titik:'Outlet WEMCO',site:'BKP'},
+  'cpu sowtu (outlet)':{titik:'CPU SOWTU',site:'CPU'},
+  'outlet ppa observation pool':{titik:'Outlet PPA Observation Pool',site:'SPS'}
+};
+function _rsTitikWords(t){
+  var s=String(t==null?'':t).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  var out={}, w=s?s.split(' '):[];
+  for(var i=0;i<w.length;i++)if(w[i])out[w[i]]=1;
+  return out;
+}
+function _rsPickSameTitik(list,titik){
+  if(!list||list.length<2)return list;
+  var names={}, n=0;
+  for(var i=0;i<list.length;i++){
+    var t=(list[i].row&&list[i].row.titik)||'';
+    if(!names[t]){names[t]=1;n++;}
+  }
+  if(n<2)return list;                     // one point, nothing to disambiguate
+  var want=_rsTitikWords(titik), best=-1, score=[];
+  for(var j=0;j<list.length;j++){
+    var have=_rsTitikWords((list[j].row&&list[j].row.titik)||''), sc=0;
+    for(var k in have)if(want[k])sc++;
+    score[j]=sc; if(sc>best)best=sc;
+  }
+  var keep=[];
+  for(var m2=0;m2<list.length;m2++)if(score[m2]===best)keep.push(list[m2]);
+  // every candidate equally close: no basis to choose, so change nothing
+  return (keep.length===list.length)?list:keep;
+}
+function _rsTitikFullKey(t){
+  return String(t==null?'':t).toLowerCase().replace(/[^a-z0-9]+/g,'');
+}
+function _rsTitikKeyAlias(t){
+  // Bekapai's Outlet DWWTU is ONE permit and ONE coordinate covering TWO
+  // outlets. They are told apart by the order they are recorded in --
+  // Laundry & Restaurant first, Toilet second -- which is why both spellings
+  // are listed above rather than left to a bracket-stripped key that cannot
+  // see the difference.
+  var _fa=RS_TITIK_FULL_ALIAS[_rsTitikFullKey(t)];
+  if(_fa)return _rsNormKey(_fa);
+  var k=_rsNormKey(t);
+  // Y295(1): recap sheets label some titik with their own sheet prefix --
+  // "PW NPU Flotator" is the same physical point as "NPU Flotator", which is
+  // exactly what _hsTitikKey has always assumed. Matching the app's rule here
+  // is what stops the sync from re-inserting readings it already holds.
+  k=k.replace(/^pw\s+/,'');
+  var a=RS_TITIK_ALIAS[k];
+  return a?_rsNormKey(a):k;
+}
+function _rsGridLabelRow(rows,i){
+  var r=rows[i]||[];
+  return (_rsNorm(r[0])||'')+' '+(_rsNorm(r[1])||'');
+}
+function _rsLooksLikeValue(v){
+  var s=String(v==null?'':v).trim();
+  if(!s)return true;
+  if(/^[<>≤≥]?\s*-?[\d.,]+\s*$/.test(s))return true;
+  if(/^(negative|negatif|nihil|no\s*flow|odorless|tidak berbau|normal|nd|n\/?a|-{1,3}|\*+|\(\s*\*+\s*\))$/i.test(s))return true;
+  return false;
+}
+function _rsFlatFillRight(row,width){
+  var out=[],last=null;
+  for(var i=0;i<width;i++){
+    var v=(row||[])[i];
+    if(v!=null&&String(v).trim()!=='')last=String(v).trim();
+    out.push(last);
+  }
+  return out;
+}
+function _rsFlatParamName(label,spec){
+  var s=_rsNorm(label).toLowerCase();
+  if(!s)return null;
+  var base=null;
+  for(var i=0;i<RS_FLAT_PARAM.length;i++)if(RS_FLAT_PARAM[i][0].test(s)){base=RS_FLAT_PARAM[i][1];break;}
+  if(!base)return null;
+  if(!spec.community)return {param:base,satuan:RS_FLAT_SATUAN[base]||''};
+  var kom=(s.indexOf('benthos')>=0)?'Benthos':(s.indexOf('plankton')>=0?'Plankton':'');
+  if(base==='TSS')return {param:'TSS',satuan:'mg/L'};
+  if(!kom)return null;
+  if(base==='Equalization E')
+    return {param:kom==='Benthos'?'Benthos Equitability E':'Plankton Equalization E',satuan:'-'};
+  if(base==='Domination D')
+    return {param:kom==='Benthos'?'Benthos Dominance D':'Plankton Domination D',satuan:'-'};
+  if(base==='Abundance'){
+    var sat=(s.indexOf('ind/l')>=0)?'ind/L':((s.indexOf('sel/m3')>=0||s.indexOf('sel/m³')>=0)?'sel/m³':
+             (s.indexOf('ind/m')>=0?'ind/m²':'sel/mL'));
+    var nm;
+    if(kom==='Benthos')nm=(sat==='ind/L')?'Benthos Abundance (Ind/L)':'Benthos Abundance';
+    else nm='Plankton Abundance ('+(sat==='ind/L'?'Ind/L':(sat==='sel/m³'?'sel/m3':'sel/mL'))+')';
+    return {param:nm,satuan:sat};
+  }
+  return {param:kom+' '+base,satuan:RS_FLAT_SATUAN[base]||''};
+}
+function _rsFlatParse(rows,spec){
+  var width=0;
+  for(var i=0;i<rows.length;i++)width=Math.max(width,(rows[i]||[]).length);
+  var idNames=[];for(var k in spec.id)idNames.push(spec.id[k]);
+  var hdrRow=-1,idCol={};
+  for(var r=0;r<Math.min(12,rows.length)&&hdrRow<0;r++){
+    var f=_rsFlatFillRight(rows[r],width),hit={},n=0;
+    for(var c=0;c<width;c++){
+      var lab=_rsNorm(f[c]).toLowerCase();
+      for(var key in spec.id){
+        if(hit[key]==null&&lab===spec.id[key]){hit[key]=c;n++;}
+      }
+    }
+    // Y242: a spec with no labels of its own must not match anything here --
+    // n >= min(3,0) is true for every row, so row 0 would become the header
+    if(idNames.length&&n>=Math.min(3,idNames.length)){hdrRow=r;idCol=hit;}
+  }
+  // Y241: the spec's exact labels found nothing -- try the aliases, asking
+  // only for a titik plus something that identifies the sampling. See the
+  // patch note for why the site column is allowed to be missing.
+  if(hdrRow<0){
+    for(var ra=0;ra<Math.min(12,rows.length)&&hdrRow<0;ra++){
+      var fa=_rsFlatFillRight(rows[ra],width),ha={};
+      for(var ca=0;ca<width;ca++){
+        var la=_rsNorm(fa[ca]).toLowerCase();
+        if(!la)continue;
+        for(var role in RS_ID_ALIAS){
+          if(ha[role]!=null)continue;
+          if(RS_ID_ALIAS[role].indexOf(la)>=0)ha[role]=ca;
+        }
+      }
+      // one column cannot be both; the more specific role keeps it
+      if(ha.site!=null&&ha.site===ha.titik)delete ha.site;
+      if(ha.titik!=null&&(ha.rfa!=null||ha.tanggal!=null)){hdrRow=ra;idCol=ha;}
+    }
+  }
+  // Y252: no labels anywhere -- read the columns off the first data rows.
+  // See the patch note for why this runs last and what it insists on.
+  if(hdrRow<0){
+    for(var rb=0;rb<Math.min(10,rows.length)&&hdrRow<0;rb++){
+      var fb=_rsFlatFillRight(rows[rb],width),ntxt=0;
+      for(var cb=0;cb<width;cb++){
+        var sb=_rsNorm(fb[cb]);
+        if(sb&&sb.length<=60&&!/^[\d.,\s%+-]*$/.test(sb))ntxt++;
+      }
+      if(ntxt<2)continue;
+      for(var rd=rb+1;rd<Math.min(rb+5,rows.length)&&hdrRow<0;rd++){
+        var rw=rows[rd]||[],cr=-1,cd=-1,ct=-1;
+        for(var cc=0;cc<width;cc++){
+          var v9=rw[cc];
+          if(v9==null||String(v9).trim()==='')continue;
+          if(cr<0&&/^\d{6}\s*-\s*\d/.test(String(v9).trim())){cr=cc;continue;}
+          if(cd<0&&((typeof v9==='number'&&v9>40000&&v9<60000)||/^\d{4}-\d{2}-\d{2}/.test(String(v9)))){cd=cc;continue;}
+          if(ct<0&&typeof v9==='string'&&String(v9).trim().length>2)ct=cc;
+        }
+        if(cr>=0&&ct>=0){
+          hdrRow=rb;idCol={rfa:cr,titik:ct};
+          if(cd>=0)idCol.tanggal=cd;
+        }
+      }
+    }
+  }
+  if(hdrRow<0)return null;
+  // parameter columns: join every header row from hdrRow down to the last row
+  // that is still header (no id value in the titik column)
+  var hdrEnd=hdrRow;
+  for(var r2=hdrRow+1;r2<Math.min(hdrRow+4,rows.length);r2++){
+    var tv=(rows[r2]||[])[idCol.titik];
+    if(tv!=null&&String(tv).trim()!=='')break;
+    hdrEnd=r2;
+  }
+  // Merged header cells only appear in their first column, so each header row
+  // is filled to the right -- but that also drags "TSS" across the plankton
+  // columns beside it. Keep the rows separate and read the most specific
+  // (lowest) one first; only fall back to the group label above it.
+  var layers=[];
+  for(var hr=hdrRow;hr<=hdrEnd;hr++)layers.push(_rsFlatFillRight(rows[hr],width));
+  var paramCols=[];
+  var used={};for(var key2 in idCol)used[idCol[key2]]=1;
+  for(var c4=0;c4<width;c4++){
+    if(used[c4])continue;
+    var own='',ctx='',pn=null;
+    for(var L=layers.length-1;L>=0&&!pn;L--){
+      own=layers[L][c4]||'';
+      if(!own)continue;
+      ctx='';
+      for(var L2=0;L2<L;L2++)if(layers[L2][c4])ctx+=(ctx?' ':'')+layers[L2][c4];
+      pn=_rsFlatParamName(spec.community?(ctx+' '+own):own,spec);
+    }
+    if(pn)paramCols.push({col:c4,param:pn.param,satuan:pn.satuan});
+    else{
+      // Y248: no rule for this header -- keep the header itself as the name
+      // rather than dropping the column. See the patch note.
+      var lbl=String(layers[layers.length-1][c4]||'').trim();
+      for(var L3=layers.length-1;L3>=0&&!lbl;L3--)lbl=String(layers[L3][c4]||'').trim();
+      if(!lbl||lbl.length>60)continue;
+      if(/^[\d.,\s%+-]*$/.test(lbl))continue;              // a number is not a name
+      if(/^(no\.?|column\d*|keterangan|catatan|total|satuan|baku mutu|peraturan)$/i.test(lbl))continue;
+      var anyVal=false;
+      for(var rv=hdrEnd+1;rv<rows.length&&!anyVal;rv++){
+        var cv=(rows[rv]||[])[c4];
+        if(cv!=null&&String(cv).trim()!=='')anyVal=true;
+      }
+      if(!anyVal)continue;
+      paramCols.push({col:c4,param:lbl.replace(/\s+/g,' '),satuan:''});
+    }
+  }
+  if(!paramCols.length)return null;
+  var out=[],lastRfa='',lastTgl='',lastSite='',curSem='',_rsBadRows=0;
+  // a "Semester N" marker sitting inside the collapsed header block (SW
+  // Plankton's first one does, right after its column headers) never reaches
+  // the data loop below, so it has to be picked up here too
+  for(var hs=hdrRow+1;hs<=hdrEnd;hs++){
+    var hm=/^semester\s*(\d)/i.exec(_rsNorm((rows[hs]||[])[0]));
+    if(hm)curSem='Semester '+hm[1];
+  }
+  for(var r3=hdrEnd+1;r3<rows.length;r3++){
+    var row=rows[r3]||[];
+    // Y241: from 2023 the sheet stopped having a date column and writes the
+    // block's date into the RFA column instead, on the baku-mutu row that
+    // opens the block -- so read it before that row is skipped.
+    if(idCol.rfa!=null){
+      var _rv=row[idCol.rfa];
+      if(typeof _rv==='number'&&_rv>40000&&_rv<60000)lastTgl=_rsSerialToIso(_rv);
+      else if(_rv!=null&&/^\d{4}-\d{2}-\d{2}/.test(String(_rv)))lastTgl=String(_rv).slice(0,10);
+    }
+    var titik=row[idCol.titik];
+    if(titik==null||String(titik).trim()===''){
+      var sm=/^semester\s*(\d)/i.exec(_rsNorm(row[0]));
+      if(sm)curSem='Semester '+sm[1];
+      continue;
+    }
+    titik=String(titik).trim();
+    if(/^baku mutu|^column\d|^keterangan|^bm\s+(sesuai|rona awal)|^peraturan\b|becquerel/i.test(titik))continue;
+    // Y269: this row is a REPEAT of the sheet's own header block (some
+    // sheets, e.g. Non Routine, open a new header every sampling instance
+    // instead of once for the whole sheet) -- not a titik.
+    if(typeof RS_ID_ALIAS!=='undefined'&&RS_ID_ALIAS.titik.indexOf(_rsNorm(titik).toLowerCase())>=0)continue;
+    var rfa=idCol.rfa!=null?row[idCol.rfa]:null;
+    // a date in that column is the block's date, never an RFA number
+    if(typeof rfa==='number'&&rfa>40000&&rfa<60000)rfa=null;
+    rfa=(rfa==null||String(rfa).trim()==='')?lastRfa:String(rfa).trim().split(/[\n,;]/)[0].trim();
+    lastRfa=rfa;
+    var site=idCol.site!=null?row[idCol.site]:null;
+    site=(site==null||String(site).trim()==='')?lastSite:String(site).trim(); lastSite=site;
+    var tgl='';
+    if(idCol.tanggal!=null){
+      var tv2=row[idCol.tanggal];
+      if(typeof tv2==='number'&&tv2>40000&&tv2<60000)tgl=_rsSerialToIso(tv2);
+      else if(tv2!=null&&/^\d{4}-\d{2}-\d{2}/.test(String(tv2)))tgl=String(tv2).slice(0,10);
+      if(!tgl)tgl=lastTgl; else lastTgl=tgl;
+    }else tgl=lastTgl;   // Y241: no date column -- use the block's date
+    var vals=[];
+    for(var pc=0;pc<paramCols.length;pc++){
+      var v=row[paramCols[pc].col];
+      if(v==null||String(v).trim()==='')continue;
+      vals.push({param:paramCols[pc].param,satuan:paramCols[pc].satuan,nilai:v});
+    }
+    if(!vals.length)continue;
+    // Y254: a reading cannot be the name of a point or of an analyte
+    if(_rsLooksLikeValue(titik)){_rsBadRows++;continue;}
+    var _keep=[];
+    for(var vk=0;vk<vals.length;vk++)
+      if(!_rsLooksLikeValue(vals[vk].param))_keep.push(vals[vk]);else _rsBadRows++;
+    if(!_keep.length)continue;
+    out.push({excelRow:r3+1,titik:titik,site:site,rfa:rfa,tanggal:tgl,semester:curSem,vals:_keep});
+  }
+  // Y254: many refusals beside few survivors means the layout was misread --
+  // a cross-tab the flat reader cannot see. Say so rather than import it.
+  if(_rsBadRows>=5&&out.length<=_rsBadRows)return null;
+  if(!out.length)return null;
+  return {group:spec.group,sheet:spec.sheet,rows:out,paramCols:paramCols.length};
+}
+function _rsFlatAppIndex(group){
+  var idx={};
+  var rows=(typeof _hsRowsFor==='function')?_hsRowsFor(group):((typeof HS_GROUPS_DATA!=='undefined'&&HS_GROUPS_DATA[group])||[]);
+  rows.forEach(function(r){
+    var rfa=(r.noRfa&&r.noRfa.length)?String(r.noRfa[0]).trim():'';
+    var key=_rsTitikKeyAlias(r.titik)+'‖'+_rsNormKey(r.parameter)+'‖'+_rsNorm(rfa);
+    (idx[key]=idx[key]||[]).push(r);
+  });
+  return idx;
+}
+function _rsFlatImport(wbx,sn,spec,rep){
+  var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
+  var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+  var parsed=_rsFlatParse(rows,spec);
+  if(!parsed){rep.push({sheet:sn,status:'lewat',alasan:'header tidak dikenali'});return null;}
+  var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE==='fillblank');
+  var idx=_rsFlatAppIndex(spec.group);
+  var changed=0,same=0,added=0,skipped=0,reaDetected=0;
+  // group the sheet's own rows by the same key, so replicates of one sampling
+  // are settled together: values the app already holds count as unchanged
+  // whatever order they sit in, and only a genuine surplus is inserted
+  var byKey={};
+  parsed.rows.forEach(function(dr){
+    dr.vals.forEach(function(v){
+      var key=_rsTitikKeyAlias(dr.titik)+'‖'+_rsNormKey(v.param)+'‖'+_rsNorm(dr.rfa);
+      (byKey[key]=byKey[key]||[]).push({dr:dr,v:v});
+    });
+  });
+  Object.keys(byKey).forEach(function(key){
+    var raws=byKey[key],list=(idx[key]||[]).slice(),taken=[];
+    var left=[];
+    raws.forEach(function(it){
+      var val=String(it.v.nilai),at=-1;
+      for(var i=0;i<list.length;i++){
+        if(taken[i])continue;
+        if(String(list[i].nilai==null?'':list[i].nilai)===val){at=i;break;}
+      }
+      if(at>=0){taken[at]=1;same++;}
+      else left.push(it);
+    });
+    left.forEach(function(it){
+      var hit=null;
+      for(var i=0;i<list.length;i++)if(!taken[i]){taken[i]=1;hit=list[i];break;}
+      if(hit){
+        if(fillOnly&&hit.nilai!=null&&String(hit.nilai).trim()!==''){same++;return;}
+        if(hit.extra&&hit.extra.manualId){
+          hit.nilai=String(it.v.nilai);
+          if(typeof _hsSaveManual==='function')_hsSaveManual();
+        }else{
+          if(_rsMaybeReanalysis(spec.group,hit,it.v.nilai,_hsRowKey(spec.group,hit),sn))reaDetected++;
+          HASIL_OVERRIDE[_hsRowKey(spec.group,hit)]={nilai:String(it.v.nilai),ts:Date.now()};
+        }
+        changed++;return;
+      }
+      // as in the grid path: only a sampling the app has nothing for is added
+      if(list.length||typeof HASIL_MANUAL==='undefined'){skipped++;return;}
+      var baku=null,peraturan='',satBaku='';
+      if(list.length){baku=list[0].bakuMutu;peraturan=list[0].peraturan||'';satBaku=list[0].satuanBakuMutu||'';}
+      var ev=(typeof _hsEvalCompliance==='function')?_hsEvalCompliance(String(it.v.nilai),baku):{status:'no_standard',nilaiNum:null};
+      // Y241: no site column on this sheet -- the register and the titik's own
+      // name settle it, which is better evidence than the column ever was
+      var _site=it.dr.site||'';
+      if(!_site){_site=_rsSiteUntuk(it.dr.titik);}
+      HASIL_MANUAL.push({group:spec.group,category:'nonroutine',noRfa:it.dr.rfa?[it.dr.rfa]:[],
+        site:_rsSiteEf(_site,it.dr.titik),titik:it.dr.titik,tanggal:it.dr.tanggal?[it.dr.tanggal]:[],
+        parameter:it.v.param,nilai:String(it.v.nilai),satuan:it.v.satuan||'',bakuMutu:baku,
+        satuanBakuMutu:satBaku,peraturan:peraturan,catatan:'',computed:0,
+        status:ev.status,nilaiNum:ev.nilaiNum,
+        extra:{sumberSheet:String(spec.sheet).trim(),bulan:'',semester:it.dr.semester||'',
+          manualId:'hm-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+          importedFromRaw:true,sumberFile:(window._rsSrcFile||''),waktuImpor:(window._rsSrcTime||'')}});
+      added++;
+    });
+  });
+  rep.push({sheet:sn,status:'ok',baris:parsed.rows.length,kolomParam:parsed.paramCols,
+            changed:changed,added:added,same:same,unmatched:skipped,rea:reaDetected});
+  return {changed:changed,added:added,same:same,unmatched:skipped,rea:reaDetected};
+}
+function _rsGenericFlatImport(wbx,sn,rep){
+  if(RS_CROSSTAB.indexOf(_rsNorm(sn).toLowerCase())>=0){
+    rep.push({sheet:sn,status:'lewat',
+      alasan:'tabel silang (titik jadi kolom, SEM 1/2) — belum ada pembacanya, sengaja tidak ditebak'});
+    return null;
+  }
+  var probe=[];
+  var r=_rsFlatImport(wbx,sn,{group:_rsSheetGroup(sn),sheet:String(sn).trim(),id:{}},probe);
+  var last=probe[probe.length-1];
+  if(r&&last&&last.status==='ok'){last.pembaca='datar umum';rep.push(last);return r;}
+  return null;
+}
+function _rsSemiPwGrid(rows){
+  var width=0;
+  for(var i=0;i<rows.length;i++)width=Math.max(width,(rows[i]||[]).length);
+  var hasSem=function(r){
+    if(!r)return false;
+    for(var c=0;c<width;c++){var v=r[c];if(v!=null&&/^sem\s*[12]$/i.test(String(v).trim()))return true;}
+    return false;
+  };
+  // every table header in the sheet, not just the first
+  var groupRows=[];
+  for(var g=0;g<rows.length-1;g++)if(hasSem(rows[g+1]))groupRows.push(g);
+  if(!groupRows.length)return null;
+  var out=[];
+  for(var gi=0;gi<groupRows.length;gi++){
+    var groupRow=groupRows[gi];
+    var hardEnd=(gi+1<groupRows.length)?groupRows[gi+1]:rows.length;
+    var gr=rows[groupRow]||[];
+    var starts=[];
+    for(var c2=1;c2<width;c2++){
+      var v2=gr[c2];
+      if(v2==null||String(v2).trim()==='')continue;
+      starts.push({col:c2,label:String(v2).trim()});
+    }
+    if(!starts.length)continue;
+    var blocks=starts.map(function(s,idx){
+      var to=(idx+1<starts.length)?starts[idx+1].col:width;
+      var type='titik';
+      if(/BAKU\s*MUTU/i.test(s.label))type='baku';
+      else if(/RONA\s*AWAL|^SATUAN\b|PERATURAN|KETERANGAN|CATATAN/i.test(s.label))type='skip';
+      else if(/^\*/.test(s.label))type='skip';
+      return {label:s.label,from:s.col,to:to,type:type};
+    }).filter(function(b){return b.type!=='skip';});
+    if(!blocks.some(function(b){return b.type==='titik';}))continue;
+    var subRow=groupRow+1,semCols=[];
+    var sr=rows[subRow]||[];
+    for(var c3=1;c3<width;c3++){
+      var v3=sr[c3];
+      if(v3!=null&&/^sem\s*[12]$/i.test(String(v3).trim()))semCols.push(c3);
+    }
+    blocks.forEach(function(b){
+      if(b.type!=='titik')return;
+      var mine=semCols.filter(function(c){return c>=b.from&&c<b.to;});
+      b.cols=mine.length?mine:[b.from];
+    });
+    var rfaRow=-1,dateRow=-1;
+    for(var r=subRow;r<Math.min(subRow+4,hardEnd);r++){
+      var rr=rows[r]||[],nRfa=0,nDate=0;
+      blocks.forEach(function(b){if(b.type!=='titik')return;b.cols.forEach(function(c){
+        var v=rr[c];
+        if(v==null)return;
+        if(typeof v==='number'&&v>40000&&v<60000){nDate++;return;}
+        if(/^\d{6}\s*-\s*\d/.test(String(v)))nRfa++;
+      });});
+      if(nRfa&&rfaRow<0)rfaRow=r;
+      if(nDate&&dateRow<0)dateRow=r;
+    }
+    if(rfaRow<0)continue;
+    var dataStart=Math.max(rfaRow,dateRow)+1;
+    // the Peraturan text sits in the BAKU MUTU block's own column, below the
+    // group-row label itself (which is what that column reads at groupRow)
+    var bakuBlock=blocks.filter(function(b){return b.type==='baku';})[0];
+    var peraturan='';
+    if(bakuBlock)for(var pr=groupRow+1;pr<dataStart;pr++){
+      var v=(rows[pr]||[])[bakuBlock.from];
+      if(v!=null&&isNaN(parseFloat(v))&&String(v).trim()){peraturan=String(v).trim();break;}
+    }
+    var curParam='';
+    for(var i2=dataStart;i2<hardEnd;i2++){
+      var row=rows[i2]||[];
+      var p=row[0];
+      var anyVal=false;
+      blocks.forEach(function(b){
+        var cs=b.cols||[b.from];
+        cs.forEach(function(c){if(row[c]!=null&&String(row[c]).trim()!=='')anyVal=true;});
+      });
+      // a row with no new parameter and nothing in ANY block's column
+      // (titik or baku) is the blank line the raw itself uses to separate
+      // one table from the next -- a row that only carries the Peraturan
+      // text in the baku column is a header continuation, not a blank line,
+      // and must not be mistaken for the end of the table
+      if((p==null||String(p).trim()==='')&&!anyVal)break;
+      if(p!=null&&String(p).trim()!=='')curParam=String(p).trim();
+      if(!curParam)continue;
+      var baku=bakuBlock?row[bakuBlock.from]:null;
+      blocks.forEach(function(b){
+        if(b.type!=='titik')return;
+        b.cols.forEach(function(c){
+          var val=row[c];
+          if(val==null||String(val).trim()==='')return;
+          var rfaV=(rows[rfaRow]||[])[c];
+          var tglV=(dateRow>=0)?(rows[dateRow]||[])[c]:null;
+          var tgl='';
+          if(typeof tglV==='number'&&tglV>40000&&tglV<60000)tgl=_rsSerialToIso(tglV);
+          out.push({titik:b.label,param:curParam,nilai:String(val).trim(),
+            noRfa:(rfaV!=null?String(rfaV).trim():''),tanggal:tgl,
+            bakuMutu:(baku!=null&&String(baku).trim()!==''?baku:null),peraturan:peraturan});
+        });
+      });
+    }
+  }
+  if(!out.length)return null;
+  return {rows:out};
+}
+function _rsSemiPwImport(wbx,sn,rep){
+  var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
+  var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+  var g=_rsSemiPwGrid(rows);
+  if(!g)return null;
+  var GROUP='Semesterly';
+  var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE==='fillblank');
+  var idx=_rsFlatAppIndex(GROUP);
+  var changed=0,same=0,added=0,skipped=0,reaDetected=0;
+  var byKey={};
+  g.rows.forEach(function(d){
+    var key=_rsTitikKeyAlias(d.titik)+'‖'+_rsNormKey(d.param)+'‖'+_rsNorm(d.noRfa);
+    (byKey[key]=byKey[key]||[]).push(d);
+  });
+  Object.keys(byKey).forEach(function(key){
+    var raws=byKey[key],list=(idx[key]||[]).slice(),taken=[],left=[];
+    raws.forEach(function(d){
+      var val=String(d.nilai),at=-1;
+      for(var i=0;i<list.length;i++){
+        if(taken[i])continue;
+        if(String(list[i].nilai==null?'':list[i].nilai)===val){at=i;break;}
+      }
+      if(at>=0){taken[at]=1;same++;}else left.push(d);
+    });
+    left.forEach(function(d){
+      var hit=null;
+      for(var i=0;i<list.length;i++)if(!taken[i]){taken[i]=1;hit=list[i];break;}
+      if(hit){
+        if(fillOnly&&hit.nilai!=null&&String(hit.nilai).trim()!==''){same++;return;}
+        if(hit.extra&&hit.extra.manualId){hit.nilai=String(d.nilai);}
+        else{
+          if(_rsMaybeReanalysis(GROUP,hit,d.nilai,_hsRowKey(GROUP,hit),sn))reaDetected++;
+          HASIL_OVERRIDE[_hsRowKey(GROUP,hit)]={nilai:String(d.nilai),ts:Date.now()};
+        }
+        changed++;return;
+      }
+      if(list.length||typeof HASIL_MANUAL==='undefined'){skipped++;return;}
+      var site='';
+      site=_rsSiteUntuk(d.titik);
+      var ev=(typeof _hsEvalCompliance==='function')?_hsEvalCompliance(d.nilai,d.bakuMutu):{status:'no_standard',nilaiNum:null};
+      HASIL_MANUAL.push({group:GROUP,category:'routine',noRfa:d.noRfa?[d.noRfa]:[],
+        site:_rsSiteEf(site,d.titik),titik:d.titik,tanggal:d.tanggal?[d.tanggal]:[],
+        parameter:d.param,nilai:String(d.nilai),satuan:'',bakuMutu:d.bakuMutu,
+        satuanBakuMutu:'',peraturan:d.peraturan||'',catatan:'',computed:0,
+        status:ev.status,nilaiNum:ev.nilaiNum,
+        extra:{sumberSheet:String(sn).trim(),bulan:'',
+          manualId:'hm-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+          importedFromRaw:true,sumberFile:(window._rsSrcFile||''),waktuImpor:(window._rsSrcTime||'')}});
+      added++;
+    });
+  });
+  rep.push({sheet:sn,status:'ok',pembaca:'PW semesteran',baris:g.rows.length,
+            changed:changed,added:added,same:same,unmatched:skipped,rea:reaDetected});
+  return {changed:changed,added:added,same:same,unmatched:skipped,rea:reaDetected};
+}
+function _rsHydroGrid(rows){
+  var hdr=-1,pCol=-1,bmCol=-1;
+  for(var i=0;i<Math.min(8,rows.length)&&hdr<0;i++){
+    var r=rows[i]||[];
+    for(var c=0;c<Math.min(4,r.length);c++){
+      if(/parameter/i.test(String(r[c]==null?'':r[c]))){hdr=i;pCol=c;break;}
+    }
+  }
+  if(hdr<0)return null;
+  var hr=rows[hdr]||[];
+  for(var c1=0;c1<Math.min(8,hr.length);c1++)
+    // 2022 titles this column "BM PP22 lamp. VIII" rather than "Baku Mutu"
+    if(/baku\s*mutu|^\s*bm\b/i.test(String(hr[c1]==null?'':hr[c1]))){bmCol=c1;break;}
+  if(bmCol<0)return null;
+  var wells=[];
+  for(var c2=bmCol+1;c2<hr.length;c2++){
+    var v=String(hr[c2]==null?'':hr[c2]).trim();
+    if(v)wells.push({col:c2,name:v});
+  }
+  if(!wells.length)return null;
+  var wellAt=function(c){var w='';for(var k=0;k<wells.length;k++)if(wells[k].col<=c)w=wells[k].name;return w;};
+  // classify the rows between the header and the data
+  var POS=/^(upstream|downstream|u\s*\/\s*s|d\s*\/\s*s|hulu|hilir|sump|reanalis)/i;
+  var rfaRow=-1,posRow=-1,dateRow=-1,last=hdr;
+  for(var i2=hdr+1;i2<Math.min(hdr+5,rows.length);i2++){
+    var r2=rows[i2]||[],nR=0,nP=0,nD=0;
+    for(var c3=bmCol+1;c3<r2.length;c3++){
+      var raw=r2[c3];
+      var s=String(raw==null?'':raw).trim();
+      if(typeof raw==='number'&&raw>40000&&raw<60000){nD++;continue;}
+      if(!s)continue;
+      if(/\d{6}\s*-\s*\d/.test(s))nR++;   // 2022 writes "RFA No. 990000-99"
+      else if(POS.test(s))nP++;
+    }
+    if(nR&&rfaRow<0){rfaRow=i2;last=Math.max(last,i2);}
+    if(nP&&posRow<0){posRow=i2;last=Math.max(last,i2);}
+    if(nD&&dateRow<0){dateRow=i2;last=Math.max(last,i2);}
+  }
+  // a value carried on the header rows applies from its own column rightwards
+  // until the next one -- the sheets write it once per well, not per column
+  var carry=function(ri,c){
+    if(ri<0)return '';
+    var r3=rows[ri]||[];
+    for(var k=c;k>bmCol;k--){
+      var s=String(r3[k]==null?'':r3[k]).trim();
+      if(s){var m=s.match(/\d{6}\s*-\s*\d+[A-Za-z]?/);return m?m[0].replace(/\s+/g,''):s;}
+    }
+    return '';
+  };
+  var out=[];
+  for(var i3=last+1;i3<rows.length;i3++){
+    var r4=rows[i3]||[];
+    var pm=String(r4[pCol]==null?'':r4[pCol]).trim();
+    if(!pm||/^(no\.?|parameter)$/i.test(pm))continue;
+    var sat=(pCol+1<bmCol)?String(r4[pCol+1]==null?'':r4[pCol+1]).trim():'';
+    var bm=String(r4[bmCol]==null?'':r4[bmCol]).trim();
+    for(var c4=bmCol+1;c4<r4.length;c4++){
+      var val=r4[c4];
+      if(val==null||String(val).trim()==='')continue;
+      var pos=carry(posRow,c4), well=wellAt(c4);
+      if(!well)continue;
+      var tglRaw=(dateRow>=0)?(rows[dateRow]||[])[c4]:null;
+      var tgl=(typeof tglRaw==='number'&&tglRaw>40000&&tglRaw<60000)?_rsSerialToIso(tglRaw):'';
+      if(!tgl&&dateRow>=0){
+        var t2=carry(dateRow,c4);
+        if(/^\d{4}-\d{2}-\d{2}/.test(t2))tgl=t2.slice(0,10);
+      }
+      out.push({titik:well+(pos?(' - '+pos):''),param:pm,satuan:sat,bakuMutu:bm,
+                nilai:String(val).trim(),noRfa:carry(rfaRow,c4),tanggal:tgl});
+    }
+  }
+  return {hdr:hdr,pCol:pCol,bmCol:bmCol,wells:wells.length,
+          rfaRow:rfaRow,posRow:posRow,dateRow:dateRow,rows:out};
+}
+function _rsHydroImport(wbx,sn,rep){
+  var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
+  var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+  var g=_rsHydroGrid(rows);
+  if(!g||!g.rows.length)return null;
+  var GROUP='NonRoutine';
+  var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE==='fillblank');
+  var idx=_rsFlatAppIndex(GROUP);
+  var changed=0,same=0,added=0,skipped=0,reaDetected=0;
+  var byKey={};
+  g.rows.forEach(function(d){
+    var key=_rsTitikKeyAlias(d.titik)+'‖'+_rsNormKey(d.param)+'‖'+_rsNorm(d.noRfa);
+    (byKey[key]=byKey[key]||[]).push(d);
+  });
+  Object.keys(byKey).forEach(function(key){
+    var raws=byKey[key],list=(idx[key]||[]).slice(),taken=[],left=[];
+    raws.forEach(function(d){
+      var val=String(d.nilai),at=-1;
+      for(var i=0;i<list.length;i++){
+        if(taken[i])continue;
+        if(String(list[i].nilai==null?'':list[i].nilai)===val){at=i;break;}
+      }
+      if(at>=0){taken[at]=1;same++;}else left.push(d);
+    });
+    left.forEach(function(d){
+      var hit=null;
+      for(var i=0;i<list.length;i++)if(!taken[i]){taken[i]=1;hit=list[i];break;}
+      if(hit){
+        if(fillOnly&&hit.nilai!=null&&String(hit.nilai).trim()!==''){same++;return;}
+        if(hit.extra&&hit.extra.manualId){hit.nilai=String(d.nilai);}
+        else{
+          if(_rsMaybeReanalysis(GROUP,hit,d.nilai,_hsRowKey(GROUP,hit),sn))reaDetected++;
+          HASIL_OVERRIDE[_hsRowKey(GROUP,hit)]={nilai:String(d.nilai),ts:Date.now()};
+        }
+        changed++;return;
+      }
+      if(list.length||typeof HASIL_MANUAL==='undefined'){skipped++;return;}
+      var site='';
+      site=_rsSiteUntuk(d.titik);
+      var ev=(typeof _hsEvalCompliance==='function')?_hsEvalCompliance(String(d.nilai),d.bakuMutu||null)
+                                                   :{status:'no_standard',nilaiNum:null};
+      HASIL_MANUAL.push({group:GROUP,category:'nonroutine',noRfa:d.noRfa?[d.noRfa]:[],
+        site:_rsSiteEf(site,d.titik),titik:d.titik,tanggal:d.tanggal?[d.tanggal]:[],
+        parameter:d.param,nilai:String(d.nilai),satuan:d.satuan||'',
+        bakuMutu:d.bakuMutu||null,satuanBakuMutu:'',peraturan:'',catatan:'',computed:0,
+        status:ev.status,nilaiNum:ev.nilaiNum,
+        extra:{sumberSheet:String(sn).trim(),bulan:'',jenis:'Hydrotest',
+          manualId:'hm-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+          importedFromRaw:true,sumberFile:(window._rsSrcFile||''),waktuImpor:(window._rsSrcTime||'')}});
+      added++;
+    });
+  });
+  rep.push({sheet:sn,status:'ok',pembaca:'hidrostatik',baris:g.rows.length,titik:g.wells,
+            changed:changed,added:added,same:same,unmatched:skipped,rea:reaDetected});
+  return {changed:changed,added:added,same:same,unmatched:skipped,rea:reaDetected};
+}
+function _rsAnnualGrid(rows){
+  var tCol=1,pCol=2;
+  for(var hr=0;hr<Math.min(8,rows.length);hr++){
+    var hrow=rows[hr]||[],ft=-1,fp=-1;
+    for(var hc=0;hc<Math.min(6,hrow.length);hc++){
+      var hl=_rsNorm(hrow[hc]).toLowerCase();
+      if(ft<0&&hl.indexOf('titik')>=0)ft=hc;
+      if(fp<0&&hl.indexOf('parameter')>=0)fp=hc;
+    }
+    if(ft>=0&&fp>=0){tCol=ft;pCol=fp;break;}
+  }
+  var yr=-1,yrCol=-1;
+  for(var i=0;i<Math.min(6,rows.length)&&yr<0;i++){
+    var r=rows[i]||[];
+    for(var j=pCol+1;j<r.length;j++){
+      var v=r[j];
+      if(typeof v!=='number'&&typeof v!=='string')continue;
+      var s=_rsNorm(v);
+      if(/^(19|20)\d{2}$/.test(s)){yr=parseInt(s,10);yrCol=j;break;}
+    }
+  }
+  if(yr<0)return null;
+  // a real date grid must not be mistaken for this -- refuse if the sheet
+  // has more than one candidate period column at all
+  var extra=0;
+  for(var i2=0;i2<Math.min(6,rows.length);i2++){
+    var r2=rows[i2]||[];
+    for(var j2=pCol+1;j2<r2.length;j2++){
+      if(j2===yrCol)continue;
+      var v2=r2[j2];
+      if(typeof v2==='number'&&v2>1900&&v2<2100)extra++;
+    }
+  }
+  if(extra>0)return null;
+  var out=[],curTitik='',curParam='',curSat='';
+  for(var i3=3;i3<rows.length;i3++){
+    var r3=rows[i3]||[];
+    var t=r3[tCol]; if(t!=null&&String(t).trim()!==''){curTitik=String(t);curParam='';curSat='';}
+    var p=r3[pCol],sat=r3[pCol+1];
+    if(p!=null&&String(p).trim()!==''){curParam=String(p);curSat=(sat==null?'':String(sat));}
+    else if(!curParam)continue;
+    if(!curParam||!curTitik)continue;
+    var val=r3[yrCol];
+    if(val==null||String(val).trim()==='')continue;
+    out.push({titik:curTitik,param:curParam,satuan:curSat,nilai:val});
+  }
+  return {tahun:String(yr),rows:out};
+}
+function _rsAnnualImport(wbx,sn,rep){
+  var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
+  var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+  var g=_rsAnnualGrid(rows);
+  if(!g||!g.rows.length)return null;
+  var GROUP='Monthly';
+  var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE==='fillblank');
+  // Y264: a dedicated index, keyed the same way this reader queries it --
+  // titik‖parameter‖tahun -- built only from rows an annual reading could
+  // actually be (a year, no specific date), so a real month-dated row for
+  // the same titik+parameter is never mistaken for one of these.
+  var idx={};
+  _hsWalkAll(function(r){
+    if(!r||typeof r!=='object'||r.tahun==null||(r.tanggal&&r.tanggal.length))return;
+    var key=_rsTitikKeyAlias(r.titik)+'‖'+_rsNormKey(r.parameter)+'‖'+String(r.tahun);
+    (idx[key]=idx[key]||[]).push(r);
+  });
+  var changed=0,same=0,added=0,skipped=0,reaDetected=0;
+  var byKey={};
+  g.rows.forEach(function(d){
+    var key=_rsTitikKeyAlias(d.titik)+'‖'+_rsNormKey(d.param)+'‖'+g.tahun;
+    (byKey[key]=byKey[key]||[]).push(d);
+  });
+  Object.keys(byKey).forEach(function(key){
+    var raws=byKey[key],list=(idx[key]||[]).slice(),taken=[],left=[];
+    raws.forEach(function(d){
+      var val=String(d.nilai),at=-1;
+      for(var i=0;i<list.length;i++){
+        if(taken[i])continue;
+        if(String(list[i].nilai==null?'':list[i].nilai)===val){at=i;break;}
+      }
+      if(at>=0){taken[at]=1;same++;}else left.push(d);
+    });
+    left.forEach(function(d){
+      var hit=null;
+      for(var i=0;i<list.length;i++)if(!taken[i]){taken[i]=1;hit=list[i];break;}
+      if(hit){
+        if(fillOnly&&hit.nilai!=null&&String(hit.nilai).trim()!==''){same++;return;}
+        if(hit.extra&&hit.extra.manualId){hit.nilai=String(d.nilai);}
+        else{
+          if(_rsMaybeReanalysis(GROUP,hit,d.nilai,_hsRowKey(GROUP,hit),sn))reaDetected++;
+          HASIL_OVERRIDE[_hsRowKey(GROUP,hit)]={nilai:String(d.nilai),ts:Date.now()};
+        }
+        changed++;return;
+      }
+      if(list.length||typeof HASIL_MANUAL==='undefined'){skipped++;return;}
+      var site='';
+      site=_rsSiteUntuk(d.titik);
+      HASIL_MANUAL.push({group:GROUP,category:'routine',noRfa:[],site:_rsSiteEf(site,d.titik),titik:d.titik,
+        tanggal:[],tahun:g.tahun,parameter:d.param,nilai:String(d.nilai),satuan:d.satuan||'',
+        bakuMutu:null,satuanBakuMutu:'',peraturan:'',catatan:'',computed:0,status:'no_standard',nilaiNum:null,
+        extra:{sumberSheet:String(sn).trim(),bulan:'',
+          manualId:'hm-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+          importedFromRaw:true,sumberFile:(window._rsSrcFile||''),waktuImpor:(window._rsSrcTime||'')}});
+      added++;
+    });
+  });
+  rep.push({sheet:sn,status:'ok',pembaca:'tahunan',baris:g.rows.length,tahun:g.tahun,
+            changed:changed,added:added,same:same,unmatched:skipped,rea:reaDetected});
+  return {changed:changed,added:added,same:same,unmatched:skipped,rea:reaDetected};
+}
+function _rsSheetGroup(sn){
+  const k=_rsNorm(sn).toLowerCase();
+  if(RS_SHEET_GROUP[k])return RS_SHEET_GROUP[k];
+  for(const q in RS_SHEET_GROUP)if(k.indexOf(q)===0)return RS_SHEET_GROUP[q];
+  return 'Monthly';
+}
+function _rsRecapAll(list,yr,satuan){
+  if(!list)return [];
+  var want=_rsNorm(satuan).toLowerCase(),pri=[],rest=[];
+  list.forEach(function(x){
+    if(x.year&&x.year!==yr)return;
+    if(want&&_rsNorm(x.row&&x.row.satuan).toLowerCase()!==want)rest.push(x);
+    else pri.push(x);
+  });
+  return pri.concat(rest);
+}
+function _rsMaybeReanalysis(group,row,newVal,hsRowKey,sheetLabel){
+  if(!row||typeof _hsEvalCompliance!=='function'||typeof REA_DATA==='undefined')return false;
+  var baku=(row.bakuMutu==null||row.bakuMutu==='')?null:row.bakuMutu;
+  var evOld=_hsEvalCompliance(row.nilai,baku);
+  if(evOld.status!=='exceed')return false;
+  var evNew=_hsEvalCompliance(newVal,baku);
+  if(evNew.status!=='ok')return false;
+  var prior=REA_DATA.filter(function(r){return r._hsRowKey===hsRowKey&&r._autoDetected;});
+  // idempotent: a re-import of the same fixed value must not pile up records
+  if(prior.some(function(r){return String(r.nilaiRea)===String(newVal);}))return true;
+  REA_DATA.push({
+    rfaInduk:(row.noRfa&&row.noRfa[0])||'',iterasi:prior.length?('R'+(prior.length+1)):'',
+    site:row.site||'',titik:row.titik||'',parameter:row.parameter||'',
+    jenisAnalisa:'Normal',tglKirimUlang:'',tglDraftSelesai:new Date().toISOString().slice(0,10),scanRea:'',
+    nilaiAwal:String(row.nilai==null?'':row.nilai),nilaiRea:String(newVal),
+    bulan:(row.extra&&row.extra.bulan)||'',sampel:'',
+    catatan:'Terdeteksi otomatis dari Sinkron Raw ('+(sheetLabel||'')+') \u2014 nilai lama melebihi baku mutu, nilai raw sekarang memenuhi.',
+    _hsGroup:group,_hsRowKey:hsRowKey,_hsBaku:baku,_autoDetected:true
+  });
+  return true;
+}
+function _rsYearlyParse(rows){
+  var width=0; for(var i=0;i<rows.length;i++)width=Math.max(width,(rows[i]||[]).length);
+  var hdrRow=-1, run=[];
+  for(var r=0;r+1<Math.min(6,rows.length);r++){
+    var nameRow=rows[r]||[], rfaRow=rows[r+1]||[], cur=[];
+    for(var c=1;c<width;c++){
+      var nm=nameRow[c], rf=rfaRow[c];
+      var okName=(nm!=null&&String(nm).trim()!=='');
+      var okRfa=(rf!=null&&/^\d{6}-\d{2}[A-Za-z]?$/.test(String(rf).trim()));
+      if(okName&&okRfa)cur.push(c);
+      else if(cur.length)break;   // stop at the first gap after a run started
+    }
+    if(cur.length>=2){hdrRow=r;run=cur;break;}
+  }
+  if(hdrRow<0)return null;
+  var nameRow=rows[hdrRow]||[], rfaRow=rows[hdrRow+1]||[], tglRow=rows[hdrRow+2]||[];
+  var titCols=run.map(function(c){
+    var raw=String(nameRow[c]).trim(), alias=RS_YEARLY_TITIK[_rsNorm(raw).toLowerCase()];
+    var tv=tglRow[c], tgl='';
+    if(typeof tv==='number'&&tv>40000&&tv<60000)tgl=_rsSerialToIso(tv);
+    else if(tv!=null&&/^\d{4}-\d{2}-\d{2}/.test(String(tv)))tgl=String(tv).slice(0,10);
+    return {col:c,titikRaw:raw,titik:alias?alias.titik:raw,site:alias?alias.site:'',
+            rfa:String(rfaRow[c]).trim(),tanggal:tgl};
+  });
+  var bakuCol=run[run.length-1]+1;
+  var peraturan=String((rows[hdrRow]||[])[bakuCol]||'').replace(/^baku mutu\s*/i,'').trim();
+  var out=[],paramRows=0;
+  for(var r2=hdrRow+3;r2<rows.length;r2++){
+    var row=rows[r2]||[];
+    var param=row[0];
+    if(param==null||String(param).trim()===''){
+      var rowEmptyY=true;
+      for(var ceY=0;ceY<row.length;ceY++)if(row[ceY]!=null&&String(row[ceY]).trim()!==''){rowEmptyY=false;break;}
+      if(rowEmptyY)break;
+      continue;
+    }
+    param=String(param).trim();
+    var bakuVal=row[bakuCol];
+    bakuVal=(bakuVal==null||String(bakuVal).trim()==='')?null:bakuVal;
+    paramRows++;
+    for(var t=0;t<titCols.length;t++){
+      var v=row[titCols[t].col];
+      if(v==null||String(v).trim()==='')continue;
+      out.push({titik:titCols[t].titik,site:titCols[t].site,rfa:titCols[t].rfa,
+                tanggal:titCols[t].tanggal,param:param,nilai:v,baku:bakuVal,peraturan:peraturan});
+    }
+  }
+  return {titCols:titCols.length,paramRows:paramRows,cells:out};
+}
+function _rsYearlyAppIndex(){
+  var idx={};
+  var rows=(typeof _hsRowsFor==='function')?_hsRowsFor('Yearly'):((typeof HS_GROUPS_DATA!=='undefined'&&HS_GROUPS_DATA.Yearly)||[]);
+  rows.forEach(function(r){
+    var yr=(r.tanggal&&r.tanggal[0])?String(r.tanggal[0]).slice(0,4):'';
+    if(!yr)return;
+    var key=_rsNormKey(r.titik)+'‖'+_rsNormKey(r.parameter)+'‖'+yr;
+    (idx[key]=idx[key]||[]).push(r);
+  });
+  return idx;
+}
+function _rsYearlyImport(wbx,sn,rep){
+  var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
+  var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+  var parsed=_rsYearlyParse(rows);
+  if(!parsed){rep.push({sheet:sn,status:'lewat',alasan:'header titik/RFA/tanggal tidak dikenali'});return null;}
+  var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE==='fillblank');
+  var idx=_rsYearlyAppIndex();
+  var changed=0,same=0,added=0,reaDetected=0;
+  parsed.cells.forEach(function(c){
+    var yr=c.tanggal?c.tanggal.slice(0,4):'';
+    var key=_rsNormKey(c.titik)+'‖'+_rsNormKey(c.param)+'‖'+yr;
+    var list=idx[key]||[], val=String(c.nilai);
+    for(var i=0;i<list.length;i++){
+      if(String(list[i].nilai==null?'':list[i].nilai)===val){same++;return;}
+    }
+    if(list.length){
+      var hit=list[0];
+      if(fillOnly&&hit.nilai!=null&&String(hit.nilai).trim()!==''){same++;return;}
+      if(hit.extra&&hit.extra.manualId){
+        hit.nilai=val;
+        if(typeof _hsSaveManual==='function')_hsSaveManual();
+      }else{
+        if(_rsMaybeReanalysis('Yearly',hit,val,_hsRowKey('Yearly',hit),sn))reaDetected++;
+        HASIL_OVERRIDE[_hsRowKey('Yearly',hit)]={nilai:val,ts:Date.now()};
+      }
+      changed++;return;
+    }
+    if(typeof HASIL_MANUAL==='undefined')return;
+    var ev=(typeof _hsEvalCompliance==='function')?_hsEvalCompliance(val,c.baku):{status:'no_standard',nilaiNum:null};
+    HASIL_MANUAL.push({group:'Yearly',category:'routine',noRfa:c.rfa?[c.rfa]:[],
+      site:_rsSiteEf(c.site||'',c.titik),titik:c.titik,tanggal:c.tanggal?[c.tanggal]:[],
+      parameter:c.param,nilai:val,satuan:'',bakuMutu:c.baku,satuanBakuMutu:'',
+      peraturan:c.peraturan||'',catatan:'',computed:0,status:ev.status,nilaiNum:ev.nilaiNum,
+      extra:{sumberSheet:sn,bulan:'',
+        manualId:'hm-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+        importedFromRaw:true,sumberFile:(window._rsSrcFile||''),waktuImpor:(window._rsSrcTime||'')}});
+    added++;
+  });
+  if(added&&typeof _hsSaveManual==='function')_hsSaveManual();
+  rep.push({sheet:sn,status:'ok',baris:parsed.paramRows,kolomTitik:parsed.titCols,
+            changed:changed,added:added,same:same,unmatched:0,rea:reaDetected});
+  return {changed:changed,added:added,same:same,unmatched:0,rea:reaDetected};
+}
+function _rsSemesterlyBlocks(rows){
+  var width=0; for(var i=0;i<rows.length;i++)width=Math.max(width,(rows[i]||[]).length);
+  var blocks=[];
+  for(var i=0;i<rows.length;i++){
+    var row=rows[i]||[];
+    var lbl=row[0]==null?'':String(row[0]).trim();
+    if(lbl!==''&&lbl.toLowerCase()!=='parameter')continue;
+    var bakuCol=-1;
+    for(var c=1;c<width;c++)if(row[c]!=null&&String(row[c]).trim().toLowerCase()==='baku mutu'){bakuCol=c;break;}
+    var titCols=[];
+    for(var c=1;c<width;c++){
+      if(c===bakuCol)continue;
+      var v=row[c];
+      if(v!=null&&typeof v!=='number'&&String(v).trim()!=='')titCols.push({col:c,titik:String(v).trim()});
+    }
+    if(!titCols.length)continue;
+    var r=i+1, rfa={}, tgl={};
+    var rfaRow=rows[r]||[];
+    var anyRfa=titCols.some(function(t){var v=rfaRow[t.col];return v!=null&&/^\d{6}-\d{2}[A-Za-z]?$/.test(String(v).trim());});
+    if(anyRfa){
+      var last='';
+      titCols.forEach(function(t){var v=rfaRow[t.col]; if(v!=null&&String(v).trim()!=='')last=String(v).trim(); rfa[t.col]=last;});
+      r++;
+      var tglRow=rows[r]||[];
+      var anyTgl=titCols.some(function(t){var v=tglRow[t.col];return (typeof v==='number'&&v>40000&&v<60000)||(v!=null&&/^\d{4}-\d{2}-\d{2}/.test(String(v)));});
+      if(anyTgl){
+        var lastT='';
+        titCols.forEach(function(t){
+          var v=tglRow[t.col],iso='';
+          if(typeof v==='number'&&v>40000&&v<60000)iso=_rsSerialToIso(v);
+          else if(v!=null&&/^\d{4}-\d{2}-\d{2}/.test(String(v)))iso=String(v).slice(0,10);
+          if(iso)lastT=iso; tgl[t.col]=lastT;
+        });
+        r++;
+      }
+    }
+    var cells=[],paramRows=0;
+    for(var r2=r;r2<rows.length;r2++){
+      var drow=rows[r2]||[];
+      var plabel=drow[0]==null?'':String(drow[0]).trim();
+      if(plabel===''){
+        var allEmpty=true;for(var c2=0;c2<width;c2++)if(drow[c2]!=null&&String(drow[c2]).trim()!==''){allEmpty=false;break;}
+        if(allEmpty)break; else continue;
+      }
+      if(plabel.toLowerCase()==='parameter')break;
+      paramRows++;
+      var bakuVal=bakuCol>=0?drow[bakuCol]:null;
+      bakuVal=(bakuVal==null||String(bakuVal).trim()==='')?null:bakuVal;
+      titCols.forEach(function(t){
+        var v=drow[t.col];
+        if(v==null||String(v).trim()==='')return;
+        cells.push({titik:t.titik,param:plabel,rfa:rfa[t.col]||'',tanggal:tgl[t.col]||'',nilai:v,baku:bakuVal});
+      });
+      r=r2+1;
+    }
+    blocks.push({headerRow:i,titik:titCols.length,paramRows:paramRows,cells:cells});
+    i=r-1;
+  }
+  return blocks;
+}
+function _rsSemesterlyImport(wbx,sn,rep){
+  var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
+  var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+  var blocks=_rsSemesterlyBlocks(rows);
+  if(!blocks.length){rep.push({sheet:sn,status:'lewat',alasan:'blok titik/parameter tidak dikenali'});return null;}
+  var allCells=[],paramRows=0,titCount=0;
+  blocks.forEach(function(b){allCells=allCells.concat(b.cells);paramRows+=b.paramRows;titCount+=b.titik;});
+  var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE==='fillblank');
+  var idx=_rsFlatAppIndex('Semesterly');
+  var changed=0,same=0,added=0,reaDetected=0;
+  allCells.forEach(function(c){
+    var key=_rsNormKey(c.titik)+'\u2016'+_rsNormKey(c.param)+'\u2016'+_rsNorm(c.rfa);
+    var list=idx[key]||[], val=String(c.nilai);
+    for(var i=0;i<list.length;i++){
+      if(String(list[i].nilai==null?'':list[i].nilai)===val){same++;return;}
+    }
+    if(list.length){
+      var hit=list[0];
+      if(fillOnly&&hit.nilai!=null&&String(hit.nilai).trim()!==''){same++;return;}
+      if(hit.extra&&hit.extra.manualId){
+        hit.nilai=val;
+        if(typeof _hsSaveManual==='function')_hsSaveManual();
+      }else{
+        if(_rsMaybeReanalysis('Semesterly',hit,val,_hsRowKey('Semesterly',hit),sn))reaDetected++;
+        HASIL_OVERRIDE[_hsRowKey('Semesterly',hit)]={nilai:val,ts:Date.now()};
+      }
+      changed++;return;
+    }
+    if(typeof HASIL_MANUAL==='undefined')return;
+    var ev=(typeof _hsEvalCompliance==='function')?_hsEvalCompliance(val,c.baku):{status:'no_standard',nilaiNum:null};
+    HASIL_MANUAL.push({group:'Semesterly',category:'routine',noRfa:c.rfa?[c.rfa]:[],
+      site:_rsSiteEf('',c.titik),titik:c.titik,tanggal:c.tanggal?[c.tanggal]:[],
+      parameter:c.param,nilai:val,satuan:'',bakuMutu:c.baku,satuanBakuMutu:'',
+      peraturan:'',catatan:'',computed:0,status:ev.status,nilaiNum:ev.nilaiNum,
+      extra:{sumberSheet:sn,bulan:'',
+        manualId:'hm-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+        importedFromRaw:true,sumberFile:(window._rsSrcFile||''),waktuImpor:(window._rsSrcTime||'')}});
+    added++;
+  });
+  if(added&&typeof _hsSaveManual==='function')_hsSaveManual();
+  rep.push({sheet:sn,status:'ok',baris:paramRows,kolomTitik:titCount,
+            changed:changed,added:added,same:same,unmatched:0,rea:reaDetected});
+  return {changed:changed,added:added,same:same,unmatched:0,rea:reaDetected};
+}
+function _rsBaSplitRfa(s){
+  if(s==null)return [];
+  var out=[];
+  String(s).split(/[\r\n\/]+/).forEach(function(tok){
+    tok=tok.trim();
+    if(/^\d{6}-\d{2}[A-Za-z]?$/.test(tok))out.push(tok);
+  });
+  return out;
+}
+function _rsBaSplitDate(s){
+  if(s==null)return [];
+  if(typeof s==='number')return (s>40000&&s<60000&&typeof _rsSerialToIso==='function')?[_rsSerialToIso(s)]:[];
+  var out=[];
+  String(s).split(/[\r\n\/]+/).forEach(function(tok){
+    tok=tok.trim(); if(!tok)return;
+    var m=tok.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
+    if(m&&typeof EMF_MON_ABBR!=='undefined'){
+      var mi=EMF_MON_ABBR.indexOf(m[2]);
+      if(mi>=0){
+        var yr=m[3].length===2?('20'+m[3]):m[3];
+        out.push(yr+'-'+String(mi+1).padStart(2,'0')+'-'+String(parseInt(m[1],10)).padStart(2,'0'));
+      }
+    }else if(/^\d{4}-\d{2}-\d{2}/.test(tok)){
+      out.push(tok.slice(0,10));
+    }
+  });
+  return out;
+}
+function _rsBadanAirParse(rows){
+  var BAKU_COL=9;
+  var width=0; for(var i=0;i<rows.length;i++)width=Math.max(width,(rows[i]||[]).length);
+  var blocks=[];
+  for(var i=0;i<rows.length;i++){
+    var hdr=rows[i]||[];
+    if(hdr[0]==null||String(hdr[0]).trim()!=='Titik Pemantauan')continue;
+    var kRow=rows[i+1]||[], rfaRow=rows[i+2]||[];
+    var r=i+3, extraRows=[];
+    while(r<rows.length){
+      var rr=rows[r]||[];
+      if(rr[0]!=null&&String(rr[0]).trim()==='Titik Pemantauan')break;
+      var p0=rr[2]==null?'':String(rr[2]).trim();
+      if(p0!=='')break;
+      extraRows.push(rr); r++;
+      if(r-i>8)break;
+    }
+    var dataStart=r;
+    function pickCell(col){
+      for(var k=0;k<extraRows.length;k++){var v=extraRows[k][col]; if(v!=null&&String(v).trim()!=='')return v;}
+      return null;
+    }
+    var titPairs=[];
+    for(var c=3;c+1<width;){
+      if(kRow[c]==='S1'&&kRow[c+1]==='S2'&&hdr[c]!=null&&String(hdr[c]).trim()!==''){
+        titPairs.push({titik:String(hdr[c]).trim(),s1:c,s2:c+1,
+          rfaS1:_rsBaSplitRfa(rfaRow[c]),rfaS2:_rsBaSplitRfa(rfaRow[c+1]),
+          dateS1:_rsBaSplitDate(pickCell(c)),dateS2:_rsBaSplitDate(pickCell(c+1))});
+        c+=2;
+      }else break;
+    }
+    if(!titPairs.length)continue;
+    var cells=[],paramRows=0,curSite='';
+    for(var r2=dataStart;r2<rows.length;r2++){
+      var drow=rows[r2]||[];
+      if(drow[0]!=null&&String(drow[0]).trim()==='Titik Pemantauan')break;
+      var allEmpty=true; for(var c2=0;c2<width;c2++)if(drow[c2]!=null&&String(drow[c2]).trim()!==''){allEmpty=false;break;}
+      if(allEmpty){
+        var nxt=rows[r2+1]||[]; var nxtEmpty=true;
+        for(var c3=0;c3<width;c3++)if(nxt[c3]!=null&&String(nxt[c3]).trim()!==''){nxtEmpty=false;break;}
+        if(nxtEmpty)break; else continue;
+      }
+      if(drow[1]!=null&&String(drow[1]).trim()!=='')curSite=String(drow[1]).trim();
+      var param=drow[2]==null?'':String(drow[2]).trim();
+      if(!param)continue;
+      paramRows++;
+      var baku=drow[BAKU_COL]; baku=(baku==null||String(baku).trim()==='')?null:baku;
+      titPairs.forEach(function(t){
+        [[t.s1,t.rfaS1,t.dateS1],[t.s2,t.rfaS2,t.dateS2]].forEach(function(tri){
+          var col=tri[0],v=drow[col];
+          if(v==null||String(v).trim()==='')return;
+          cells.push({titik:t.titik,param:param,nilai:v,baku:baku,rfas:tri[1],dates:tri[2],site:curSite});
+        });
+      });
+    }
+    blocks.push({headerRow:i,titik:titPairs.length,paramRows:paramRows,cells:cells});
+  }
+  return blocks;
+}
+function _rsBadanAirImport(wbx,sn,rep){
+  var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
+  var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+  var blocks=_rsBadanAirParse(rows);
+  if(!blocks.length){rep.push({sheet:sn,status:'lewat',alasan:'blok Titik Pemantauan tidak dikenali'});return null;}
+  var allCells=[],paramRows=0,titCount=0;
+  blocks.forEach(function(b){allCells=allCells.concat(b.cells);paramRows+=b.paramRows;titCount+=b.titik;});
+  var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE==='fillblank');
+  var idx=_rsFlatAppIndex('BadanAir');
+  var changed=0,same=0,added=0,reaDetected=0,skipped=0;
+  allCells.forEach(function(c){
+    var val=String(c.nilai);
+    if(!c.rfas.length){skipped++;return;}
+    var lists=c.rfas.map(function(rfa){return {rfa:rfa,list:idx[_rsNormKey(c.titik)+'\u2016'+_rsNormKey(c.param)+'\u2016'+_rsNorm(rfa)]||[]};});
+    for(var i=0;i<lists.length;i++){
+      var list=lists[i].list;
+      for(var j=0;j<list.length;j++){
+        if(String(list[j].nilai==null?'':list[j].nilai)===val){same++;return;}
+      }
+    }
+    var withHit=lists.filter(function(x){return x.list.length>0;});
+    if(withHit.length===1){
+      var hit=withHit[0].list[0];
+      if(fillOnly&&hit.nilai!=null&&String(hit.nilai).trim()!==''){same++;return;}
+      if(hit.extra&&hit.extra.manualId){
+        hit.nilai=val;
+        if(typeof _hsSaveManual==='function')_hsSaveManual();
+      }else{
+        if(_rsMaybeReanalysis('BadanAir',hit,val,_hsRowKey('BadanAir',hit),sn))reaDetected++;
+        HASIL_OVERRIDE[_hsRowKey('BadanAir',hit)]={nilai:val,ts:Date.now()};
+      }
+      changed++;return;
+    }
+    if(withHit.length>1){skipped++;return;}
+    if(typeof HASIL_MANUAL==='undefined'){skipped++;return;}
+    var ev=(typeof _hsEvalCompliance==='function')?_hsEvalCompliance(val,c.baku):{status:'no_standard',nilaiNum:null};
+    // Keep every RFA and every date the cell carries. Badan-air rows already
+    // store both as lists -- a resampled semester genuinely has more than one
+    // of each -- so this records what the sheet says rather than choosing one
+    // code and dropping the reading when it cannot. A single-code cell yields
+    // exactly the row it did before; a cell with no code at all is refused
+    // further up.
+    HASIL_MANUAL.push({group:'BadanAir',category:'routine',noRfa:c.rfas.slice(),
+      site:_rsSiteEf(c.site||'',c.titik),titik:c.titik,tanggal:(c.dates||[]).slice(),
+      parameter:c.param,nilai:val,satuan:'',bakuMutu:c.baku,satuanBakuMutu:'',
+      peraturan:'',catatan:'',computed:0,status:ev.status,nilaiNum:ev.nilaiNum,
+      extra:{sumberSheet:sn,bulan:'',
+        manualId:'hm-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+        importedFromRaw:true,sumberFile:(window._rsSrcFile||''),waktuImpor:(window._rsSrcTime||'')}});
+    added++;
+  });
+  if(added&&typeof _hsSaveManual==='function')_hsSaveManual();
+  rep.push({sheet:sn,status:'ok',baris:paramRows,kolomTitik:titCount,
+            changed:changed,added:added,same:same,unmatched:skipped,rea:reaDetected});
+  return {changed:changed,added:added,same:same,unmatched:skipped,rea:reaDetected};
+}
+function _rsRfaPeriod(v){
+  var m=/(\d{2})(\d{2})(\d{2})\s*-\s*\d/.exec(String(v==null?'':v));
+  if(!m)return null;
+  var mm=parseInt(m[2],10),yy=parseInt(m[3],10);
+  if(mm<1||mm>12)return null;
+  return {iso:(2000+yy)+'-'+m[2]+'-01'};
+}
+
+/* ---------- penyesuaian cabang ini ---------- */
+function _hsWalkAll(fn){
+  try{Object.keys(HS_GROUPS_DATA||{}).forEach(function(g){var rows=HS_GROUPS_DATA[g];if(rows&&rows.forEach)rows.forEach(fn);});}catch(e){}
+  try{if(typeof HASIL_MANUAL!=='undefined'&&HASIL_MANUAL&&HASIL_MANUAL.forEach)HASIL_MANUAL.forEach(fn);}catch(e){}
+}
+function _rsSiteEf(site,titik){
+  return (typeof window._siteEfektif==='function')?window._siteEfektif(titik,site):site;
+}
+var _rsSiteSuara=null;
+function _rsSiteUntuk(titik){
+  var t=String(titik==null?'':titik).trim(); if(!t)return '';
+  var h=_rsSiteEf('',t); if(h)return h;
+  if(!_rsSiteSuara){
+    _rsSiteSuara={};
+    _hsWalkAll(function(r){
+      if(!r||typeof r!=='object')return;
+      var s=String(r.site||'').trim(),k=String(r.titik||'').trim(); if(!s||!k)return;
+      var m=(_rsSiteSuara[k]=_rsSiteSuara[k]||{}); m[s]=(m[s]||0)+1;
+    });
+  }
+  var v=_rsSiteSuara[t],best='',hi=0;
+  if(v)Object.keys(v).forEach(function(s){if(v[s]>hi){hi=v[s];best=s;}});
+  if(best)return best;
+  var u=t.toUpperCase();
+  if(/^TN[- ]|^TUNU\b|\bTUNU\b/.test(u))return 'TUNU';
+  var m=/^(NPU|CPU|SPU|BPN|BKP|HCA|SPS)\b/.exec(u)||/\b(NPU|CPU|SPU|BPN|BKP|HCA|SPS)\b/.exec(u);
+  return m?m[1]:'';
+}
+// peta suara site dihitung ulang tiap impor (baris bertambah selama impor)
+window._rsSiteReset=function(){_rsSiteSuara=null;};
+
+/* ---------- sheet BPN (Y579e) ----------
+ * Bentuk: baris judul bulan (tahun judul usang), baris "RFA" (satu nomor per kolom: sampling + resampling 06A/06B/06C),
+ * baris "Tanggal Sampling" per kolom (serial Excel, "12 & 13-Feb-26", atau teks dua baris), lalu satu blok per titik.
+ * Pembaca grid bulan (Y568) tidak bisa membacanya: judul bulannya bukan tanggal 1 dan satu bulan bisa memuat lima kolom
+ * sampling, jadi 0 dari 108 sel cocok dan data BPN Juli-September tidak pernah masuk (audit K4: 329 sel).
+ * Satuan identitas sebuah pembacaan di sini adalah (titik, parameter, NOMOR RFA); nilai yang tanpa nomor RFA di app
+ * dicocokkan lewat tanggal. */
+function _rsBpnImport(wbx,sn,rep,ctx){
+  var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
+  var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+  var iRfa=-1,cLab=-1;
+  for(var i=0;i<Math.min(10,rows.length)&&iRfa<0;i++){
+    var r=rows[i]||[];
+    for(var c=0;c<Math.min(6,r.length);c++){if(_rsNorm(r[c])==='rfa'){iRfa=i;cLab=c;break;}}
+  }
+  if(iRfa<0)return null;
+  var iTgl=iRfa+1,rfaRow=rows[iRfa]||[],tglRow=rows[iTgl]||[],hdrRow=rows[iRfa-1]||[];
+  var cT=cLab,cP=cLab+1,cV0=cLab+2;
+  var akhir=rfaRow.length;
+  for(var cc=cV0;cc<Math.max(rfaRow.length,hdrRow.length);cc++){
+    var h=_rsNorm(hdrRow[cc]);
+    if(h.indexOf('baku mutu')===0){akhir=cc;break;}
+    var rv=_rsNorm(rfaRow[cc]);
+    if(/^il 2018|^permen|^baku/.test(rv)){akhir=cc;break;}
+  }
+  var cols=[];
+  for(var c2=cV0;c2<akhir;c2++){
+    var rf=String(rfaRow[c2]==null?'':rfaRow[c2]).trim(),tg=tglRow[c2];
+    if(!/^\d{6}-\d{2}[A-Za-z]?$/.test(rf))continue;
+    var dates=[];
+    if(typeof tg==='number'&&tg>40000&&tg<80000)dates=[_rsSerialToIso(tg)];
+    else if(window.PemulihanY578){var g=window.PemulihanY578.tanggalGanda(tg);if(g)dates=g;else if(/^\d{4}-\d{2}-\d{2}/.test(String(tg||'')))dates=[String(tg).slice(0,10)];}
+    cols.push({c:c2,rfa:rf,dates:dates});
+  }
+  if(!cols.length)return null;
+  var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE!=='replace');
+  var peta=ctx.peta;
+  // baris app untuk sheet BPN (grup Monthly): seed (di HS_GROUPS_DATA) dan manual (HASIL_MANUAL)
+  var app=[];
+  var tambah=function(arr,manual){(arr||[]).forEach(function(r){
+    if(!r||_rsNorm(r.extra&&r.extra.sumberSheet)!=='bpn')return;
+    app.push({r:r,manual:manual,t:ctx.strict(r.titik),p:_rsNormKey(r.parameter)});
+  });};
+  tambah((HS_GROUPS_DATA||{}).Monthly,false);
+  tambah(typeof HASIL_MANUAL!=='undefined'?HASIL_MANUAL:[],true);
+  var tpl={};   // titik‖param -> baris app terbaru (templat satuan/baku mutu/peraturan)
+  app.forEach(function(a){var k=a.t+'‖'+a.p,d=(a.r.tanggal&&a.r.tanggal[0])||'';if(!tpl[k]||d>((tpl[k].tanggal&&tpl[k].tanggal[0])||''))tpl[k]=a.r;});
+  var BLN3=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var changed=0,same=0,added=0,tanpa=0,tertaut=0,alasan={};
+  var titikRaw='',baru=[],nBaris=0;
+  for(var ri=iTgl+1;ri<rows.length;ri++){
+    var row=rows[ri]||[];
+    if(row[cT]!=null&&String(row[cT]).trim()!=='')titikRaw=String(row[cT]).trim();
+    var pr=row[cP]; if(!titikRaw||pr==null||String(pr).trim()==='')continue;
+    nBaris++;
+    var titikApp=ctx.resolveTitik('bpn',titikRaw,peta),kT=ctx.strict(titikApp),kP=_rsNormKey(pr);
+    cols.forEach(function(col){
+      var v=row[col.c]; if(v==null||String(v).trim()==='')return;
+      var val=String(v).trim();
+      // cocokkan: nomor RFA sama, atau (app tanpa nomor RFA) tanggal sama
+      var hit=null;
+      for(var i=0;i<app.length;i++){
+        var a=app[i]; if(a.t!==kT||a.p!==kP)continue;
+        var rr=a.r.noRfa||[];
+        if(rr.indexOf(col.rfa)>=0){hit=a;break;}
+        if(!rr.length&&col.dates.length&&(a.r.tanggal||[]).some(function(t){return col.dates.indexOf(t)>=0;})){hit=a;}
+      }
+      if(hit){
+        if(!(hit.r.noRfa||[]).length&&hit.manual){hit.r.noRfa=[col.rfa];tertaut++;}   // tautan RFA ikut diisi (audit T1)
+        var ov0=(!hit.manual)?HASIL_OVERRIDE[_hsRowKey('Monthly',hit.r)]:null;   // nilai efektif = penimpaan yang sudah ada, bila ada
+        var cur=ov0?String(ov0.nilai==null?'':ov0.nilai):(hit.r.nilai==null?'':String(hit.r.nilai));
+        if(ctx.sama(cur,val)){same++;return;}
+        if(fillOnly&&cur.trim()!==''){same++;return;}
+        if(_rsMaybeReanalysis('Monthly',hit.r,val,_hsRowKey('Monthly',hit.r),sn)){}
+        if(hit.manual){
+          hit.r.nilai=val;
+          var ev=_hsEvalCompliance(val,hit.r.bakuMutu==null?null:hit.r.bakuMutu,{satuan:hit.r.satuan,satuanBaku:hit.r.satuanBakuMutu,tanggal:hit.r.tanggal});
+          hit.r.status=ev.status;hit.r.nilaiNum=ev.nilaiNum;
+        }else{
+          HASIL_OVERRIDE[_hsRowKey('Monthly',hit.r)]={nilai:val,ts:Date.now()};
+        }
+        changed++;return;
+      }
+      var t=tpl[kT+'‖'+kP];
+      if(!t){tanpa++;alasan['titik/parameter belum ada di app (BPN)']=(alasan['titik/parameter belum ada di app (BPN)']||0)+1;return;}
+      if(!col.dates.length){tanpa++;alasan['tanggal sampling tidak terbaca']=(alasan['tanggal sampling tidak terbaca']||0)+1;return;}
+      var pl=window.PemulihanY578,sat=(pl&&pl.satuanRusak(t.satuan))?pl.satuanBenar(t,null):t.satuan;
+      var bm=(pl&&pl.bmSampah(t.bakuMutu))?null:(t.bakuMutu==null?null:t.bakuMutu);
+      var e2=_hsEvalCompliance(val,bm,{satuan:sat,satuanBaku:t.satuanBakuMutu,tanggal:col.dates});
+      var ex=Object.assign({},t.extra||{},{sumberSheet:String(sn).trim(),bulan:BLN3[parseInt(col.dates[0].slice(5,7),10)-1]||'',
+        manualId:'hm-bpn-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+baru.length,importedFromRaw:true,
+        sumberFile:(window._rsSrcFile||''),waktuImpor:(window._rsSrcTime||'')});
+      delete ex.overridden;delete ex.overriddenAt;delete ex.siteAsli;delete ex.satuanAsli;delete ex.bakuMutuAsli;delete ex.tanggalAsli;
+      var nr={group:'Monthly',category:t.category||'routine',noRfa:[col.rfa],site:_rsSiteEf(t.site||'BPN',t.titik),titik:t.titik,tanggal:col.dates.slice(),
+        parameter:t.parameter,nilai:val,satuan:sat,bakuMutu:bm,satuanBakuMutu:t.satuanBakuMutu||'',peraturan:t.peraturan||'',
+        catatan:'Impor Water Monitoring Recap (raw)',computed:0,status:e2.status,nilaiNum:e2.nilaiNum,extra:ex};
+      baru.push(nr);app.push({r:nr,manual:true,t:kT,p:kP});added++;
+    });
+  }
+  if(baru.length&&typeof HASIL_MANUAL!=='undefined')baru.forEach(function(r){HASIL_MANUAL.push(r);});
+  var note=[];Object.keys(alasan).forEach(function(k){note.push(alasan[k]+' '+k);});
+  rep.push({sheet:sn,status:'ok',baris:nBaris,kolomParam:'sheet BPN: '+cols.length+' kolom sampling'+(tertaut?(' \u00b7 '+tertaut+' tertaut RFA'):'')+(note.length?(' \u00b7 '+note.join('; ')):''),changed:changed,added:added,same:same,unmatched:tanpa,rea:0});
+  return {changed:changed,added:added,same:same,unmatched:tanpa,rea:0};
+}
+
+/* Pengarah: sheet apa yang dibaca pembaca datar? null = bukan sheet datar (biarkan pembaca grid Y568).
+ * Mengembalikan {changed,added,same,unmatched,rea} (angka nol bila sheet dilewati dan dilaporkan di rep). */
+window._rsBacaDatar=function(wbx,sn,rep,ctx){
+  var nsn=_rsNorm(sn),low=nsn.toLowerCase();
+  var nol={changed:0,added:0,same:0,unmatched:0,rea:0};
+  var ambil=function(res){return res?{changed:res.changed||0,added:res.added||0,same:res.same||0,unmatched:res.unmatched||0,rea:res.rea||0}:null;};
+  var sapu=function(){for(var i=rep.length-1;i>=0;i--)if(rep[i].sheet===sn&&rep[i].status==='lewat')rep.splice(i,1);};
+  var bacaDatarUmum=function(){var g=_rsGenericFlatImport(wbx,sn,rep);return ambil(g);};
+  if(/^semesterly pw$|^pw full parameter$/.test(low)){
+    var sp=ambil(_rsSemiPwImport(wbx,sn,rep));
+    if(sp){sapu();return sp;}
+    rep.push({sheet:sn,status:'lewat',alasan:'blok titik/RFA PW semesteran tidak dikenali'});return nol;
+  }
+  if(RS_CROSSTAB.indexOf(low)>=0){
+    rep.push({sheet:sn,status:'lewat',alasan:'tabel silang (titik jadi kolom, SEM 1/2) \u2014 belum ada pembacanya, sengaja tidak ditebak'});return nol;
+  }
+  var spec=RS_FLAT_SPEC[low];
+  if(spec){
+    var fr=ambil(_rsFlatImport(wbx,sn,spec,rep));
+    if(fr){sapu();return fr;}
+    var fg=bacaDatarUmum(); if(fg){sapu();return fg;}
+    return nol;
+  }
+  if(low==='bpn'&&ctx){var bp=ambil(_rsBpnImport(wbx,sn,rep,ctx)); if(bp){sapu();return bp;} return null;}   // bentuk tak dikenali: biarkan pembaca grid
+  if(/hydrotest/.test(low)){
+    var hy=ambil(_rsHydroImport(wbx,sn,rep))||bacaDatarUmum();
+    if(hy){sapu();return hy;}
+    rep.push({sheet:sn,status:'lewat',alasan:'tidak terbaca oleh pembaca hidrostatik maupun datar umum'});return nol;
+  }
+  if(low==='drainase'){var an=ambil(_rsAnnualImport(wbx,sn,rep)); if(an){sapu();return an;} return null;}   // bentuk bulanan: pembaca grid
+  if(low==='yearly'){var ye=ambil(_rsYearlyImport(wbx,sn,rep)); if(ye){sapu();return ye;} var yg=bacaDatarUmum(); if(yg){sapu();return yg;} return nol;}
+  if(low==='semesterly'){var se=ambil(_rsSemesterlyImport(wbx,sn,rep)); if(se){sapu();return se;} var sg=bacaDatarUmum(); if(sg){sapu();return sg;} return nol;}
+  if(low==='sw full pp22'){var ba=ambil(_rsBadanAirImport(wbx,sn,rep)); if(ba){sapu();return ba;} return null;}   // bentuk kuartalan: grid
+  return null;
+};
 
 </script><style id="envmon-fonts-y569">
 /* fonts.css — Inter + Inter Display, Latin subset, WOFF2 base64 (OFL). Tempel ke dalam <style> di file HTML. */
@@ -56356,5 +58042,14 @@ R12 sebelumnya.
   - Menu Stempel Foto (satuan), Pemrosesan Batch, Overlay Transparan dan Hapus Stempel bisa ditampilkan/disembunyikan.
   - Geotag > Overlay dari CSV: ikut punya cone arah dan label Google (menu yang sama, tersimpan); CSV boleh memuat kolom
     opsional tampilkan_cone, arah_cone, label_google per baris.
+  - Perbaikan data dari audit 2026-10-07 (akar masalahnya di jalur masuk data, bukan hanya di EMF): sumur Handil (H-xxx,
+    HNA-xxx, HU-xxx ...) selalu HCA di Hasil Sampling, laporan dan ekspor walau raw/seed/templat menulis SPU, CPU, SPS atau NPU;
+    ejaan lama site CPA/HDL = HCA, SNB = SPU, SNP = SPS. Satuan yang isinya ternyata nilai ("7.89", "< 1", "Negative") diganti satuan
+    baku mutu atau BM master; baku mutu berisi nomor RFA atau kata "Drainase" dibuang; tanggal "12 & 13-Feb-26" terbaca dua tanggal.
+  - Sinkron Raw kini membaca sheet datar yang selama ini diam-diam dilewati (Dredging, Non Routine, Drilling, Dumping Material
+    Keruk, SW Plankton, SW Full PP22, Yearly, Semesterly, Hydrotest) dan sheet BPN (judul bulan bertanggal sampling, satu bulan
+    bisa lima kolom sampling, RFA 06/06A/06B/06C); baris app tanpa nomor RFA ditautkan lewat tanggal. Nama titik raw ("STP-1",
+    "HDL Camp I", "Outlet DWWTU (Laundry & Restaurant - BKP)") dipetakan ke titik app lewat pasangan yang dibuktikan dengan
+    pencocokan nilai; DWW Full dan PW Inlet yang tidak punya baris RFA di raw tetap dibuat (tanpa nomor).
 ENVMON-CHANGELOG-Y571 -->
 </html>
