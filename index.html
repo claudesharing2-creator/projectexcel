@@ -5,7 +5,7 @@
 html[data-theme="envmon"]:not([data-em-siap]) body{visibility:hidden}
 html[data-theme="envmon"]:not([data-em-siap])::before{content:"ENV\2022MONITOR";position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;font:600 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.32em;color:#9299A3;animation:emKrit 1.2s ease-in-out infinite alternate}
 @keyframes emKrit{from{opacity:.45}to{opacity:1}}
-@media (prefers-reduced-motion:reduce){html[data-theme="envmon"]:not([data-em-siap])::before{animation:none}}</style><script id="envmon-kritis-js">setTimeout(function(){document.documentElement.setAttribute("data-em-siap","1")},12000);</script>
+@media (prefers-reduced-motion:reduce){html[data-theme="envmon"]:not([data-em-siap])::before{animation:none}}</style><script id="envmon-kritis-js">setTimeout(function(){var h=document.documentElement;if(!h.hasAttribute("data-em-siap"))h.setAttribute("data-em-siap","1");},12000);</script>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -4542,6 +4542,44 @@ html[data-theme="simple"][data-theme] #landing{
 }
 </style>
 <script id="hemat-gaya-y575">
+/* gabung_mo.js (Y575c) -- pengamat DOM lama tidak dijalankan berulang dalam satu frame.
+ *
+ * Artefak punya belasan MutationObserver di `body` (subtree) buatan modul lama
+ * (qol-accessibility, qol-navigation-semantics, ikon emoji->SVG, ...). Mereka dipicu
+ * pada SETIAP kelompok mutasi, dan tiap panggilan memindai seluruh dokumen
+ * (`querySelectorAll`) -- sebuah render tab menghasilkan 15-20 kelompok mutasi berurutan
+ * (terukur: ENV Program, CPU 4x lebih lambat, `querySelectorAll` 785 ms).
+ *
+ * Yang digabung HANYA pengamat yang callback-nya tidak menerima parameter dan tidak
+ * memakai `arguments`: callback seperti itu mustahil membaca daftar mutasi, jadi
+ * "sekali per frame" setara dengan "sekali per kelompok" secara hasil akhir. Pengamat yang
+ * membaca mutasi (mis. pemeta warna envmon) tidak disentuh. Pada tab tersembunyi rAF
+ * tidak jalan, jadi ada pewaktu cadangan 120 ms. disconnect() membatalkan yang tertunda.
+ */
+(function(){
+'use strict';
+var MO=window.MutationObserver; if(!MO||MO.__gabung)return;
+function Gabung(cb){
+  if(typeof cb!=='function'||cb.length>0||/\barguments\b/.test(Function.prototype.toString.call(cb)))return new MO(cb);
+  var raf=0,tmr=0,self=null;
+  function jalan(){
+    if(!raf&&!tmr)return;
+    if(raf){cancelAnimationFrame(raf);raf=0;} if(tmr){clearTimeout(tmr);tmr=0;}
+    try{cb.call(self,[],self);}catch(e){try{console.error(e);}catch(x){}}
+  }
+  var o=new MO(function(){
+    if(raf||tmr)return;
+    raf=requestAnimationFrame(jalan); tmr=setTimeout(jalan,120);
+  });
+  self=o;
+  var lepas=o.disconnect;
+  o.disconnect=function(){if(raf){cancelAnimationFrame(raf);raf=0;} if(tmr){clearTimeout(tmr);tmr=0;} return lepas.apply(o,arguments);};
+  return o;
+}
+Gabung.prototype=MO.prototype; Gabung.__gabung=true;
+try{Object.defineProperty(Gabung,'name',{value:'MutationObserver'});}catch(e){}
+window.MutationObserver=Gabung;
+})();
 /* hemat_gaya.js (Y575) -- lembar gaya tema lain tidak ikut dihitung.
  *
  * Artefak membawa CSS 11 tema (~3.000 aturan). Aturan berselektor
@@ -5758,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'95d520e2'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'eba26f77'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -16193,21 +16231,23 @@ function _emfBuatTabelHidro(tblBM,pTerakhir,label){
     kepala.push(k===0?'Parameter':'');
   }
   var trRef=trsBM[0];
-  var r1=_emfTrBaru(trRef,tcRef,kepala);
+  /*Y575e*/var _tcHd=(typeof window._emfTcKepala==='function'&&window._emfTcKepala(trsBM))||tcRef;
+  var r1=_emfTrBaru(trRef,_tcHd,kepala);
   // Y474: "Parameter" satu sel menyeberangi seluruh kolom parameter, seperti
   // di Format_EMF.docx -- bukan satu sel berisi lalu 19 sel kosong.
   var _t1=_emfAnakLangsung(r1,'tc');
   for(var _d=_t1.length-1;_d>=3;_d--)r1.removeChild(_t1[_d]);
   _emfSetGridSpan(_t1[2],EMF_HIDRO_KOLOM.length);
-  var r2=_emfTrBaru(trRef,tcRef,['',''].concat(nama.slice(2)));
-  var r3=_emfTrBaru(trRef,tcRef,satuan);
-  var r4=_emfTrBaru(trRef,tcRef,mutu);
+  var r2=_emfTrBaru(trRef,_tcHd,['',''].concat(nama.slice(2)));
+  var r3=_emfTrBaru(trRef,_tcHd,satuan);
+  var r4=_emfTrBaru(trRef,_tcHd,mutu);
   // Bulan & Well digabung menurun sepanjang empat baris kepala
   [[r1,true],[r2,false],[r3,false],[r4,false]].forEach(function(pair){
     var tcs=_emfAnakLangsung(pair[0],'tc');
     _emfSetVMerge(tcs[0],pair[1]); _emfSetVMerge(tcs[1],pair[1]);
   });
   tbl.appendChild(r1);tbl.appendChild(r2);tbl.appendChild(r3);tbl.appendChild(r4);
+  if(typeof window._emfKuningkan==='function')[r1,r2,r3,r4].forEach(window._emfKuningkan);
   var kosong=[];for(var z=0;z<ncol;z++)kosong.push('');
   tbl.appendChild(_emfTrBaru(trsBM[1],tcRef,kosong));
   // Y478: lebar kolom, lebar tabel dan ukuran huruf disamakan dengan format
@@ -45395,7 +45435,8 @@ function _emfDredgeKegiatan(year,months,jenis,sites){
     var r=src[i], t=r.titik||'';
     var kind=_emfDredgeWajib(t);
     if(!kind)continue;
-    if(sites&&sites.length&&sites.indexOf(r.site)<0)continue;
+    /*Y575d*/var _sEf=/^\s*H-/i.test(t)?'HCA':r.site;
+    if(sites&&sites.length&&sites.indexOf(_sEf)<0)continue;
     var isTrench=/trenching/i.test(t);
     // "all activities" (jenis=null, the DWI roll-up) still means dredging
     // work only -- hydrotest has its own table and its own standard
@@ -45409,7 +45450,7 @@ function _emfDredgeKegiatan(year,months,jenis,sites){
     }
     if(!mm)continue;
     var k=_emfDredgeBase(t)+'\u0000'+mm;
-    var g=keg[k]||(keg[k]={base:_emfDredgeBase(t),bulan:mm,site:String(r.site||''),titik:{},exceed:0});
+    var g=keg[k]||(keg[k]={base:_emfDredgeBase(t),bulan:mm,site:String(_sEf||''),titik:{},exceed:0});
     (g.titik[t]=g.titik[t]||{})[r.parameter]=r;
     if(r.status==='exceed')g.exceed++;
   }
@@ -45735,7 +45776,7 @@ function _emfPatchHydro(tbl,year,months,sites){
       var v='';
       if(pk){
         for(var kk in recs){
-          if(_emfSq(kk).toLowerCase()===_emfSq(pk).toLowerCase()){v=_emfDredgeVal(recs[kk]);break;}
+          if(_emfSq(kk).toLowerCase()===_emfSq(pk).toLowerCase()){v=_emfDredgeVal(recs[kk]);/*Y575e*/if(typeof window._emfTandaiHydro==='function')v=window._emfTandaiHydro(v,recs[kk],pk);break;}
         }
       }
       // blank, never inherit the clone's previous-period number
@@ -47793,7 +47834,7 @@ function _coordDetailMainInput(actId,q){
        chip/filter berlabel pendek sengaja dibiarkan membungkus alami.
        HANYA memberi kelas `ui-btnwrap2` (gayanya di ui_y501.css, hanya HP):
        menulis style inline pada tombolnya membuat peramban menyerialkan ulang
-       atribut style, dan pemeta warna tema (data-em-bg, envmon.js) kehilangan
+       atribut style, dan pemeta warna tema (atribut data-em, envmon.js) kehilangan
        acuannya -- tombol "Umum" di PDF Tools jadi hijau terang berteks gelap. */
     var semua = document.querySelectorAll('[id^="view-"] button'), vistos = new Set();
     for(var s2=0;s2<semua.length;s2++){
@@ -48189,16 +48230,27 @@ function _coordDetailMainInput(actId,q){
   /* 4 ── jalankan ulang setelah tampilan berubah. Digandeng ke switchTab
      supaya tidak perlu MutationObserver yang menyala terus-menerus. */
   var _uiSibuk = false;
+  /* Y575: empat perabot di bawah hanya membangun tata letak ponsel dan di desktop cuma
+     MEMBERSIHKAN sisa mode ponsel. Memindai semua <div>/<button> di setiap tab untuk
+     membersihkan sesuatu yang tidak pernah dipasang terukur ~270 ms pada CPU 4x lebih
+     lambat per tab. Dijalankan di desktop hanya SEKALI setelah mode ponsel pernah aktif
+     (mis. jendela dilebarkan lagi) untuk membersihkan sisanya. */
+  var _uiPernahHp = false;
   function _uiSegarkan(){
     if(_uiSibuk) return;
     _uiSibuk = true;
+    var hpKini = HP(), perluHp = hpKini || _uiPernahHp;
+    if(hpKini) _uiPernahHp = true;
     try{ _uiJudul(); }catch(e){}
     try{ _uiEnviKeMenu(); }catch(e){}
-    try{ _uiPetakTombol(); }catch(e){}
-    try{ _uiPetakAngka(); }catch(e){}
-    try{ _uiBarisChip(); }catch(e){}
+    if(perluHp){
+      try{ _uiPetakTombol(); }catch(e){}
+      try{ _uiPetakAngka(); }catch(e){}
+      try{ _uiBarisChip(); }catch(e){}
+    }
     try{ _uiBarisMuat(); }catch(e){}
-    try{ _uiSasaranSentuh(); }catch(e){}
+    if(perluHp){ try{ _uiSasaranSentuh(); }catch(e){} }
+    if(!hpKini) _uiPernahHp = false;   // pembersihan desktop sudah dilakukan lewat blok di atas
     try{ _uiIstilah(); }catch(e){}
     try{ _uiTanpaEmoji(); }catch(e){}
     try{ _uiSpandukSatuKali(); }catch(e){}
@@ -51161,50 +51213,50 @@ html[data-theme="envmon"] .topbar-aksi :is(#btn-undo,#btn-redo) svg{width:16px!i
 /* ---------- 4b. Warna style="" lama (atribut data-em-* ditulis envmon.js petakSatu) ----------
    :is(#zoom-root,body) memberi spesifisitas setingkat id: di aplikasi aslinya
    style="" menang atas kelas, jadi petanya juga harus menang atas peta kelas. */
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="surface"]{background:var(--surface)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="raise"]{background:var(--em-raise)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="tint2"]{background:var(--em-tint-2)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="ok"]{background:var(--em-ok-soft)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="crit"]{background:var(--em-crit-soft)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="brand"]{background:var(--em-brand-soft)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="info"]{background:var(--em-info-soft)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="elev"]{background:var(--elevated)!important;color:var(--text)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-fg="text"]{color:var(--text)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-fg="text2"]{color:var(--text-2)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-fg="muted"]{color:var(--muted)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-fg="ok"]{color:var(--success)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-fg="crit"]{color:var(--danger)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-fg="brand"]{color:var(--brand)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-fg="info"]{color:var(--info-text)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="okS"]{background:var(--em-ok-soft)!important;color:var(--success)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="critS"]{background:var(--em-crit-soft)!important;color:var(--danger)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="brandS"]{background:var(--em-brand-soft)!important;color:var(--brand)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bg="infoS"]{background:var(--em-info-soft)!important;color:var(--info-text)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bt="line"]{border-top-color:var(--line)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bt="strong"]{border-top-color:var(--line-strong)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bt="ok"]{border-top-color:color-mix(in srgb,var(--success) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bt="crit"]{border-top-color:color-mix(in srgb,var(--danger) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bt="brand"]{border-top-color:color-mix(in srgb,var(--brand) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bt="info"]{border-top-color:color-mix(in srgb,var(--info) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-br="line"]{border-right-color:var(--line)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-br="strong"]{border-right-color:var(--line-strong)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-br="ok"]{border-right-color:color-mix(in srgb,var(--success) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-br="crit"]{border-right-color:color-mix(in srgb,var(--danger) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-br="brand"]{border-right-color:color-mix(in srgb,var(--brand) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-br="info"]{border-right-color:color-mix(in srgb,var(--info) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bb="line"]{border-bottom-color:var(--line)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bb="strong"]{border-bottom-color:var(--line-strong)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bb="ok"]{border-bottom-color:color-mix(in srgb,var(--success) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bb="crit"]{border-bottom-color:color-mix(in srgb,var(--danger) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bb="brand"]{border-bottom-color:color-mix(in srgb,var(--brand) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bb="info"]{border-bottom-color:color-mix(in srgb,var(--info) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bl="line"]{border-left-color:var(--line)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bl="strong"]{border-left-color:var(--line-strong)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bl="ok"]{border-left-color:color-mix(in srgb,var(--success) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bl="crit"]{border-left-color:color-mix(in srgb,var(--danger) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bl="brand"]{border-left-color:color-mix(in srgb,var(--brand) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-bl="info"]{border-left-color:color-mix(in srgb,var(--info) 45%,transparent)!important}
-html[data-theme="envmon"] :is(#zoom-root,body) [data-em-w="1"]{border-width:1px!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-surface"]{background:var(--surface)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-raise"]{background:var(--em-raise)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-tint2"]{background:var(--em-tint-2)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-ok"]{background:var(--em-ok-soft)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-crit"]{background:var(--em-crit-soft)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-brand"]{background:var(--em-brand-soft)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-info"]{background:var(--em-info-soft)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-elev"]{background:var(--elevated)!important;color:var(--text)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="fg-text"]{color:var(--text)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="fg-text2"]{color:var(--text-2)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="fg-muted"]{color:var(--muted)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="fg-ok"]{color:var(--success)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="fg-crit"]{color:var(--danger)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="fg-brand"]{color:var(--brand)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="fg-info"]{color:var(--info-text)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-okS"]{background:var(--em-ok-soft)!important;color:var(--success)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-critS"]{background:var(--em-crit-soft)!important;color:var(--danger)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-brandS"]{background:var(--em-brand-soft)!important;color:var(--brand)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bg-infoS"]{background:var(--em-info-soft)!important;color:var(--info-text)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bt-line"]{border-top-color:var(--line)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bt-strong"]{border-top-color:var(--line-strong)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bt-ok"]{border-top-color:color-mix(in srgb,var(--success) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bt-crit"]{border-top-color:color-mix(in srgb,var(--danger) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bt-brand"]{border-top-color:color-mix(in srgb,var(--brand) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bt-info"]{border-top-color:color-mix(in srgb,var(--info) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="br-line"]{border-right-color:var(--line)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="br-strong"]{border-right-color:var(--line-strong)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="br-ok"]{border-right-color:color-mix(in srgb,var(--success) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="br-crit"]{border-right-color:color-mix(in srgb,var(--danger) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="br-brand"]{border-right-color:color-mix(in srgb,var(--brand) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="br-info"]{border-right-color:color-mix(in srgb,var(--info) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bb-line"]{border-bottom-color:var(--line)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bb-strong"]{border-bottom-color:var(--line-strong)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bb-ok"]{border-bottom-color:color-mix(in srgb,var(--success) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bb-crit"]{border-bottom-color:color-mix(in srgb,var(--danger) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bb-brand"]{border-bottom-color:color-mix(in srgb,var(--brand) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bb-info"]{border-bottom-color:color-mix(in srgb,var(--info) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bl-line"]{border-left-color:var(--line)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bl-strong"]{border-left-color:var(--line-strong)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bl-ok"]{border-left-color:color-mix(in srgb,var(--success) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bl-crit"]{border-left-color:color-mix(in srgb,var(--danger) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bl-brand"]{border-left-color:color-mix(in srgb,var(--brand) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="bl-info"]{border-left-color:color-mix(in srgb,var(--info) 45%,transparent)!important}
+html[data-theme="envmon"] :is(#zoom-root,body) [data-em~="w-1"]{border-width:1px!important}
 
 /* ---------- 5. Komponen dasar (PDF hal. 27-28) ---------- */
 /* tombol: pill, 6 keadaan */
@@ -51912,41 +51964,62 @@ function pilStatus(n){ // n = simpul teks
 function namaTeks(t){return String(t||'').replace(/\s+/g,' ').trim().slice(0,80);}
 function rapikanA11y(akar){
   if(!akar||!akar.querySelectorAll)return;
-  var q=function(sel){var a=[].slice.call(akar.querySelectorAll(sel));if(akar.matches&&akar.matches(sel))a.unshift(akar);return a;};
+  /* SATU pemindaian DOM (dulu delapan querySelectorAll terpisah per panggilan, dan fungsi ini
+     dipanggil belasan kali per perpindahan tab). Elemen dikelompokkan di JS; urutan langkah
+     dan syarat tiap langkah sama dengan versi lama. */
+  var semua=[].slice.call(akar.querySelectorAll('[role="tablist"],[role="tab"],select,input,textarea,.reminder-col,#seq-scroll-wrap,[style*="overflow"],.leaflet-marker-icon[role="button"]'));
+  if(akar.matches&&akar.matches('[role="tablist"],[role="tab"],select,input,textarea,.reminder-col,#seq-scroll-wrap,[style*="overflow"],.leaflet-marker-icon[role="button"]'))semua.unshift(akar);
+  var tl=[],tb=[],sel=[],cek=[],txt=[],gul=[],pin=[];
+  var TXT=/^(text|number|date)$/;
+  for(var i=0;i<semua.length;i++){
+    var e=semua[i],tag=e.tagName,role=e.getAttribute('role');
+    if(role==='tablist')tl.push(e);
+    if(role==='tab')tb.push(e);
+    var tanpaNama=!e.hasAttribute('aria-label')&&!e.hasAttribute('aria-labelledby');
+    if(tag==='SELECT'){if(tanpaNama)sel.push(e);}
+    else if(tag==='INPUT'){var ty=e.getAttribute('type');
+      if((ty==='checkbox'||ty==='radio')){if(tanpaNama)cek.push(e);}
+      else if((ty===null||TXT.test(ty))&&tanpaNama)txt.push(e);}
+    else if(tag==='TEXTAREA'){if(tanpaNama)txt.push(e);}
+    if(!e.hasAttribute('tabindex')&&(e.classList.contains('reminder-col')||e.id==='seq-scroll-wrap'||(e.hasAttribute('style')&&e.getAttribute('style').indexOf('overflow')>=0)))gul.push(e);
+    if(role==='button'&&e.classList.contains('leaflet-marker-icon')&&!e.hasAttribute('aria-label'))pin.push(e);
+  }
   // role=tablist harus langsung membungkus tab-nya, bukan seluruh isi panel;
   // bila di dalamnya ada beberapa kelompok tab, tiap induk kelompok jadi tablist
-  q('[role="tablist"]').forEach(function(tl){
-    var tab=[].slice.call(tl.querySelectorAll('[role="tab"]')); if(!tab.length)return;
+  tl.forEach(function(t0){
+    var tab=[].slice.call(t0.querySelectorAll('[role="tab"]')); if(!tab.length)return;
     var induk=[]; tab.forEach(function(t){if(induk.indexOf(t.parentElement)<0)induk.push(t.parentElement);});
-    if(induk.length===1&&induk[0]===tl)return;
-    induk.forEach(function(p,i){if(p===tl)return;p.setAttribute('role','tablist');if(i===0&&tl.getAttribute('aria-label')&&!p.getAttribute('aria-label'))p.setAttribute('aria-label',tl.getAttribute('aria-label'));});
-    if(induk.indexOf(tl)<0)tl.removeAttribute('role');
+    if(induk.length===1&&induk[0]===t0)return;
+    induk.forEach(function(p,i){if(p===t0)return;p.setAttribute('role','tablist');if(i===0&&t0.getAttribute('aria-label')&&!p.getAttribute('aria-label'))p.setAttribute('aria-label',t0.getAttribute('aria-label'));});
+    if(induk.indexOf(t0)<0)t0.removeAttribute('role');
   });
   // setiap role=tab wajib berinduk role=tablist (aria-required-parent)
-  q('[role="tab"]').forEach(function(t){var p=t.parentElement;if(p&&!p.closest('[role="tablist"]'))p.setAttribute('role','tablist');});
-  q('select:not([aria-label]):not([aria-labelledby])').forEach(function(e){
+  tb.forEach(function(t){var p=t.parentElement;if(p&&!p.closest('[role="tablist"]'))p.setAttribute('role','tablist');});
+  sel.forEach(function(e){
     if(e.id&&document.querySelector('label[for="'+e.id+'"]'))return; if(e.closest('label'))return;
     var n=e.title||(e.options&&e.options[0]&&e.options[0].text)||'Pilihan'; e.setAttribute('aria-label',namaTeks(n));
   });
-  q('input[type="checkbox"]:not([aria-label]):not([aria-labelledby]),input[type="radio"]:not([aria-label]):not([aria-labelledby])').forEach(function(e){
+  cek.forEach(function(e){
     if(e.closest('label')||(e.id&&document.querySelector('label[for="'+e.id+'"]')))return;
     var tr=e.closest('tr'),n=e.title;
     if(!n&&tr){var c=[].slice.call(tr.cells||[]).find(function(td){return !td.contains(e)&&namaTeks(td.textContent);});n=c?'Pilih '+namaTeks(c.textContent):'';}
     e.setAttribute('aria-label',n||'Pilih');
   });
   // isian teks tanpa nama: dari label di depannya, placeholder, atau title
-  q('input:not([type]):not([aria-label]):not([aria-labelledby]),input[type="text"]:not([aria-label]):not([aria-labelledby]),input[type="number"]:not([aria-label]):not([aria-labelledby]),input[type="date"]:not([aria-label]):not([aria-labelledby]),textarea:not([aria-label]):not([aria-labelledby])').forEach(function(e){
+  txt.forEach(function(e){
     if(e.closest('label')||(e.id&&document.querySelector('label[for="'+e.id+'"]')))return;
     var pv=e.previousElementSibling,n=e.title||e.placeholder||(pv&&/^(LABEL|SPAN|B|DIV)$/.test(pv.tagName)?namaTeks(pv.textContent):'');
-    if(!n){var td=e.closest('td,th'),tb=td&&td.closest('table');   // di dalam tabel: nama kolom + kepala baris
-      if(tb&&tb.tHead&&tb.tHead.rows[0]&&tb.tHead.rows[0].cells[td.cellIndex]){var tr=td.parentElement;
-        n=namaTeks(tb.tHead.rows[0].cells[td.cellIndex].textContent)+(tr&&tr.cells[0]&&tr.cells[0]!==td?' — '+namaTeks(tr.cells[0].textContent):'');}}
+    if(!n){var td=e.closest('td,th'),tb2=td&&td.closest('table');   // di dalam tabel: nama kolom + kepala baris
+      if(tb2&&tb2.tHead&&tb2.tHead.rows[0]&&tb2.tHead.rows[0].cells[td.cellIndex]){var tr=td.parentElement;
+        n=namaTeks(tb2.tHead.rows[0].cells[td.cellIndex].textContent)+(tr&&tr.cells[0]&&tr.cells[0]!==td?' — '+namaTeks(tr.cells[0].textContent):'');}}
     if(n)e.setAttribute('aria-label',namaTeks(n));
   });
   // daerah gulir yang tidak memuat kendali harus bisa difokus papan ketik
-  q('.reminder-col:not([tabindex]),#seq-scroll-wrap:not([tabindex]),[style*="overflow"]:not([tabindex])').forEach(function(e){
+  // daerah gulir tanpa kendali harus bisa difokus papan ketik. Dikerjakan SINKRON (pengukuran biaya menunjukkan
+  // menundanya hanya memindahkan biaya layout ke pemanggil lain, dan axe memeriksa segera setelah tab terbuka).
+  gul.forEach(function(e){
     if(e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+1){var cs=getComputedStyle(e);if(/(auto|scroll)/.test(cs.overflowX+cs.overflowY))e.setAttribute('tabindex','0');}});
-  q('.leaflet-marker-icon[role="button"]:not([aria-label])').forEach(function(e){e.setAttribute('aria-label',namaTeks(e.title||e.alt)||'Penanda peta');});
+  pin.forEach(function(e){e.setAttribute('aria-label',namaTeks(e.title||e.alt)||'Penanda peta');});
 }
 
 /* ---------- warna style="" lama -> token (pengganti selektor [style*=...]) ----------
@@ -51955,7 +52028,7 @@ function rapikanA11y(akar){
    Sekarang warna inline dibaca SEKALI dari CSSOM saat elemen dirender (dalam
    callback MutationObserver, sebelum dilukis, jadi tidak berkedip), dipetakan
    dengan aturan yang sama dengan gen_envmon_inline.py, dan hasilnya ditulis
-   sebagai atribut data-em-*; CSS-nya cukup beberapa puluh aturan sederhana.
+   sebagai satu atribut data-em (token); CSS-nya cukup beberapa puluh aturan sederhana.
    Kertas cetak dan peta tidak disentuh; kendali yang ditata tangan di
    envmon.css dikecualikan. */
 var JANGAN_PETA='.leaflet-container,.page-frame,.guide-page,.em-asli,.ui-btnwrap,.sinkron-pemicu,.topbar-aksi,#em-side,#em-head,.em-pill,#zoom-ctl,#az-fab';
@@ -51980,7 +52053,7 @@ function setAttr(e,n,v){if(v){if(e.getAttribute(n)!==v)e.setAttribute(n,v);}else
 var SISI=[['Top','t'],['Right','r'],['Bottom','b'],['Left','l']];
 function petakSatu(e){
   var st=e.getAttribute('style');
-  if(!st||!/#|rgb|var\(--g[34]\)/i.test(st)){if(e.hasAttribute('data-em-w'))['data-em-bg','data-em-fg','data-em-bt','data-em-br','data-em-bb','data-em-bl','data-em-w'].forEach(function(n){e.removeAttribute(n);});return;}
+  if(!st||!/#|rgb|var\(--g[34]\)/i.test(st)){if(e.hasAttribute('data-em'))e.removeAttribute('data-em');return;}
   var s=e.style,bg=null,fg=null,bd={},ada=false;
   var bi=s.backgroundImage;
   if(bi&&bi.indexOf('gradient')>=0){var cs=bi.match(/rgba?\([^)]*\)/g)||[];
@@ -51993,10 +52066,14 @@ function petakSatu(e){
   if(g34){var sisi=g34[2]?g34[2].charAt(0):'trbl';sisi.split('').forEach(function(h){bd[h]='strong';});}
   ada=!!(bg||fg||bd.t||bd.r||bd.b||bd.l);
   if(ada&&e.closest(JANGAN_PETA))ada=false;
-  if(!ada&&!e.hasAttribute('data-em-w'))return;
-  setAttr(e,'data-em-bg',ada&&bg);setAttr(e,'data-em-fg',ada&&fg);
-  SISI.forEach(function(x){setAttr(e,'data-em-b'+x[1],ada&&bd[x[1]]);});
-  setAttr(e,'data-em-w',ada?(g34&&/\b2px\b/.test(g34[0])?'1':'0'):null);
+  if(!ada&&!e.hasAttribute('data-em'))return;
+  /* SATU atribut `data-em` berisi token ("bg-okS fg-ok bt-line w-0"), bukan tujuh atribut:
+     ENV Program menulis 990 sel x 7 atribut = 7.668 mutasi + 7.668 invalidasi gaya per render. */
+  var tk=[];
+  if(ada){if(bg)tk.push('bg-'+bg);if(fg)tk.push('fg-'+fg);
+    SISI.forEach(function(x){if(bd[x[1]])tk.push('b'+x[1]+'-'+bd[x[1]]);});
+    tk.push('w-'+(g34&&/\b2px\b/.test(g34[0])?'1':'0'));}
+  setAttr(e,'data-em',tk.join(' '));
 }
 var _petaGalat=[];
 function petakAman(e){try{petakSatu(e);}catch(x){if(_petaGalat.length<5)_petaGalat.push((e.tagName||'')+'#'+(e.id||'')+': '+x.message);}}
@@ -52022,7 +52099,10 @@ var _ketAntre=[],_ketJadwal=0;
 function antreKet(m){
   for(var i=0;i<m.length;i++)for(var j=0;j<m[i].addedNodes.length;j++){var a=m[i].addedNodes[j];_ketAntre.push(a.nodeType===3?a.parentElement:a);}
   if(!_ketJadwal)_ketJadwal=requestAnimationFrame(function(){_ketJadwal=0;var q=_ketAntre;_ketAntre=[];var on=aktif();
-    for(var k=0;k<q.length;k++)if(q[k]&&q[k].isConnected){rapikanA11y(q[k]);if(on)tandaiKet(q[k]);}});
+    // simpul yang sudah termasuk di dalam simpul lain dalam antrean tidak dipindai lagi (induknya sudah mencakup)
+    var ada=new Set();q=q.filter(function(n){if(n&&n.isConnected){ada.add(n);return true;}return false;});
+    q=q.filter(function(n){for(var p=n.parentElement;p;p=p.parentElement)if(ada.has(p))return false;return true;});
+    for(var k=0;k<q.length;k++){rapikanA11y(q[k]);if(on)tandaiKet(q[k]);}});
 }
 
 
@@ -52705,10 +52785,41 @@ function paragrafTeks(doc,contoh,s,opsi){
   // paragraf baru meniru format paragraf contoh (huruf, jarak) supaya menyatu
   var p=buat(doc,'p');
   var ppr=contoh&&anak(contoh,'pPr'); if(ppr){var c=ppr.cloneNode(true);var sp=anak(c,'sectPr');if(sp)c.removeChild(sp);var nb=anak(c,'numPr');if(nb)c.removeChild(nb);p.appendChild(c);}
-  var r=buat(doc,'r'); var rPrC=contoh&&contoh.getElementsByTagNameNS(W,'rPr')[0];
-  if(rPrC&&rPrC.parentNode.localName==='r'){var rr=rPrC.cloneNode(true);['b','i','color','highlight'].forEach(function(n){var e=anak(rr,n);if(e)rr.removeChild(e);});if(opsi&&opsi.b)rr.appendChild(buat(doc,'b'));r.appendChild(rr);}
+  var r=buat(doc,'r');
+  /* rPr diambil dari RUN pertama contoh yang punya rPr. Versi lama memakai rPr pertama di dalam
+     paragraf -- yang ternyata rPr penanda paragraf (di pPr), sehingga syaratnya "induknya <r>" tidak
+     pernah terpenuhi dan run baru TANPA huruf: dokumen memakai huruf bawaan (Times) berukuran lain,
+     tampak beda dari sekitarnya. Cadangan: rPr penanda paragraf (Arial pada dokumen dasar ini). */
+  var rPrC=null;
+  if(contoh){var rs=contoh.getElementsByTagNameNS(W,'r');for(var ri=0;ri<rs.length&&!rPrC;ri++){var x=anak(rs[ri],'rPr');if(x&&rs[ri].getElementsByTagNameNS(W,'t').length)rPrC=x;}
+    if(!rPrC&&ppr)rPrC=anak(ppr,'rPr');}
+  if(rPrC){var rr=rPrC.cloneNode(true);['b','bCs','i','iCs','highlight','u'].forEach(function(n){var e=anak(rr,n);if(e)rr.removeChild(e);});if(opsi&&opsi.b)rr.appendChild(buat(doc,'b'));r.appendChild(rr);}
   var t=buat(doc,'t'); t.setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve'); t.textContent=s; r.appendChild(t); p.appendChild(r);
   return p;
+}
+/* Paragraf baru yang MENYALIN paragraf contoh utuh (gaya, rata, jarak, huruf run) lalu menggantinya teksnya.
+   Penanda bookmark/paraId disingkirkan supaya tidak ganda. Bila contoh bukan paragraf, jatuh ke paragrafTeks. */
+function paragrafSalin(doc,contoh,s){
+  if(!contoh||contoh.localName!=='p')return paragrafTeks(doc,contoh,s);
+  var c=contoh.cloneNode(true);
+  ['w14:paraId','w14:textId','w:rsidR','w:rsidRDefault','w:rsidP','w:rsidRPr'].forEach(function(a){if(c.removeAttribute)c.removeAttribute(a);});
+  var hapus=[];for(var n=c.firstChild;n;n=n.nextSibling){if(n.nodeType!==1)continue;
+    if(n.localName==='bookmarkStart'||n.localName==='bookmarkEnd'||n.localName==='proofErr')hapus.push(n);}
+  hapus.forEach(function(n){c.removeChild(n);});
+  var sp=c.getElementsByTagNameNS(W,'sectPr');for(var q=sp.length-1;q>=0;q--)sp[q].parentNode.removeChild(sp[q]);
+  var nb=c.getElementsByTagNameNS(W,'numPr');for(var q2=nb.length-1;q2>=0;q2--)nb[q2].parentNode.removeChild(nb[q2]);
+  var runs=[];for(var m=c.firstChild;m;m=m.nextSibling)if(m.nodeType===1&&m.localName==='r'&&m.getElementsByTagNameNS(W,'t').length)runs.push(m);
+  if(!runs.length)return paragrafTeks(doc,contoh,s);
+  var r0=runs[0],ts=r0.getElementsByTagNameNS(W,'t');
+  ts[0].textContent=s;ts[0].setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve');
+  for(var i=ts.length-1;i>0;i--)ts[i].parentNode.removeChild(ts[i]);
+  // run lain (huruf tebal/miring, centang) dibuang; hapus juga bentuk gambar/pemisah di run pertama
+  for(var j=1;j<runs.length;j++)c.removeChild(runs[j]);
+  ['drawing','pict','br','tab'].forEach(function(nm){var x=r0.getElementsByTagNameNS(W,nm);for(var y=x.length-1;y>=0;y--)x[y].parentNode.removeChild(x[y]);});
+  var rp=anak(r0,'rPr');if(rp)['b','bCs','i','iCs','highlight','u'].forEach(function(nm){var e=anak(rp,nm);if(e)rp.removeChild(e);});
+  // paragraf lain yang tersisa (run kosong dst.) tidak dipertahankan
+  for(var z=c.firstChild;z;){var nx=z.nextSibling;if(z.nodeType===1&&!/^(pPr|r)$/.test(z.localName))c.removeChild(z);z=nx;}
+  return c;
 }
 /* Butir 14 (pemilik 2026-10-06): tabel hasil yang diikuti keterangan
  * "(*): Unit tidak beroperasi" menulis "-" sementara dokumen dasarnya "(*)".
@@ -52852,7 +52963,7 @@ var KALIMAT_KERUK='Hasil pemantauan menunjukkan bahwa seluruh parameter kualitas
 var KALIMAT_KERUK_LEBIH='Hasil pemantauan menunjukkan terdapat parameter kualitas badan air di sekitar area pengerukan yang melebihi baku mutu PP No. 22 Tahun 2021 Lampiran VIII; nilainya ditandai merah pada tabel.';
 function penutupKeruk(doc,body){
   var el=[]; for(var c=body.firstChild;c;c=c.nextSibling)if(c.nodeType===1)el.push(c);
-  var terakhir=-1, merah=false, contoh=null;
+  var terakhir=-1, merah=false, contoh=null, sejenis=null;
   for(var i=0;i<el.length;i++){
     if(el[i].localName!=='p')continue;
     var t=teks(el[i]).trim();
@@ -52860,7 +52971,22 @@ function penutupKeruk(doc,body){
       for(var j=i+1;j<el.length&&j<i+4;j++)if(el[j].localName==='tbl'){terakhir=j;if(adaMerah(el[j]))merah=true;break;}
     }
     if(/^(Berikut|Pada)/.test(t)&&!contoh)contoh=el[i];
+    if(/^Hasil pemantauan menunjukkan/i.test(t)&&!sejenis)sejenis=el[i];
   }
+  /* Kalimat penutup dibuat meniru kalimat penutup yang SUDAH ADA di dokumen (ListParagraph, rata kiri-kanan,
+     Arial): contoh lama "Berikut/Pada..." bergaya Header (surat pengantar), jadi hasilnya beda huruf dan jarak. */
+  // kalimat serupa di surat pengantar ("Hasil pemantauan menunjukkan bahwa:") bergaya Header: bukan contoh yang baik
+  if(!sejenis||(anak(anak(sejenis,'pPr')||sejenis,'pStyle')&&/Header/.test((anak(anak(sejenis,'pPr'),'pStyle').getAttributeNS(W,'val')||anak(anak(sejenis,'pPr'),'pStyle').getAttribute('w:val')||'')))){
+    sejenis=null; var kandidat=null;
+    for(var q=el.length-1;q>=0&&!sejenis;q--){
+      if(el[q].localName!=='p'||!/^Hasil pemantauan menunjukkan/i.test(teks(el[q]).trim()))continue;
+      var ps=anak(el[q],'pPr'),st=ps&&anak(ps,'pStyle'),sv=st?(st.getAttributeNS(W,'val')||st.getAttribute('w:val')||''):'';
+      if(sv!=='Header'&&(/pengerukan|dredging/i.test(teks(el[q]))||!kandidat))kandidat=el[q];
+      if(sv!=='Header'&&/pengerukan|dredging/i.test(teks(el[q]))){sejenis=el[q];}
+    }
+    if(!sejenis)sejenis=kandidat;
+  }
+  if(sejenis)contoh=sejenis;
   if(terakhir<0)return 0;
   // lewati keterangan di bawah tabel; berhenti di teks lain
   var k=terakhir+1;
@@ -52870,7 +52996,7 @@ function penutupKeruk(doc,body){
     if(!t2||/^(keterangan|\(\*|\*)/i.test(t2)){k++;continue;}
     break;
   }
-  var p=paragrafTeks(doc,contoh||el[terakhir-1],merah?KALIMAT_KERUK_LEBIH:KALIMAT_KERUK);
+  var p=paragrafSalin(doc,contoh||el[terakhir-1],merah?KALIMAT_KERUK_LEBIH:KALIMAT_KERUK);
   body.insertBefore(p,el[k]||null);
   return 1;
 }
@@ -52943,21 +53069,46 @@ function hidrostatik(doc,body){
       var szc=tbl.getElementsByTagNameNS(W,'szCs');for(var z2=0;z2<szc.length;z2++)szc[z2].setAttributeNS(W,'w:val','12');
     }
     tbl.setAttribute('data-em-lanskap','1');
-    // 3) keterangan + kalimat penutup sesudah tabel (bila belum ada), lalu pemisah bagian lanskap
-    var k=ti+1, adaKet=false, adaTutup=false;
+    // 3) keterangan + kalimat penutup sesudah tabel, lalu pemisah bagian lanskap.
+    //    Permintaan pemilik 2026-10-07: keterangan memuat HANYA tanda yang benar-benar ada di tabel
+    //    ((*) atau (**)); tanpa tanda, tidak ditulis sama sekali. Hurufnya meniru keterangan yang sudah
+    //    ada di dokumen (dulu memakai paragraf judul tabel: rata tengah dan tanpa huruf Arial).
+    var tTbl=teks(tbl);
+    var ada2=/\(\*\*\)/.test(tTbl), ada1=/\(\*\)/.test(tTbl.replace(/\(\*\*\)/g,''));
+    var k=ti+1, lama=[], adaTutup=false, tutupEl=null;
     while(k<el.length&&el[k].localName==='p'){var t3=teks(el[k]).trim();
-      if(/^keterangan/i.test(t3)||/^\(\*/.test(t3))adaKet=true;
-      if(/hasil pemantauan menunjukkan/i.test(t3)&&/hidrostatik/i.test(t3)){adaTutup=true;k++;break;}
-      if(t3&&!/^(keterangan|\(\*)/i.test(t3))break; k++;}
-    var acuan=el[i];
+      if(/^keterangan\s*:?$/i.test(t3)||/^\(\*{1,2}\)\s*:/.test(t3)){lama.push(el[k]);k++;continue;}
+      if(/hasil pemantauan menunjukkan/i.test(t3)&&/hidrostatik/i.test(t3)){adaTutup=true;tutupEl=el[k];k++;break;}
+      if(t3)break; k++;}
+    // contoh format: keterangan yang sudah ada (di dokumen ini), lalu kalimat "Hasil pemantauan menunjukkan ..."
+    var cKet=lama[0]||null, cTutup=tutupEl||null;
+    // kalimat penutup TERDEKAT di atas tabel ini (penutup pengerukan: ListParagraph Arial); yang di surat pengantar bergaya Header
+    for(var m=i-1;m>=0&&!cTutup;m--){
+      if(el[m].localName!=='p')continue;
+      if(/^Hasil pemantauan menunjukkan/i.test(teks(el[m]).trim()))cTutup=el[m];
+    }
+    for(var m2=0;m2<el.length&&!cKet;m2++){
+      if(el[m2].localName!=='p')continue;
+      if(/^keterangan\s*:?$/i.test(teks(el[m2]).trim())&&el[m2]!==lama[0])cKet=el[m2];
+    }
+    var cDasar=el[i];   // judul tabel: cadangan terakhir
+    // buang keterangan lama (isinya disusun ulang dari tanda yang ada); sectPr di dalamnya dipindah ke penutup bagian
+    lama.forEach(function(p){var sp=p.getElementsByTagNameNS(W,'sectPr');for(var q=sp.length-1;q>=0;q--)sp[q].parentNode.removeChild(sp[q]);body.removeChild(p);});
     var sisip=el[k]||null, baru=[];
-    if(!adaKet){baru.push(paragrafTeks(doc,acuan,'Keterangan:'),paragrafTeks(doc,acuan,'(*): Melebihi baku mutu PP No. 22 tahun 2021 Lampiran VIII, namun memenuhi batas rona awal'),paragrafTeks(doc,acuan,'(**): Melebihi baku mutu PP No. 22 tahun 2021 Lampiran VIII'));}
-    if(!adaTutup)baru.push(paragrafTeks(doc,acuan,adaMerah(tbl)
+    var kTeks=[];
+    if(ada1||ada2){kTeks.push('Keterangan:');
+      if(ada1)kTeks.push('(*): Melebihi baku mutu PP No. 22 tahun 2021 Lampiran VIII, namun memenuhi batas rona awal');
+      if(ada2)kTeks.push('(**): Melebihi baku mutu PP No. 22 tahun 2021 Lampiran VIII');}
+    var cK=cKet||cTutup||cDasar;
+    kTeks.forEach(function(x){baru.push(paragrafSalin(doc,cK,x));});
+    if(!adaTutup)baru.push(paragrafSalin(doc,cTutup||cKet||cDasar,ada2
       ?'Hasil pemantauan menunjukkan terdapat parameter pada badan air di sekitar kegiatan uji hidrostatik yang melebihi BM PP No. 22 tahun 2021 Lampiran VIII; nilainya ditandai pada tabel.'
-      :'Hasil pemantauan menunjukkan bahwa seluruh parameter pada badan air di sekitar kegiatan uji hidrostatik telah memenuhi BM PP No. 22 tahun 2021 Lampiran VIII yang telah ditentukan.'));
+      :(ada1?'Hasil pemantauan menunjukkan bahwa seluruh parameter pada badan air di sekitar kegiatan uji hidrostatik telah memenuhi BM PP No. 22 tahun 2021 Lampiran VIII, kecuali parameter bertanda (*) yang masih memenuhi batas rona awal.'
+        :'Hasil pemantauan menunjukkan bahwa seluruh parameter pada badan air di sekitar kegiatan uji hidrostatik telah memenuhi BM PP No. 22 tahun 2021 Lampiran VIII yang telah ditentukan.')));
     baru.forEach(function(p){body.insertBefore(p,sisip);});
-    var pAkhir=baru.length?baru[baru.length-1]:el[k-1];
-    if(pAkhir&&pAkhir.localName==='p'){var pr=pPr(pAkhir),lama=anak(pr,'sectPr');if(lama)pr.removeChild(lama);pr.appendChild(L.sect);}
+    var pAkhir=baru.length?baru[baru.length-1]:(tutupEl||null);
+    if(!pAkhir){pAkhir=buat(doc,'p');body.insertBefore(pAkhir,sisip);}   // tak ada paragraf: pembawa pemisah bagian
+    var pr=pPr(pAkhir),lama2=anak(pr,'sectPr');if(lama2)pr.removeChild(lama2);pr.appendChild(L.sect);
     return 1;
   }
   return 0;
@@ -53898,6 +54049,142 @@ window._emfDwiHanyaDredging=function(doc,siteKe){
      _emfGenerate sendiri tidak melakukannya */
   try{if(asal&&typeof _emfPatchSite==='function')info.diganti=_emfPatchSite(doc,asal,siteKe||'DWI');}catch(e){}
   return info;
+};
+})();
+
+/* y575/hasil_cache.js -- baris Hasil Sampling dihitung SEKALI per render.
+ *
+ * _hsRowsFor(grup) menormalkan daftar RFA, memperbaiki bulanan, lalu membuat ulang
+ * kunci + penimpaan untuk SETIAP baris; _hsAllRows() memanggilnya untuk 8 kelompok.
+ * Satu render tab Hasil memanggil keduanya belasan kali (kartu kelompok, badge,
+ * laporan celah, total melebihi baku mutu, tabel...) -> terukur 905 ms dari 1.414 ms
+ * renderHasilSampling (CPU 4x lebih lambat).
+ *
+ * Di sini hasilnya disimpan SELAMA satu panggilan fungsi render saja (memo dibuat saat
+ * masuk, dibuang saat keluar, juga bila terjadi galat). Data tidak bisa berubah di
+ * tengah render yang sinkron, jadi hasilnya identik; setelah render selesai, panggilan
+ * apa pun (mis. sesudah pengguna mengedit nilai) menghitung ulang dari nol. Larik yang
+ * dikembalikan selalu salinan dangkal supaya pemanggil yang mengurutkan di tempat tidak
+ * merusak simpanan. Hanya fungsi berawalan render, _hsRender, _hsBuild atau _hsTotal yang
+ * dibungkus: fungsi penyimpan/pengubah data tidak pernah memakai memo.
+ */
+(function(){
+'use strict';
+var asliRows=window._hsRowsFor, asliAll=window._hsAllRows;
+if(typeof asliRows!=='function'||typeof asliAll!=='function'||asliRows.__memo)return;
+var memo=null, dalam=0;
+function rowsFor(g){
+  if(!memo)return asliRows.apply(this,arguments);
+  var k=String(g), h=memo.rows;
+  if(!Object.prototype.hasOwnProperty.call(h,k))h[k]=asliRows.call(this,g);
+  return h[k].slice();
+}
+function allRows(){
+  if(!memo)return asliAll.apply(this,arguments);
+  if(!memo.all)memo.all=asliAll.apply(this,arguments);
+  return memo.all.slice();
+}
+rowsFor.__memo=true; allRows.__memo=true;
+window._hsRowsFor=rowsFor; window._hsAllRows=allRows;
+function bungkus(nama){
+  var f=window[nama]; if(typeof f!=='function'||f.__memoBungkus)return false;
+  var w=function(){
+    if(dalam===0)memo={rows:{},all:null};
+    dalam++;
+    try{return f.apply(this,arguments);}
+    finally{dalam--; if(dalam===0)memo=null;}
+  };
+  w.__memoBungkus=true; try{Object.defineProperty(w,'name',{value:nama});}catch(e){}
+  // gerbang lama membaca isi fungsi lewat toString (mis. bmregistry mencari _bmRegBadge): teruskan ke aslinya
+  w.toString=function(){return Function.prototype.toString.call(f);};
+  window[nama]=w; return true;
+}
+var n=0;
+['renderHasilSampling','_hsRenderCore','_hsTotalExceed','_hsBuildGapReport'].forEach(function(x){if(bungkus(x))n++;});
+// fungsi render lain yang memakai baris hasil (RFA Tracker, Dashboard, Laporan, ...)
+try{
+  Object.getOwnPropertyNames(window).forEach(function(k){
+    if(!/^(render|_hsRender|_hsBuild|_hsTotal)/.test(k))return;
+    var f; try{f=window[k];}catch(e){return;}
+    if(typeof f!=='function'||f.__memoBungkus||f===rowsFor||f===allRows)return;
+    var src; try{src=Function.prototype.toString.call(f);}catch(e){return;}
+    if(src.indexOf('_hsAllRows(')>=0||src.indexOf('_hsRowsFor(')>=0){if(bungkus(k))n++;}
+  });
+}catch(e){}
+window.__hasilCacheN=n;
+})();
+
+/* y575/hydro.js -- tabel hasil uji hidrostatik: tanda (*)/(**) dan kepala tabel.
+ *
+ * Permintaan pemilik (2026-10-07):
+ *  1. Kepala tabel (baris atas) harus tebal dan berlatar kuning. Tabel yang DIBENTUK pembangun
+ *     (_emfBuatTabelHidro, dipakai bila dokumen dasar tak punya tabel hasil) meniru sel DATA tabel
+ *     baku mutu, jadi kepalanya polos. Kini meniru sel KEPALA tabel baku mutu + latar FFFF66
+ *     (sama dengan tabel hasil di dokumen dasar).
+ *  2. Angka yang melebihi baku mutu harus diberi tanda, sesuai dokumen dasar:
+ *       (*)  melebihi baku mutu tetapi masih memenuhi batas rona awal,
+ *       (**) melebihi baku mutu (tidak ada rona awal / melewati rona awal).
+ *     Rona awal dibaca dari master baku mutu aplikasi (env26_bm_master: parameter yang punya
+ *     `ronaAwal`, mis. Turbidity "< 137 NTU"). Keterangan di bawah tabel hanya menulis tanda
+ *     yang ada (lihat hidrostatik() di emf_tabel_y570.js).
+ * Dipanggil dari _emfPatchHydro / _emfBuatTabelHidro (disisipkan build, penanda Y575e).
+ */
+(function(){
+'use strict';
+var W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+var _rona=null;
+function petaRona(){
+  if(_rona)return _rona;
+  _rona={};
+  try{
+    var m=JSON.parse(localStorage.getItem('env26_bm_master')||'null');
+    (m&&m.types||[]).forEach(function(t){(t.categories||[]).forEach(function(c){
+      var ps=c.params||{};
+      Object.keys(ps).forEach(function(k){var r=ps[k]&&ps[k].ronaAwal;if(r!=null&&String(r).trim()!==''&&!(String(k).toLowerCase() in _rona))_rona[String(k).toLowerCase()]=String(r);});
+    });});
+  }catch(e){}
+  return _rona;
+}
+function angka(v){var m=/-?\d+(?:[.,]\d+)?/.exec(String(v==null?'':v));return m?parseFloat(m[0].replace(',','.')):null;}
+function dalamRona(nilai,rona){
+  var m=/^\s*([<>]=?)\s*(-?\d+(?:[.,]\d+)?)/.exec(String(rona||'')); if(!m)return false;
+  var lim=parseFloat(m[2].replace(',','.')), n=angka(nilai); if(n==null||isNaN(lim))return false;
+  return m[1].charAt(0)==='<'?(m[1]==='<='?n<=lim:n<lim):(m[1]==='>='?n>=lim:n>lim);
+}
+/* v = teks sel dari _emfDredgeVal; rec = baris hasil; pk = nama parameter di data */
+window._emfTandaiHydro=function(v,rec,pk){
+  try{
+    if(!rec||rec.status!=='exceed'||v===''||v==null)return v;
+    if(/\(\*{1,2}\)\s*$/.test(String(v)))return v;
+    var kn=String(pk||rec.parameter||'').toLowerCase(), pr=petaRona();
+    // nama parameter hidrostatik -> nama di master baku mutu (rona awal ditulis pada sungai/badan air)
+    var ALIAS={'kekeruhan':'turbidity','do':'dissolved oxygen (do)','nitrat':'nitrate (no3-n)','fosfat':'total phosphorus (po4-p)'};
+    var rb=pr[kn]||pr[ALIAS[kn]||''];
+    return String(v)+(rb&&dalamRona(rec.nilai,rb)?' (*)':' (**)');
+  }catch(e){return v;}
+};
+window._emfTandaiHydroReset=function(){_rona=null;};
+/* kepala tabel: sel kepala tabel baku mutu sebagai contoh, lalu latar FFFF66 */
+window._emfTcKepala=function(trsBM){
+  try{var tr=trsBM&&trsBM[0];if(!tr)return null;
+    for(var c=tr.firstChild;c;c=c.nextSibling)if(c.nodeType===1&&c.localName==='tc')return c;}catch(e){}
+  return null;
+};
+window._emfKuningkan=function(tr){
+  try{
+    var d=tr.ownerDocument;
+    for(var c=tr.firstChild;c;c=c.nextSibling){
+      if(c.nodeType!==1||c.localName!=='tc')continue;
+      var pr=null;for(var x=c.firstChild;x;x=x.nextSibling)if(x.nodeType===1&&x.localName==='tcPr'){pr=x;break;}
+      if(!pr){pr=d.createElementNS(W,'w:tcPr');c.insertBefore(pr,c.firstChild);}
+      var shd=null;for(var y=pr.firstChild;y;y=y.nextSibling)if(y.nodeType===1&&y.localName==='shd'){shd=y;break;}
+      if(!shd){shd=d.createElementNS(W,'w:shd');
+        // urutan skema: tcW, gridSpan, vMerge, tcBorders, shd, noWrap, tcMar, textDirection, tcFitText, vAlign
+        var sebelum=null;for(var z=pr.firstChild;z;z=z.nextSibling){if(z.nodeType===1&&/^(noWrap|tcMar|textDirection|tcFitText|vAlign|hideMark)$/.test(z.localName)){sebelum=z;break;}}
+        if(sebelum)pr.insertBefore(shd,sebelum);else pr.appendChild(shd);}
+      shd.setAttributeNS(W,'w:val','clear');shd.setAttributeNS(W,'w:color','auto');shd.setAttributeNS(W,'w:fill','FFFF66');
+    }
+  }catch(e){}
 };
 })();
 
@@ -55289,6 +55576,10 @@ R13 (2026-10-06) Revamp UI v2 "ENV•MONITOR"
   - Lebih responsif: gaya tema lain tidak ikut dihitung, tab RFA/ENV Program/Hasil beralih
     jauh lebih cepat (hitung ulang gaya turun sekitar 2/3 pada CPU lambat).
   - EMF DWI khusus data pengerukan (bagian selain pengerukan tidak lagi ikut).
+  - EMF: sumur berawalan H- dihitung HCA (tidak ikut ke SPU); tabel hasil hidrostatik berkepala kuning dan
+    tebal, angka melebihi baku mutu bertanda (*)/(**), keterangan hanya untuk tanda yang ada dan berhuruf
+    sama dengan dokumen; kalimat penutup pengerukan berhuruf dan berjarak sama dengan sekitarnya.
+  - Optimasi tab Hasil, ENV Program, dan tab lain (waktu muat dan peralihan tab turun jauh pada perangkat lambat).
 R12 sebelumnya.
 ENVMON-CHANGELOG-Y571 -->
 </html>
