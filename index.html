@@ -5796,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'1fed4bec'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'4e960101'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -29855,7 +29855,7 @@ async function _gmcPreviewRow(idx){var rows=window._gmcRows||[];if(!rows.length)
   var row=rows[idx],s=_gmcState();var cv=document.getElementById('gmc-prev');if(!cv)return;
   await _gmcLoadLogo();
   var mapImg=null;if(s.map!=='offline'&&isFinite(row.lat)&&isFinite(row.lng)){try{mapImg=await _gtFetchMapCanvas(row.lat,row.lng,s.map==='street'?'street':'satellite');}catch(e){}}
-  var H=Math.round(s.w*0.42);_gmcRenderOverlay(cv,row,{width:s.w,height:H,pos:s.pos,dateFmt:s.dateFmt,opacity:s.opacity,font:s.font,showMap:s.map!=='offline'||true,mapImg:mapImg,pin:s.pin,scale:s.scale,flag:s.flag!==false,badgeIcon:s.badgeIcon!==false,boxW:s.boxW,boxH:s.boxH,coordFmt:s.coordFmt,gmt:s.gmt});
+  var H=Math.round(s.w*0.42);_gmcRenderOverlay(cv,row,{width:s.w,height:H,pos:s.pos,dateFmt:s.dateFmt,opacity:s.opacity,font:s.font,showMap:s.map!=='offline'||true,mapImg:mapImg,pin:s.pin,scale:s.scale,flag:s.flag!==false,badgeIcon:s.badgeIcon!==false,boxW:s.boxW,boxH:s.boxH,coordFmt:s.coordFmt,gmt:s.gmt,/*Y577*/geoEx:(typeof _gtGeoEx==='function'?_gtGeoEx(s):null)});
   cv.style.width='100%';cv.style.maxWidth='520px';cv.style.height='auto';
   var lab=document.getElementById('gmc-prevlab');if(lab)lab.textContent='Baris '+(idx+1)+' / '+rows.length+' — '+row.file;}
 async function _gmcGenerate(){var rows=window._gmcRows||[];if(!rows.length){if(typeof toast==='function')toast('⚠ Unggah CSV dulu.');return;}
@@ -29867,7 +29867,7 @@ async function _gmcGenerate(){var rows=window._gmcRows||[];if(!rows.length){if(t
   for(var i=0;i<rows.length;i++){var row=rows[i];if(info)info.innerHTML='Membuat overlay '+(i+1)+' / '+rows.length+'...';await new Promise(function(r){setTimeout(r,0);});
     var mapImg=null;if(s.map!=='offline'&&isFinite(row.lat)&&isFinite(row.lng)){var ck=row.lat.toFixed(5)+','+row.lng.toFixed(5);
       if(mapCache[ck]===undefined){mapCache[ck]=await _gtFetchMapCanvas(row.lat,row.lng,s.map==='street'?'street':'satellite');}mapImg=mapCache[ck];if(!mapImg)usedPlaceholder++;}
-    _gmcRenderOverlay(cv,row,{width:s.w,height:H,pos:s.pos,dateFmt:s.dateFmt,opacity:s.opacity,font:s.font,showMap:true,mapImg:mapImg,pin:s.pin,scale:s.scale,flag:s.flag!==false,badgeIcon:s.badgeIcon!==false,boxW:s.boxW,boxH:s.boxH,coordFmt:s.coordFmt,gmt:s.gmt});
+    _gmcRenderOverlay(cv,row,{width:s.w,height:H,pos:s.pos,dateFmt:s.dateFmt,opacity:s.opacity,font:s.font,showMap:true,mapImg:mapImg,pin:s.pin,scale:s.scale,flag:s.flag!==false,badgeIcon:s.badgeIcon!==false,boxW:s.boxW,boxH:s.boxH,coordFmt:s.coordFmt,gmt:s.gmt,/*Y577*/geoEx:(typeof _gtGeoEx==='function'?_gtGeoEx(s):null)});
     var bytes=await _gtCanvasBytes(cv,'image/png');var nm=_gmcSafeName(row.file)+'.png';var base=nm,k=1;while(files[nm]){nm=_gmcSafeName(row.file)+'_'+(k++)+'.png';}files[nm]=bytes;}
   if(info)info.innerHTML='Mengcompress ZIP...';await new Promise(function(r){setTimeout(r,0);});
   var zip=fflate.zipSync(files,{level:0});var blob=new Blob([zip],{type:'application/zip'});var url=URL.createObjectURL(blob);
@@ -54480,6 +54480,52 @@ window._emfDwiJaga=function(doc){
     };
   }
 
+  /* Overlay dari CSV memanggil _gmcRenderOverlay langsung: opts.geoEx (dari build) membawa setelan cone/label,
+     baris CSV boleh menimpa lewat kolom opsional tampilkan_cone, arah_cone, label_google */
+  var overlayAsli = window._gmcRenderOverlay;
+  if (typeof overlayAsli === 'function') {
+    window._gmcRenderOverlay = function (canvas, row, opts) {
+      var e = opts && opts.geoEx, ada = false;
+      if (e) {
+        e = Object.assign({}, e);
+        if (row) {
+          if (row.csvCone != null) e.cone = row.csvCone;
+          if (row.csvDeg != null) e.deg = row.csvDeg;
+          if (row.csvLabel) e.label = row.csvLabel;
+        }
+        window.__gmcEx = e; ada = true;
+      }
+      try { return overlayAsli.apply(this, arguments); } finally { if (ada) window.__gmcEx = null; }
+    };
+  }
+  function ya(v) { var t = String(v == null ? '' : v).trim().toLowerCase(); if (!t) return null; return /^(ya|yes|y|true|1|tampil|on)$/.test(t) ? true : (/^(tidak|no|n|false|0|off)$/.test(t) ? false : null); }
+  var parseAsli = window._gmcParseCsv;
+  if (typeof parseAsli === 'function') {
+    window._gmcParseCsv = function (text) {
+      var out = parseAsli.apply(this, arguments);
+      try {
+        var arr = _gmcCsvRows(text); if (!arr.length) return out;
+        var norm = arr[0].map(String).map(_gmcNormH), cari = function (al) { for (var i = 0; i < norm.length; i++) if (al.indexOf(norm[i]) >= 0) return i; return -1; };
+        var cC = cari(['tampilkancone', 'cone']), cD = cari(['arahcone', 'arah', 'heading', 'bearing']), cL = cari(['labelgoogle', 'google', 'labelpeta']);
+        if (cC < 0 && cD < 0 && cL < 0) return out;
+        var k = 0;
+        for (var r = 1; r < arr.length; r++) {
+          var row = arr[r]; if (!row || !row.length) continue;
+          var o = out[k]; if (!o) break; k++;
+          if (cC >= 0) o.csvCone = ya(row[cC]);
+          if (cD >= 0) { var d = parseFloat(row[cD]); if (isFinite(d)) o.csvDeg = ((d % 360) + 360) % 360; }
+          if (cL >= 0 && String(row[cL] || '').trim()) { o.csvLabel = String(row[cL]).trim() }
+        }
+      } catch (e) { }
+      return out;
+    };
+  }
+  /* state CSV (env26_gmc): kunci baru dibaca apa adanya, tanpa nilai awal (ex() yang memberi bawaan) */
+  window._gtCsvSet = function (k, v) {
+    if (typeof _gmcSet === 'function') _gmcSet(k, v);
+    try { sinkronCsv(); } catch (e) { }
+  };
+
   /* ---------- 3. state ---------- */
   var stateAsli = window._gtState;
   if (typeof stateAsli === 'function') {
@@ -54497,8 +54543,8 @@ window._emfDwiJaga=function(doc){
   function lblS() { return 'font-size:13px;color:var(--g3)'; }
   function fldS() { return 'display:block;width:100%;margin-top:4px;font-size:13px;border:1px solid var(--g2);border-radius:6px;padding:5px 8px;font-family:inherit;background:transparent;color:var(--text)'; }
   function esc(s) { return (typeof _ep === 'function') ? _ep(s) : String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  function kelompokGoogleHtml(setter) {
-    var st = _gtState(), e = ex(st), L = lblS();
+  function kelompokGoogleHtml(setter, stIn, tambahan) {
+    var st = stIn || _gtState(), e = ex(st), L = lblS();
     return '<div class="gt-groupbox gt-google-box" style="grid-column:1/-1;margin:6px 0 0">'
       + '<div class="gt-groupbox-title">Peta mini ala Google (cone arah dan label)</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end">'
@@ -54515,7 +54561,7 @@ window._emfDwiJaga=function(doc){
       + '<label style="' + L + ';grid-column:span 2">Teks label (bisa diedit)'
       + '<input type="text" value="' + esc(st.googleText == null ? 'Google' : st.googleText) + '" placeholder="Google" oninput="' + setter + '(\'googleText\',this.value)" style="' + fldS() + '"></label>'
       + '</div>'
-      + '<div style="font-size:11px;color:var(--g3);margin-top:6px">Berlaku untuk template Classic dan Cuaca (yang memakai peta mini). Pin berubah mengikuti gaya Google Maps saat cone atau label aktif.</div>'
+      + '<div style="font-size:11px;color:var(--g3);margin-top:6px">' + (tambahan || 'Berlaku untuk template Classic dan Cuaca (yang memakai peta mini). Pin berubah mengikuti gaya Google Maps saat cone atau label aktif.') + '</div>'
       + '</div>';
   }
 
@@ -54618,6 +54664,19 @@ window._emfDwiJaga=function(doc){
       var b2 = document.getElementById(p + '-scale-val'); if (b2 && sc != null) b2.textContent = sc + '%';
     });
   }
+  function sinkronCsv() {
+    var host = window._gtHostEl; if (!host) return;
+    var box = host.querySelector('#gmc-csv-google'); if (!box) return;
+    var st = (typeof _gmcState === 'function') ? _gmcState() : {}, e = ex(st), act = document.activeElement;
+    [].forEach.call(box.querySelectorAll('input'), function (el) {
+      if (el === act) return;
+      var a = el.getAttribute('onchange') || el.getAttribute('oninput') || '', m = /_gtCsvSet\('(\w+)'/.exec(a); if (!m) return;
+      var k = m[1], val = (k === 'showCone') ? e.cone : (k === 'coneDeg') ? Math.round(e.deg) : (k === 'coneWidth') ? Math.round(e.width) : st[k];
+      if (el.type === 'checkbox') { var c = !!val; if (el.checked !== c) el.checked = c; } else { var s2 = val == null ? '' : String(val); if (el.value !== s2) el.value = s2; }
+    });
+    [].forEach.call(box.querySelectorAll('.gt-lbl-coneDeg'), function (b) { b.textContent = Math.round(e.deg) + '°'; });
+    [].forEach.call(box.querySelectorAll('.gt-lbl-coneWidth'), function (b) { b.textContent = Math.round(e.width) + '°'; });
+  }
   var setAsli = window._gtSet;
   if (typeof setAsli === 'function') {
     window._gtSet = function (k) {
@@ -54712,11 +54771,21 @@ window._emfDwiJaga=function(doc){
     }
     terapkanMenu();
   }
+  function dekorasiCsv(host) {
+    if (host.querySelector('#gmc-csv-google')) return;
+    var det = [].filter.call(host.querySelectorAll('details'), function (d) { return /Opsi lanjutan/.test((d.querySelector('summary') || {}).textContent || ''); })[0];
+    if (!det) return;
+    var h = kelompokGoogleHtml('_gtCsvSet', _gmcState(), 'Kolom CSV opsional per baris: tampilkan_cone (ya/tidak), arah_cone (derajat) dan label_google (teks). Sel kosong memakai pengaturan di atas.');
+    det.insertAdjacentHTML('afterend', h.replace('class="gt-groupbox gt-google-box" style="grid-column:1/-1;margin:6px 0 0"', 'id="gmc-csv-google" class="gt-groupbox gt-google-box" style="margin:10px 0 0"'));
+  }
   var renderAsli = window._etRenderGeotag;
   if (typeof renderAsli === 'function') {
     window._etRenderGeotag = function (host) {
       var r = renderAsli.apply(this, arguments);
-      try { if (typeof GEO_MODE === 'undefined' || GEO_MODE !== 'csv') dekorasi(host); } catch (e) { if (window.console) console.error('geotag.js', e); }
+      try {
+        if (typeof GEO_MODE === 'undefined' || GEO_MODE !== 'csv') dekorasi(host);
+        else dekorasiCsv(host);
+      } catch (e) { if (window.console) console.error('geotag.js', e); }
       return r;
     };
   }
@@ -56285,5 +56354,7 @@ R12 sebelumnya.
     stempel satuan, batch Excel (kolom opsional tampilkan_cone, arah_cone, label_google) dan overlay titik.
   - Pemrosesan Batch memiliki menu pengaturan stempel yang sama dengan Stempel Foto (satuan), satu pengaturan bersama.
   - Menu Stempel Foto (satuan), Pemrosesan Batch, Overlay Transparan dan Hapus Stempel bisa ditampilkan/disembunyikan.
+  - Geotag > Overlay dari CSV: ikut punya cone arah dan label Google (menu yang sama, tersimpan); CSV boleh memuat kolom
+    opsional tampilkan_cone, arah_cone, label_google per baris.
 ENVMON-CHANGELOG-Y571 -->
 </html>
