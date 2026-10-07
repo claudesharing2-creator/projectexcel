@@ -5796,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'67aefdf4'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'a4e00f7e'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -50911,7 +50911,8 @@ window._rsPickImport=function(inp){
  * scripts/pulihkan_pack.mjs yang membenahi berkas Data Pack):
  *   siteEfektif   sumur Handil (H-xxx, HNA-xxx, HU-xxx ...) = HCA, apa pun yang tertulis di kolom site
  *                 (keputusan pemilik 2026-10-07; seluruh kegiatan Handil di kalender kegiatan memang HCA);
- *                 ejaan lama CPA/HDL -> HCA, SNB -> SPU, SNP -> SPS, Tunu -> TUNU
+ *                 ejaan lama CPA/HDL -> HCA, SNB -> SPU, SNP -> SPS, Tunu -> TUNU;
+ *                 TM- selalu CPU, SUP- selalu SPU, TN- selalu SPU atau NPU dan GTS- tidak tentu: kustodian di GIS (buatGis)
  *   satuanRusak   satuan yang isinya ternyata nilai ("7.89", "< 1", "Negative"): sel sebelah terbaca
  *                 sebagai kolom satuan oleh impor sheet DWW Full dan BPN
  *   bmSampah      baku mutu yang isinya nomor RFA atau kata "Drainase" (kolom catatan terbaca sebagai BM)
@@ -50931,11 +50932,68 @@ window._rsPickImport=function(inp){
   R.siteN = function (s) { var u = String(s == null ? '' : s).toUpperCase().trim(); return (u === 'CPA' || u === 'HDL') ? 'HCA' : u; };
   // ejaan lama site -> nama kanonik (keputusan pemilik: CPA/HDL = HCA; SNB = Sisi Nubi = SPU; SNP = Senipah/Peciko = SPS; Tunu = TUNU)
   var ALIAS_SITE = { CPA: 'HCA', HDL: 'HCA', SNB: 'SPU', SNP: 'SPS', TUNU: 'TUNU' };
-  R.siteEfektif = function (titik, site) {
+  var RE_TN = /^\s*TN\b/i, RE_TM = /^\s*TM\b/i, RE_SUP = /^\s*SUP\b/i, RE_GTS = /^\s*GTS\b/i;
+  /* Aturan pemilik 2026-10-07: TN- selalu SPU atau NPU (yang mana: kustodian di GIS), TM- selalu CPU, SUP- selalu SPU, GTS- tidak tentu
+   * (kustodian di GIS). gis(titik) -> site tunggal dari kustodian GIS, '' bila tak ada atau ganda (lihat buatGis). */
+  R.siteEfektif = function (titik, site, gis) {
     if (R.sumurHandil(titik)) return 'HCA';
+    var t = String(titik == null ? '' : titik);
+    if (RE_TM.test(t)) return 'CPU';
+    if (RE_SUP.test(t)) return 'SPU';
+    if (gis && (RE_TN.test(t) || RE_GTS.test(t))) {
+      if (RE_TN.test(t)) { var g1 = gis(t, ['SPU', 'NPU']); if (g1) return g1; }
+      else { var g2 = gis(t); if (g2) return g2; }
+    }
     var u = String(site == null ? '' : site).toUpperCase().trim();
     if (ALIAS_SITE[u]) return ALIAS_SITE[u];
     return site == null ? '' : site;
+  };
+  /* Penentu site dari GIS: nama titik -> kustodian dari lapisan well_cluster, platform (termasuk LIST_WELL), gts, process_platform
+   * dan sumur (lewat cluster/GTS-nya). L = {well_cluster, platform, gts, process_platform, well} berupa FeatureCollection. */
+  function nGis(x) { return String(x == null ? '' : x).toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function varian(s) {
+    s = String(s == null ? '' : s).trim();
+    var out = {}; out[s] = 1;
+    var m = /^([A-Za-z]+)-?([A-Za-z]*)(\d+[A-Za-z]?)((?:\/[A-Za-z]*\d+[A-Za-z]?)+)$/.exec(s);
+    if (m) {
+      out[m[1] + '-' + m[2] + m[3]] = 1;
+      m[4].split('/').slice(1).forEach(function (part) {
+        var mm = /^([A-Za-z]*)(\d+[A-Za-z]?)$/.exec(part);
+        if (mm) out[m[1] + '-' + (mm[1] || m[2]) + mm[2]] = 1;
+      });
+    }
+    s.split(/[\/,]|\s*&\s*|\s+to\s+/).forEach(function (p) { out[p.trim()] = 1; });
+    return Object.keys(out);
+  }
+  R.buatGis = function (L) {
+    var idx = {};
+    var canon = function (c) { c = String(c || '').toUpperCase().trim(); return c === 'CPA' ? 'HCA' : c; };
+    var tambah = function (nama, cust) {
+      cust = canon(cust); if (!cust) return;
+      varian(nama).forEach(function (v) { var k = nGis(v); if (k) (idx[k] = idx[k] || {})[cust] = 1; });
+    };
+    var fit = function (nm) { return ((L && L[nm] && L[nm].features) || []); };
+    fit('well_cluster').forEach(function (f) { var p = f.properties || {}; tambah(p.NAME, p.CUSTODIANSHIP); });
+    fit('platform').forEach(function (f) { var p = f.properties || {}; tambah(p.NAME, p.CUSTODIANSHIP); String(p.LIST_WELL || '').split(',').forEach(function (w) { tambah(w, p.CUSTODIANSHIP); }); });
+    fit('gts').forEach(function (f) { var p = f.properties || {}; tambah(p.NAME, p.CUSTODIANSHIP); });
+    fit('process_platform').forEach(function (f) { var p = f.properties || {}; tambah(p.NAME, p.CUSTODIANSHIP); });
+    fit('well').forEach(function (f) {
+      var p = f.properties || {}, c = p.CLUSTERNAME || p.GTS; if (!p.WELL || !c) return;
+      var cs = Object.keys(idx[nGis(c)] || {});
+      if (cs.length === 1) { var k = nGis(p.WELL); (idx[k] = idx[k] || {})[cs[0]] = 1; }
+    });
+    var memo = {};
+    // izin: daftar site yang boleh (mis. TN- hanya SPU/NPU); kandidat di luar daftar dibuang SEBELUM menilai "tunggal atau ganda"
+    var f = function (titik, izin) {
+      var t = String(titik == null ? '' : titik).trim(), mk = t + '|' + (izin ? izin.join(',') : '');
+      if (memo[mk] !== undefined) return memo[mk];
+      var base = t.split(/\s+[-\u2013]\s+|\s*\(/)[0].trim(), set = {};
+      varian(base).forEach(function (v) { Object.keys(idx[nGis(v)] || {}).forEach(function (c) { set[c] = 1; }); });
+      var ks = Object.keys(set).filter(function (c) { return !izin || izin.indexOf(c) >= 0; });
+      return (memo[mk] = (ks.length === 1 ? ks[0] : ''));
+    };
+    f.ukuran = Object.keys(idx).length;
+    return f;
   };
 
   /* ---------- satuan ---------- */
@@ -51023,7 +51081,7 @@ window._rsPickImport=function(inp){
     if (!r || typeof r !== 'object') return tag;
     ctx = ctx || {};
     // site
-    var s = R.siteEfektif(r.titik, r.site);
+    var s = R.siteEfektif(r.titik, r.site, ctx.gis);
     if (s !== (r.site == null ? '' : r.site)) { simpanAsli(r, 'siteAsli', r.site == null ? '' : r.site); r.site = s; tag.push('site'); }
     // tanggal tidak ISO
     if (Array.isArray(r.tanggal) && r.tanggal.length) {
@@ -51060,11 +51118,11 @@ window._rsPickImport=function(inp){
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       if (!r || typeof r !== 'object') continue;
-      var kunciCek = r.titik + '|' + r.site + '|' + r.satuan + '|' + r.bakuMutu;
+      var kunciCek = r.titik + '|' + r.site + '|' + r.satuan + '|' + r.bakuMutu + '|' + ((ctx && ctx.gisCap) || '');
       if (sudah && sudah.has(r) && r.__pl === kunciCek) continue;
       var tg = R.pulihkanBaris(r, ctx);
       if (tg.length) { c.baris++; tg.forEach(function (t) { c[t]++; }); }
-      if (sudah) { sudah.add(r); try { Object.defineProperty(r, '__pl', { value: r.titik + '|' + r.site + '|' + r.satuan + '|' + r.bakuMutu, writable: true, enumerable: false, configurable: true }); } catch (e) { } }
+      if (sudah) { sudah.add(r); try { Object.defineProperty(r, '__pl', { value: r.titik + '|' + r.site + '|' + r.satuan + '|' + r.bakuMutu + '|' + ((ctx && ctx.gisCap) || ''), writable: true, enumerable: false, configurable: true }); } catch (e) { } }
     }
     return c;
   };
@@ -51074,15 +51132,28 @@ window._rsPickImport=function(inp){
 
   /* ---------- pemasangan di aplikasi ---------- */
   if (typeof window !== 'undefined' && root === window) {
-    var _pet = null, _petDari = null;
+    var _pet = null, _petDari = null, _gis = null, _gisDari = null;
+    var gisApp = function () {
+      try {
+        var L = (typeof GIS_LAYERS_RAW !== 'undefined') ? GIS_LAYERS_RAW : null;
+        if (L && L.well_cluster && (L.well_cluster.features || []).length) { if (_gisDari !== L) { _gisDari = L; _gis = R.buatGis(L); } return _gis; }
+      } catch (e) { }
+      return null;
+    };
     window._hsPulihkan = function (rows) {
       try {
         var m = (typeof BM_MASTER_SEED !== 'undefined') ? BM_MASTER_SEED : null;
         if (m !== _petDari) { _petDari = m; _pet = R.petaSatuan(m); }
-        return R.pulihkanDaftar(rows, { petaSat: _pet, evalCompliance: (typeof _hsEvalCompliance === 'function') ? _hsEvalCompliance : null });
+        // penentu site dari GIS (kustodian kluster/GTS): dibangun sekali setelah lapisan GIS termuat dari Data Pack
+        var L = (typeof GIS_LAYERS_RAW !== 'undefined') ? GIS_LAYERS_RAW : null, cap = '';
+        if (L && L.well_cluster && (L.well_cluster.features || []).length) {
+          if (_gisDari !== L) { _gisDari = L; _gis = R.buatGis(L); }
+          cap = 'g' + (_gis ? _gis.ukuran : 0);
+        } else { _gis = null; }
+        return R.pulihkanDaftar(rows, { petaSat: _pet, gis: _gis, gisCap: cap, evalCompliance: (typeof _hsEvalCompliance === 'function') ? _hsEvalCompliance : null });
       } catch (e) { return null; }
     };
-    window._siteEfektif = R.siteEfektif;
+    window._siteEfektif = function (titik, site) { return R.siteEfektif(titik, site, gisApp()); };
   }
 })(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
 
