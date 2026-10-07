@@ -5796,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'7f1065dd'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-06',h:'a8dcf58f'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -45417,7 +45417,7 @@ var EMF_KOSONG='-';
 var EMF_DREDGE_PARAM=['TSS','Plankton Abundance (sel/mL)','Taxa (S)','Diversity (H\u2019)','Equalization (E)','Domination (D)'];
 var EMF_BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 function _emfDredgeWajib(t){
-  var s=String(t||'');
+  var s=String(t||'').replace(/\s*\(\s*set\s*\d+\s*\)\s*$/i,'');/*Y575i*/
   if(/sitecast/i.test(s))return null;              // titik tambahan
   if(!/during/i.test(s))return null;               // hanya During
   if(/3500\s*m\s*trenching\s*point\s*$/i.test(s))return '3500';
@@ -45426,7 +45426,7 @@ function _emfDredgeWajib(t){
   return null;
 }
 function _emfDredgeBase(t){
-  return String(t||'').replace(/\s*[-\u2013]?\s*(upstream\s*500\s*m|downstream\s*500\s*m|3500\s*m\s*trenching\s*point)\s*$/i,'')
+  return String(t||'').replace(/\s*\(\s*set\s*\d+\s*\)\s*$/i,'')/*Y575i*/.replace(/\s*[-\u2013]?\s*(upstream\s*500\s*m|downstream\s*500\s*m|3500\s*m\s*trenching\s*point)\s*$/i,'')
                       .replace(/[\u2013\u2014]/g,'-').replace(/\s*-\s*/g,'-').replace(/\s+/g,' ').trim();
 }
 // Collect the qualifying samplings for a period, keyed by activity+month.
@@ -45510,7 +45510,8 @@ function _emfPatchDredge(tbl,jenis,year,months,sites){
   for(var g=0;g<keg.length;g++){
     var names=Object.keys(keg[g].titik).sort(function(a,b){
       var rank=function(x){var k=_emfDredgeWajib(x);return k==='up'?0:(k==='down'?1:2);};
-      return rank(a)-rank(b);
+      /*Y575i*/var sn=function(x){var m=/\(\s*set\s*(\d+)\s*\)\s*$/i.exec(String(x));return m?parseInt(m[1],10):0;};
+      return (sn(a)-sn(b))||(rank(a)-rank(b));   // Set 1 (Up, Down) lalu Set 2 (Up, Down)
     });
     for(var n2=0;n2<names.length;n2++){
       // the merged Bulan cell spans the whole month, not one activity
@@ -46579,7 +46580,9 @@ async function _emfGenerate(file,year,sem,siteOverride,ownBase,waterOnly,monthsO
     temuanDiubah=rt2.diubah;
     if(rt2.terlaluBanyak)temuanTerlaluBanyak=1;
   }catch(_eTm){}
+  /*Y575h*/var _dwiJaga=(_dwiMode&&typeof window._emfDwiJaga==='function')?window._emfDwiJaga(doc):null;
   var nWord=waterOnly?_emfWaterOnlyWording(doc,year,sem,months):_emfPatchWording(doc,year,sem);
+  if(_dwiJaga)_dwiJaga();
   var manual=waterOnly?{done:[],left:[]}:_emfPatchManual(doc,year,sem);
   if(siteOverride&&!waterOnly)_emfPatchSite(doc,_emfDetectSite(doc),siteOverride);
   try{_emfCantSplit(tc);}catch(_eCS){}var sisaPeriode=waterOnly?_emfAuditTabelAir(tc,year):_emfAuditPeriode(doc,year);
@@ -46636,7 +46639,7 @@ function _emfWaterOnlyWording(doc,year,sem,months){
       n+=_emfParaEdit(pEl,function(s){
         var edits=[],m;
         reSem.lastIndex=0;while((m=reSem.exec(s)))edits.push([m.index,m.index+m[0].length,(/^S/.test(m[0])?'Semester':'semester')+' '+sem+' '+year]);
-        reSem2.lastIndex=0;while((m=reSem2.exec(s)))edits.push([m.index,m.index+m[0].length,(/^S/.test(m[0])?'Semester':'semester')+' '+(sem===1?'kesatu':'kedua')+' '+year]);
+        reSem2.lastIndex=0;while((m=reSem2.exec(s)))edits.push([m.index,m.index+m[0].length,(/^S/.test(m[0])?'Semester':'semester')+' '+(/\bK/.test(m[0])?(sem===1?'Kesatu':'Kedua'):(sem===1?'kesatu':'kedua'))+' '+year]);
         reRange.lastIndex=0;while((m=reRange.exec(s)))edits.push([m.index,m.index+m[0].length,EMF_BULAN[sem===1?0:6]+m[2]+EMF_BULAN[sem===1?5:11]+m[4]+year]);
         reOrd.lastIndex=0;while((m=reOrd.exec(s)))edits.push([m.index,m.index+m[0].length,m[1]+m[2]+(sem===1?'Pertama':'Kedua')+m[4]+year]);
         reTh.lastIndex=0;while((m=reTh.exec(s)))edits.push([m.index,m.index+m[0].length,m[1]+m[2]+(/^[12]$/.test(m[3])?String(sem):(sem===1?'Pertama':'Kedua'))+m[4]+m[5]+m[6]+year]);
@@ -47527,7 +47530,7 @@ function _emfWaterOnlyWording(doc,year,sem,months){
           reTh.lastIndex=0;while((m=reTh.exec(s)))edits.push([m.index,m.index+m[0].length,customLabel]);
         }else{
           reSem.lastIndex=0;while((m=reSem.exec(s)))edits.push([m.index,m.index+m[0].length,(/^S/.test(m[0])?'Semester':'semester')+' '+sem+' '+year]);
-          reSem2.lastIndex=0;while((m=reSem2.exec(s)))edits.push([m.index,m.index+m[0].length,(/^S/.test(m[0])?'Semester':'semester')+' '+(sem===1?'kesatu':'kedua')+' '+year]);
+          reSem2.lastIndex=0;while((m=reSem2.exec(s)))edits.push([m.index,m.index+m[0].length,(/^S/.test(m[0])?'Semester':'semester')+' '+(/\bK/.test(m[0])?(sem===1?'Kesatu':'Kedua'):(sem===1?'kesatu':'kedua'))+' '+year]);
           reRange.lastIndex=0;while((m=reRange.exec(s)))edits.push([m.index,m.index+m[0].length,EMF_BULAN[sem===1?0:6]+m[2]+EMF_BULAN[sem===1?5:11]+m[4]+year]);
           reOrd.lastIndex=0;while((m=reOrd.exec(s)))edits.push([m.index,m.index+m[0].length,m[1]+m[2]+(sem===1?'Pertama':'Kedua')+m[4]+year]);
           reTh.lastIndex=0;while((m=reTh.exec(s)))edits.push([m.index,m.index+m[0].length,m[1]+m[2]+(/^[12]$/.test(m[3])?String(sem):(sem===1?'Pertama':'Kedua'))+m[4]+m[5]+m[6]+year]);
@@ -53042,6 +53045,14 @@ function penutupKeruk(doc,body){
     if(!sejenis)sejenis=kandidat;
   }
   if(sejenis)contoh=sejenis;
+  // dokumen tanpa kalimat penutup non-Header (mis. DWI): tiru kalimat pengantar/catatan tabel pengerukan
+  // yang bergaya isi (ListParagraph), bukan kalimat surat pengantar bergaya Header
+  var gayaHeader=function(x){var ps=x&&anak(x,'pPr'),st=ps&&anak(ps,'pStyle');return !!st&&/Header/.test(st.getAttributeNS(W,'val')||st.getAttribute('w:val')||'');};
+  if(!sejenis||gayaHeader(contoh)){
+    for(var u=0;u<el.length;u++){
+      if(el[u].localName==='p'&&/^(Berikut hasil pemantauan (dredging|pengerukan)|Baku mutu plankton)/i.test(teks(el[u]).trim())&&!gayaHeader(el[u])){contoh=el[u];break;}
+    }
+  }
   if(terakhir<0)return 0;
   // lewati keterangan di bawah tabel; berhenti di teks lain
   var k=terakhir+1;
@@ -54177,6 +54188,22 @@ window._emfDwiHanyaDredging=function(doc,siteKe){
      _emfGenerate sendiri tidak melakukannya */
   try{if(asal&&typeof _emfPatchSite==='function')info.diganti=_emfPatchSite(doc,asal,siteKe||'DWI');}catch(e){}
   return info;
+};
+
+/* Y575h: pada dokumen DWI, bagian B3 dan sampah (Tabel 6/7, Gambar 1-3, kalimat pengantarnya)
+ * datanya TIDAK ada di aplikasi, jadi periodenya tidak boleh ikut diganti oleh penyapu kata
+ * semester: keterangan "Semester 1 2026" di atas data bulan 2025 menyesatkan. Teks paragraf
+ * itu dicatat sebelum penyapu berjalan dan dikembalikan sesudahnya. */
+window._emfDwiJaga=function(doc){
+  var W='http://schemas.openxmlformats.org/wordprocessingml/2006/main', simpan=[];
+  var re=/logbook|timbulan|limbah\s*b3|\bsampah\b/i;
+  var ps=doc.getElementsByTagNameNS(W,'p');
+  for(var i=0;i<ps.length;i++){
+    if(!re.test(ps[i].textContent||''))continue;
+    var ts=ps[i].getElementsByTagNameNS(W,'t');
+    for(var j=0;j<ts.length;j++)simpan.push([ts[j],ts[j].textContent]);
+  }
+  return function(){simpan.forEach(function(x){if(x[0].textContent!==x[1])x[0].textContent=x[1];});return simpan.length;};
 };
 })();
 
@@ -55712,5 +55739,10 @@ R12 sebelumnya.
   - EMF: semua teks hasil export berhuruf Arial (dokumen dasar yang masih Calibri/Times New Roman ikut diseragamkan,
     termasuk gaya bawaan dan grafik); salinitas dinilai terhadap BM 34 (30,6 tidak lagi merah); grafik debit
     mengikuti angka debit maksimum di tabel dokumen (SPS air terproduksi 144000, domestik 7068 / 4712).
+  - EMF: kegiatan pengerukan bertitik berakhiran "(Set N)" (SPS Senipah Channel, Feb 2026) kini masuk tabel
+    (dulu tertulis "Tidak ada kegiatan pada periode ini"), urut per Set (Upstream, Downstream).
+  - EMF DWI mengikuti dokumen dasar DWI S1 2026 terbaru: periode Tabel 5 dan kalimat pengantarnya jadi 2026,
+    baris Subjek tidak diubah hurufnya, keterangan B3/sampah (datanya tidak ada di aplikasi) tidak ikut berganti
+    periode, kalimat penutup pengerukan berhuruf dan bergaya sama dengan isi dokumen.
 ENVMON-CHANGELOG-Y571 -->
 </html>
