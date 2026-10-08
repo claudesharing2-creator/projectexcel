@@ -5796,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-06',h:'8b97f3ef'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-08',h:'e5dcf16e'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -6460,7 +6460,7 @@ const SEMESTERLY_POINTS={
 const SEMESTERLY_CATS={
   SPS:{
     'SPS Water Well':['GW-3','GW-4','MW-1'],
-    'SPS Stream Water':['Senipah Canal - 200m upstream Outlet Flotator PPA','Senipah Canal - 200m downstream Outlet Flotator PPA']
+    'SPS Stream Water':['200 m upstream Outlet Flotator PPA','200 m downstream Outlet Flotator PPA','Senipah Canal']/*Y581*/
   },
   BKP:{
     'BKP Stream Water':['BKP Stream Water - 200m upstream Outlet Flotator BKP','BKP Stream Water - 200m downstream Outlet Flotator BKP']
@@ -8294,7 +8294,7 @@ function renderCalendar(){
       const ptsHtml=isSemOrYr&&evPts.length
         ?`<div style="margin-top:2px;font-size:11px;opacity:.75;line-height:1.5;word-break:break-word">${evPts.map(p=>`<span style="display:inline-block;margin-right:3px">· ${p}</span>`).join('')}</div>`
         :'';
-      chip.innerHTML=`<div class="chip-inner">${dotHtml?'<span style="display:flex;gap:2px;align-items:center;margin-right:3px;flex-shrink:0">'+dotHtml+'</span>':''}<span class="chip-text">${prefix}${wellText}</span></div>${ptsHtml}`;
+      chip.innerHTML=`<div class="chip-inner">${dotHtml?'<span style="display:flex;gap:2px;align-items:center;margin-right:3px;flex-shrink:0">'+dotHtml+'</span>':''}<span class="chip-text">${ev.emergency?'Emergency · ':''}${/\bSW\b/i.test(String(ev.text||''))?'Stream Water · ':prefix}${wellText}${_imGapBadge(ev)}</span></div>${ptsHtml}`;
       chip.title=`${ev.tahap||''} ${ev.type} — ${ev.text||''}${evPts.length?' | Titik: '+evPts.join(', '):''}${displayPPC?' ('+displayPPC+')':''}`;
       chip.onclick=(e)=>{e.stopPropagation();openCalEv(ev.id);};
       if(typeof rfaInjectCalBadge==='function')rfaInjectCalBadge(chip,ev);
@@ -8715,35 +8715,9 @@ function openRoutineScheduler(type,site,year,month,sem,pStart,pEnd,defaultLoc){
   const _existingEvts=CAL_EVENTS.filter(e=>e.type===type&&getSiteFromEvent(e)===site&&e.date>=pStart&&e.date<=pEnd&&e.status!=='Cancelled');
   const _coveredCats=new Set();
   _existingEvts.forEach(e=>{if(e.point)_coveredCats.add(e.point);(e.points||[]).forEach(p=>_coveredCats.add(p));});
-  // Use category-level checkboxes for Semesterly; individual points for Yearly
-  const sampCats=type==='Semesterly'?(SEMESTERLY_CATS[site]||{}):{};
-  const sampPts=type==='Yearly'?(YEARLY_POINTS[site]||[]):[];
-  let pointsHtml='';
-  if(type==='Semesterly'&&Object.keys(sampCats).length){
-    const catEntries=Object.entries(sampCats);
-    pointsHtml=`<div style="font-size:13px;font-weight:700;color:var(--g3);margin-bottom:4px;text-transform:none;letter-spacing:.5px">Kategori Titik Sampling</div>
-    <div style="border:1px solid var(--g2);border-radius:6px;padding:6px;margin-bottom:10px">
-    ${catEntries.map(([cat,pts],i)=>`<label style="display:flex;flex-direction:column;gap:2px;padding:4px 0;cursor:pointer;border-bottom:${i<catEntries.length-1?'1px solid var(--g2)':'none'}">
-      <div style="display:flex;align-items:center;gap:6px">
-        <input type="checkbox" id="rs-pt-${i}" value="${cat}" ${defaultLoc?(pts.includes(defaultLoc)?'checked':''):(_coveredCats.has(cat)?'':'checked')} style="accent-color:var(--teal)">
-        <span style="font-size:13px;font-weight:700;color:var(--g4)">${cat}</span>
-      </div>
-      <div style="margin-left:20px;font-size:11px;color:var(--g3)">${pts.join(' · ')}</div>
-    </label>`).join('')}
-    </div>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button onclick="[...document.querySelectorAll('[id^=rs-pt-]')].forEach(c=>c.checked=true)" style="font-size:11px;padding:2px 7px;border:1px solid var(--g2);border-radius:4px;cursor:pointer;background:#fff">Pilih Semua</button>
-      <button onclick="[...document.querySelectorAll('[id^=rs-pt-]')].forEach(c=>c.checked=false)" style="font-size:11px;padding:2px 7px;border:1px solid var(--g2);border-radius:4px;cursor:pointer;background:#fff">Hapus Pilihan</button>
-    </div>`;
-  } else if(sampPts.length){
-    pointsHtml=`<div style="font-size:13px;font-weight:700;color:var(--g3);margin-bottom:4px;text-transform:none;letter-spacing:.5px">Titik Sampling</div>
-    <div style="max-height:120px;overflow-y:auto;border:1px solid var(--g2);border-radius:6px;padding:6px;margin-bottom:10px">
-    ${sampPts.map((pt,i)=>`<label style="display:flex;align-items:center;gap:6px;padding:2px 0;cursor:pointer;font-size:13px">
-      <input type="checkbox" id="rs-pt-${i}" value="${pt}" ${_coveredCats.has(pt)?'':'checked'} style="accent-color:var(--teal)">
-      <span>${pt}</span>
-    </label>`).join('')}
-    </div>`;
-  }
+  /*Y581: category and individual choices for every routine frequency.*/
+  const sampCats=_imRoutineCategories(type,site);
+  const pointsHtml=_imRoutineChoiceHtml(sampCats,_coveredCats,defaultLoc);
 
   let ppcHtml=`<div id="rs-ppc-wrap" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">`;
   activePPCs.forEach(p=>{
@@ -8954,15 +8928,17 @@ function saveRoutineSchedule(type,site,year,month,sem){
   const ds=window._rsDate;
   if(!ds){toast('Pilih tanggal dulu!');return;}
   const ppcNames=(window._rsPPCs||[]).map(id=>{const p=PPC_LIST.find(x=>x.id===id);return p?p.name:'';}).filter(Boolean).join(', ');
-  const selPts=[...document.querySelectorAll('[id^="rs-pt-"]:checked')].map(c=>c.value);
+  const selPts=[...document.querySelectorAll('[id^="rs-pt-"]')].filter(c=>c.checked).map(c=>c.value);
+  if(document.getElementById('im-rs-choices')&&!selPts.length){toast('Pilih minimal satu titik sampling.');return;}/*Y581*/
   const createNew=document.getElementById('rs-create-new')?.checked||false;
   if(selPts.length>0){
     // selPts are category names (from SEMESTERLY_CATS checkboxes) or plain point names (Yearly)
-    const siteCatsForSave=type==='Semesterly'?(SEMESTERLY_CATS[site]||{}):{};
+    const siteCatsForSave=_imRoutineCategories(type,site);/*Y581*/
     const linkedId=window._rsLinkedEvId;
     const linkedEv=(!createNew&&linkedId)?CAL_EVENTS.find(e=>e.id===linkedId):null;
     selPts.forEach(catOrPt=>{
-      const fullPts=siteCatsForSave[catOrPt]||[catOrPt]; // category → full points; or plain pt
+      const fullPts=_imRoutineSelected(catOrPt,siteCatsForSave[catOrPt]||[catOrPt]);/*Y581*/
+      if(!fullPts.length)return;
       const catLabel=catOrPt; // category name IS the short label
       const _norm=s=>(s||'').toLowerCase().replace(/[-\s]/g,''); // normalize for hyphen/space-insensitive match
       // When a linked event exists, only process the category that matches it — skip others
@@ -8976,7 +8952,7 @@ function saveRoutineSchedule(type,site,year,month,sem){
       }
       const existing=createNew?null:(
         linkedEv||
-        CAL_EVENTS.find(e=>e.date===ds&&e.status!=='Cancelled'&&(
+        CAL_EVENTS.find(e=>e.date===ds&&e.status!=='Cancelled'&&e.type===type&&getSiteFromEvent(e)===site&&(/*Y581*/
           e.point===catLabel||_norm(e.point||'')===_norm(catLabel)||
           (e.points&&fullPts.some(p=>e.points.includes(p)))||
           (e.text&&_norm(e.text).includes(_norm(catLabel)))
@@ -10204,7 +10180,7 @@ function renderRoutineCalList(container){
       const pt=ptLabel(e);
       return `<tr style="border-bottom:1px solid var(--g1);cursor:pointer" onmouseover="this.style.background=_hoverBg('#f5f9ff')" onmouseout="this.style.background=''" onclick="openCalEv('${e.id}')">
         <td style="padding:3px 6px"><span class="pill" style="background:${TYPE_COLORS[e.type]||'#888'};font-size:11px">${e.type}</span></td>
-        <td style="padding:3px 6px;font-weight:600;line-height:1.3">${getSiteFromEvent(e)||'—'}${pt?`<div style="font-size:11px;color:var(--teal);font-weight:500">${pt}</div>`:''}</td>
+        <td style="padding:3px 6px;font-weight:600;line-height:1.3">${getSiteFromEvent(e)||'—'}${pt?`<div style="font-size:11px;color:var(--teal);font-weight:500">${pt}</div>`:''}${_imGapBadge(e)?`<div style="font-size:11px;color:var(--g3)">${_imGapBadge(e)}</div>`:''}</td>
         <td style="padding:3px 6px">${getPeriode(e)}</td>
         <td style="padding:3px 6px;color:var(--g3)">${e.date}</td>
         <td style="padding:3px 6px;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.ppc||''}">${e.ppc||'—'}</td>
@@ -12039,6 +12015,7 @@ function openCalEv(id){
     </div>
     ${ev.site?`<div class="mo-row"><label>Site</label><p>${ev.site}</p></div>`:''}
     ${(typeof _evCoverageHtml==='function')?_evCoverageHtml(ev):''}
+    ${_imGapNote(ev)}
     ${showPtTag?`<div class="mo-row"><label>Titik Sampling</label>
       ${evIndivPts.length
         ?`<div style="margin-top:3px;display:flex;flex-direction:column;gap:3px">${evIndivPts.map(p=>`<span style="font-size:13px;color:var(--g4);display:flex;align-items:center;gap:5px"><span style="width:5px;height:5px;border-radius:50%;background:var(--teal);flex-shrink:0;display:inline-block"></span>${p}</span>`).join('')}</div>`
@@ -12709,14 +12686,7 @@ function _calxDecode(ev){
 }
 // Y446: Cakupan Titik per jadwal.
 function _evIsRoutine(ev){return ['Monthly','Semesterly','Yearly'].indexOf(ev&&ev.type)>=0;}
-function _evMasterPoints(ev){
-  if(!_evIsRoutine(ev)||!ev.site)return [];
-  try{
-    return _calxExpand({kind:'routine',keg:ev.type,site:ev.site,date:ev.date})
-      .map(function(p){return p.titik;})
-      .filter(function(v,i,a){return v&&a.indexOf(v)===i;});
-  }catch(_){return [];}
-}
+function _evMasterPoints(ev){return _imMasterPoints(ev);}/*Y581*/
 // Titik yang BELUM tercakup kegiatan lain yang sejenis di bulan yang sama dan
 // tanggalnya lebih awal -- ini yang biasanya jadi jadwal susulan.
 function _evDefaultPoints(ev){
@@ -12740,7 +12710,7 @@ function _evCovFind(id){
 function _evCoverageHtml(ev){
   var all=_evMasterPoints(ev);
   if(!all.length)return '';
-  var sel=(ev.points&&ev.points.length)?ev.points:null;
+  var sel=Array.isArray(ev.points)?ev.points:null;/*Y581: pilihan kosong bukan semua*/
   var n=sel?all.filter(function(p){return sel.indexOf(p)>=0;}).length:all.length;
   var eid=String(ev.id||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
   var bs='border:1px solid var(--g2);background:var(--card,#fff);color:inherit;border-radius:6px;padding:2px 9px;font-size:13px;cursor:pointer;font-family:inherit';
@@ -12789,7 +12759,7 @@ window._evSaveCov=function(id){
   // apa-apa, jadi biarkan tidak tercatat daripada membekukan daftar induk hari
   // ini ke dalam kegiatan -- kalau daftar induk berubah nanti, kegiatan lama
   // tidak boleh ikut membeku.
-  if(sel.length===all.length&&!rem)delete ev.points; else ev.points=sel;
+  ev.points=sel;/*Y581: simpan pilihan eksplisit termasuk kosong*/
   if(rem)ev.rem=rem; else delete ev.rem;
   ev._edited=true;
   if(typeof saveStorage==='function')saveStorage('Cakupan titik');
@@ -12805,7 +12775,7 @@ function _calxExpand(pl){
   };
   if(pl.kind==='routine'){
     var pool=pl.keg==='Monthly'?SP.monthly:(pl.keg==='Semesterly'?SP.semesterly:SP.yearly);
-    var only=(pl.points&&pl.points.length)?pl.points:null;
+    var only=Array.isArray(pl.points)?pl.points:null;/*Y581*/
     pick(pool).forEach(function(p){
       var nm=p.penulisan||p.sampleName||p.position||'';
       if(only&&only.indexOf(nm)<0)return;
@@ -12920,7 +12890,7 @@ function _calxPlans(){
       String(ev.ppc||'').split(',').map(function(s){return s.trim();}).filter(Boolean).forEach(function(n){
         if(map[k].ppc.indexOf(n)<0)map[k].ppc.push(n);
       });
-      if(ev.points&&ev.points.length){
+      if(Array.isArray(ev.points)){/*Y581*/
         map[k].points=map[k].points||[];
         ev.points.forEach(function(pt){if(map[k].points.indexOf(pt)<0)map[k].points.push(pt);});
       }
@@ -18963,7 +18933,7 @@ function renderEnvProgram(){
   ];
   const TAB_BTNS=TABS.map(({k,label,cnt,col,sepAfter})=>{
     const act=_epSub===k;
-    const btn=`<button onclick="_epSub='${k}';_epSite='';_epQ='';renderEnvProgram()" style="border:2px solid ${act?col:'#e0e0e0'};padding:5px 15px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${act?col:'#fff'};color:${act?'#fff':'#666'};transition:none">${label}${cnt!=null?`<span style="opacity:1;font-weight:400;font-size:11px;margin-left:4px">${cnt}</span>`:''}</button>`;
+    const btn=`<button onclick="_epSub='${k}';_epSite='';_epQ='';renderEnvProgram()" class="im-filter" aria-pressed="${act}" style="border:2px solid ${act?col:'#e0e0e0'};padding:5px 15px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${act?col:'#fff'};color:${act?'#fff':'#666'};transition:none">${label}${cnt!=null?`<span style="opacity:1;font-weight:400;font-size:11px;margin-left:4px">${cnt}</span>`:''}</button>`;
     return sepAfter?btn+'<div style="width:1px;align-self:stretch;background:#ddd;margin:2px 4px"></div>':btn;
   }).join('');
 
@@ -18982,20 +18952,20 @@ function renderEnvProgram(){
   if(hasSites){const seen=new Set();srcArr.forEach(r=>{if(r.site&&!seen.has(r.site)){seen.add(r.site);sites.push(r.site);}});}
 
   // site btn uses data-s to avoid quote-in-onclick issue
-  const SBTN=s=>{const a=_epSite===s;return`<button data-s="${_ep(s)}" onclick="_epSite=(this.dataset.s===_epSite?'':this.dataset.s);renderEnvProgram()" style="border:1px solid ${a?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${a?'#444':'#fff'};color:${a?'#fff':'#555'}">${_ep(s)}</button>`;};
+  const SBTN=s=>{const a=_epSite===s;return`<button data-s="${_ep(s)}" onclick="_epSite=(this.dataset.s===_epSite?'':this.dataset.s);renderEnvProgram()" class="im-filter" aria-pressed="${a}" style="border:1px solid ${a?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${a?'#444':'#fff'};color:${a?'#fff':'#555'}">${_ep(s)}</button>`;};
   const izinBtns=(_epSub==='monthly')?(()=>{
     const izinOpts=[...new Set(srcArr.map(r=>_epIzinStatus(r.sampleName)||'Tanpa Status'))].sort();
     if(izinOpts.length<2)return '';
     const bad=s=>/belum|tanpa/i.test(s);
     return `<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
     <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Status Izin:</span>
-    <button onclick="_epIzin='';renderEnvProgram()" style="border:1px solid ${!_epIzin?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_epIzin?'#444':'#fff'};color:${!_epIzin?'#fff':'#555'}">Semua</button>
+    <button onclick="_epIzin='';renderEnvProgram()" class="im-filter" aria-pressed="${!_epIzin}" style="border:1px solid ${!_epIzin?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_epIzin?'#444':'#fff'};color:${!_epIzin?'#fff':'#555'}">Semua</button>
     ${izinOpts.map(s=>`<button data-s="${_ep(s)}" onclick="_epIzin=this.dataset.s;renderEnvProgram()" style="border:1px solid ${_epIzin===s?(bad(s)?'#c62828':'#2e7d32'):'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_epIzin===s?(bad(s)?'#c62828':'#2e7d32'):'#fff'};color:${_epIzin===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
   </div>`;
   })():'';
   const siteBtns=(hasSites?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
     <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Site:</span>
-    <button onclick="_epSite='';renderEnvProgram()" style="border:1px solid ${!_epSite?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_epSite?'#444':'#fff'};color:${!_epSite?'#fff':'#555'}">Semua</button>
+    <button onclick="_epSite='';renderEnvProgram()" class="im-filter" aria-pressed="${!_epSite}" style="border:1px solid ${!_epSite?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_epSite?'#444':'#fff'};color:${!_epSite?'#fff':'#555'}">Semua</button>
     ${sites.map(SBTN).join('')}
   </div>`:'')+izinBtns;
 
@@ -19225,7 +19195,7 @@ function renderEnvProgram(){
     ${siteBtns}
     ${hideSearch?'':`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
       <input id="ep-search" type="text" placeholder="Cari parameter, titik, kode RFA..." value="${_epQ.replace(/"/g,'&quot;')}"
-        oninput="window._epSearchCaret=this.selectionStart;_epQ=this.value;renderEnvProgram()"
+        oninput="window._epSearchCaret=this.selectionStart;_epQ=this.value;_imQueueRender('envprog')"
         style="border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:13px;font-family:inherit;width:260px;outline:none">
       ${_epQ?`<button onclick="_epQ='';document.getElementById('ep-search').value='';renderEnvProgram()" style="border:none;background:#f0f0f0;border-radius:6px;padding:3px 9px;font-size:13px;cursor:pointer;font-family:inherit">x Clear</button>`:''}
       <span style="font-size:13px;color:#999">${rowCount} item</span>
@@ -20763,18 +20733,18 @@ function _reviewValidateCard(group,primary,rfaRec,groupKegiatan){
     return notes;
   }
   if(primary.site&&rfaRec.site){
-    const a=primary.site.toLowerCase().trim(),b=rfaRec.site.toLowerCase().trim();
-    if(a===b||a.includes(b)||b.includes(a))notes.push({ok:true,msg:'Site cocok ('+rfaRec.site+')'});
+    const a=_imSite(primary.site),b=_imSite(rfaRec.site);/*Y581*/
+    if(a===b)notes.push({ok:true,msg:'Site cocok ('+rfaRec.site+')'});
     else notes.push({ok:false,msg:'Site tidak cocok: lab tulis "'+primary.site+'" — RFA: "'+rfaRec.site+'"'});
   }
   if(primary.coc&&rfaRec.coc){
     if(String(primary.coc).trim()===String(rfaRec.coc).trim())notes.push({ok:true,msg:'No CoC cocok ('+rfaRec.coc+')'});
     else notes.push({ok:false,msg:'No CoC beda: lab "'+primary.coc+'" — RFA "'+rfaRec.coc+'"'});
   }
-  if(primary.analisa&&rfaRec.analysis){
-    const a=primary.analisa.toLowerCase(),b=rfaRec.analysis.toLowerCase();
-    if(a.includes(b)||b.includes(a))notes.push({ok:true,msg:'Analisa/Uji cocok'});
-    else notes.push({ok:false,msg:'Kode Analisa/Uji beda antara file lab dan RFA (mungkin cuma beda penulisan — cek manual): <b>file lab</b> = "'+primary.analisa+'", <b>RFA</b> = "'+rfaRec.analysis+'"'});
+  /*Y581: analysis adalah layanan (Normal/Rush), bukan kode paket ENV.*/
+  if(primary.analisa&&rfaRec.analysis&&!_imService(rfaRec.analysis)){
+    const a=_imPackage(primary.analisa),b=_imPackage(rfaRec.analysis);
+    notes.push({ok:a===b,msg:a===b?'Kode paket analisa cocok':'Kode paket analisa beda: lab "'+_ep(primary.analisa)+'" — RFA "'+_ep(rfaRec.analysis)+'"'});
   }
   (group.samples||[]).forEach(s=>{
     if(s.tanggal&&rfaRec.tglSampling){
@@ -23923,13 +23893,13 @@ function _hsRenderCore(){
 
   const groupBtn=(g)=>{
     const act=_hsGroup===g.k;const cnt=_hsRowsFor(g.k).length;
-    return `<button onclick="_hsSetGroup('${g.k}')" style="border:2px solid ${act?g.col:'#e0e0e0'};padding:5px 15px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${act?g.col:'#fff'};color:${act?'#fff':'#666'}">${g.label}<span style="opacity:1;font-weight:400;font-size:11px;margin-left:4px">${cnt}</span></button>`;
+    return `<button onclick="_hsSetGroup('${g.k}')" class="im-filter" aria-pressed="${act}" style="border:2px solid ${act?g.col:'#e0e0e0'};padding:5px 15px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${act?g.col:'#fff'};color:${act?'#fff':'#666'}">${g.label}<span style="opacity:1;font-weight:400;font-size:11px;margin-left:4px">${cnt}</span></button>`;
   };
   const routineBtns=HASIL_GROUPS.filter(g=>g.cat==='routine').map(groupBtn).join('');
   const nonroutineBtns=HASIL_GROUPS.filter(g=>g.cat==='nonroutine').map(groupBtn).join('');
   const viewBtn=(v,lbl)=>`<button onclick="_hsSetView('${v}')" class="et-sub-btn hs-sub-btn${_hsView===v?' active':''}">${lbl}</button>`;
 
-  const rowsAll=_hsRowsFor(_hsGroup);
+  const rowsAll=_hsRowsFor(_hsGroup).filter(r=>!_imProduction(r));/*Y581: produksi tetap tersedia di Laporan.*/
   const sites=[...new Set(rowsAll.map(r=>_hsSiteN(r.site)).filter(Boolean))].sort();
   // "Manual Input" isn't a real source sheet — it just means "entered/edited
   // in-app" (via +Input Hasil, Generate Hasil, card edits, or Review Draft
@@ -23951,22 +23921,22 @@ function _hsRenderCore(){
 
   const sheetBtns=sheets.length>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:8px 0">
     <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Sheet:</span>
-    <button onclick="_hsSheet='';_hsTitik='';renderHasilSampling()" style="border:1px solid ${!_hsSheet?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_hsSheet?'#444':'#fff'};color:${!_hsSheet?'#fff':'#555'}">Semua</button>
-    ${sheets.map(s=>`<button data-s="${_ep(s)}" onclick="_hsSheet=this.dataset.s;_hsTitik='';renderHasilSampling()" style="border:1px solid ${_hsSheet===s?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_hsSheet===s?'#444':'#fff'};color:${_hsSheet===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
+    <button onclick="_hsSheet='';_hsTitik='';renderHasilSampling()" class="im-filter" aria-pressed="${!_hsSheet}" style="border:1px solid ${!_hsSheet?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_hsSheet?'#444':'#fff'};color:${!_hsSheet?'#fff':'#555'}">Semua</button>
+    ${sheets.map(s=>`<button data-s="${_ep(s)}" onclick="_hsSheet=this.dataset.s;_hsTitik='';renderHasilSampling()" class="im-filter" aria-pressed="${_hsSheet===s}" style="border:1px solid ${_hsSheet===s?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_hsSheet===s?'#444':'#fff'};color:${_hsSheet===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
   </div>`:'';
 
   const siteBtns=(sites.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:8px 0">
     <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Site:</span>
-    <button onclick="_hsSite='';_hsTitik='';renderHasilSampling()" style="border:1px solid ${!_hsSite?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_hsSite?'#444':'#fff'};color:${!_hsSite?'#fff':'#555'}">Semua</button>
-    ${sites.map(s=>`<button data-s="${_ep(s)}" onclick="_hsSite=this.dataset.s;_hsTitik='';renderHasilSampling()" style="border:1px solid ${_hsSite===s?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_hsSite===s?'#444':'#fff'};color:${_hsSite===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
+    <button onclick="_hsSite='';_hsTitik='';renderHasilSampling()" class="im-filter" aria-pressed="${!_hsSite}" style="border:1px solid ${!_hsSite?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_hsSite?'#444':'#fff'};color:${!_hsSite?'#fff':'#555'}">Semua</button>
+    ${sites.map(s=>`<button data-s="${_ep(s)}" onclick="_hsSite=this.dataset.s;_hsTitik='';renderHasilSampling()" class="im-filter" aria-pressed="${_hsSite===s}" style="border:1px solid ${_hsSite===s?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_hsSite===s?'#444':'#fff'};color:${_hsSite===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
   </div>`:'')+(_hsGroup==='Monthly'?(()=>{
     const izinOpts=[...new Set(rowsAll.map(r=>_hsIzinStatus(r.titik)||'Tanpa Status'))].sort();
     if(izinOpts.length<2)return '';
     const bad=s=>/belum|tanpa/i.test(s);
     return `<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin:8px 0">
     <span style="font-size:13px;color:#888;font-weight:600;margin-right:2px;display:inline-block;min-width:84px">Status Izin:</span>
-    <button onclick="_hsIzin='';_hsTitik='';renderHasilSampling()" style="border:1px solid ${!_hsIzin?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_hsIzin?'#444':'#fff'};color:${!_hsIzin?'#fff':'#555'}">Semua</button>
-    ${izinOpts.map(s=>`<button data-s="${_ep(s)}" onclick="_hsIzin=this.dataset.s;_hsTitik='';renderHasilSampling()" style="border:1px solid ${_hsIzin===s?(bad(s)?'#c62828':'#2e7d32'):'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_hsIzin===s?(bad(s)?'#c62828':'#2e7d32'):'#fff'};color:${_hsIzin===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
+    <button onclick="_hsIzin='';_hsTitik='';renderHasilSampling()" class="im-filter" aria-pressed="${!_hsIzin}" style="border:1px solid ${!_hsIzin?'#444':'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${!_hsIzin?'#444':'#fff'};color:${!_hsIzin?'#fff':'#555'}">Semua</button>
+    ${izinOpts.map(s=>`<button data-s="${_ep(s)}" onclick="_hsIzin=this.dataset.s;_hsTitik='';renderHasilSampling()" class="im-filter" aria-pressed="${_hsIzin===s}" style="border:1px solid ${_hsIzin===s?(bad(s)?'#c62828':'#2e7d32'):'#ddd'};padding:2px 10px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:${_hsIzin===s?(bad(s)?'#c62828':'#2e7d32'):'#fff'};color:${_hsIzin===s?'#fff':'#555'}">${_ep(s)}</button>`).join('')}
   </div>`;
   })():'');
 
@@ -23985,7 +23955,7 @@ function _hsRenderCore(){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${nonroutineBtns}</div>`}`;
 
   const searchBar=`<div style="display:flex;gap:8px;align-items:center;margin:8px 0 12px;flex-wrap:wrap">
-      <input type="text" placeholder="Cari titik, parameter, No RFA, catatan..." value="${_ep(_hsQ)}" id="hs-q" oninput="window._hsCaret=this.selectionStart;_hsQ=this.value;renderHasilSampling()" style="flex:1;min-width:220px;max-width:340px;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:13px;font-family:inherit">
+      <input type="text" placeholder="Cari titik, parameter, No RFA, catatan..." value="${_ep(_hsQ)}" id="hs-q" oninput="window._hsCaret=this.selectionStart;_hsQ=this.value;_imQueueRender('hasil')" style="flex:1;min-width:220px;max-width:340px;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:13px;font-family:inherit">
       <label style="font-size:13px;color:#555;display:flex;align-items:center;gap:5px;cursor:pointer;background:#fff;border:1px solid #ddd;border-radius:6px;padding:5px 10px">
         <input type="checkbox" ${_hsOnlyExceed?'checked':''} onchange="_hsOnlyExceed=this.checked;renderHasilSampling()"> Hanya yang melebihi baku mutu
       </label>
@@ -24036,7 +24006,7 @@ function _hsRenderCore(){
       if(!p.peraturan&&r.peraturan)p.peraturan=r.peraturan;
       p.byPeriod.set(_hsPeriodKey(r),{nilai:r.nilai,status:r.status,noRfa:(r.noRfa&&r.noRfa[0])||'',tanggal:(r.tanggal&&r.tanggal[0])||''});
     });
-    const titikList=[...byTitikWmr.values()].sort((a,b)=>a.titik.localeCompare(b.titik));
+    const titikList=[...byTitikWmr.values()];/*Y581: urutan kemunculan sumber, tidak diurut abjad.*/
 
     const yearBtns=_hsGroup==='Yearly'?'':years.map(y=>`<button onclick="_hsWmrYear='${y}';renderHasilSampling()" style="border:1px solid ${y===_hsWmrYear?'#1565c0':'#ddd'};background:${y===_hsWmrYear?'#1565c0':'#fff'};color:${y===_hsWmrYear?'#fff':'#555'};border-radius:6px;padding:3px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">${y}</button>`).join('');
     const periodColsHead=periods.map(p=>`<th style="${TH};text-align:center">${_ep(p)}</th>`).join('');
@@ -24079,7 +24049,7 @@ function _hsRenderCore(){
       <div style="overflow:auto;border:1px solid #e0e0e0;border-radius:8px;max-height:70vh">
         <table style="border-collapse:collapse;width:100%;font-family:inherit">
           <thead><tr style="position:sticky;top:0;z-index:2;background:#fff">
-            <th style="${TH}">Titik Penaatan</th><th style="${TH}">Parameter</th>${periodColsHead}<th style="${TH}">Baku Mutu</th><th style="${TH}">Satuan BM</th><th style="${TH}">Peraturan</th>
+            <th style="${TH}">Titik Penaatan</th><th style="${TH}">Parameter</th>${periodColsHead}<th style="${TH};text-align:center">Baku Mutu</th><th style="${TH};text-align:center">Satuan BM</th><th style="${TH}">Peraturan</th>
           </tr></thead>
           <tbody>${blocks||`<tr><td colspan="${5+periods.length}" style="padding:24px;text-align:center;color:#999;font-size:13px">Tidak ada data untuk periode ini.</td></tr>`}</tbody>
         </table>
@@ -24207,7 +24177,7 @@ function _hsRenderCore(){
     }).join('');
     el.innerHTML=gapHeader+
       `<div style="display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap">
-        <input type="text" placeholder="Cari No RFA, sampel, site, titik..." value="${_ep(_hsQ)}" id="hs-q" oninput="window._hsCaret=this.selectionStart;_hsQ=this.value;renderHasilSampling()" style="flex:1;min-width:220px;max-width:340px;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:13px;font-family:inherit">
+        <input type="text" placeholder="Cari No RFA, sampel, site, titik..." value="${_ep(_hsQ)}" id="hs-q" oninput="window._hsCaret=this.selectionStart;_hsQ=this.value;_imQueueRender('hasil')" style="flex:1;min-width:220px;max-width:340px;border:1px solid #ddd;border-radius:6px;padding:5px 10px;font-size:13px;font-family:inherit">
         <label style="font-size:13px;color:#555;display:flex;align-items:center;gap:5px;cursor:pointer;background:#fff;border:1px solid #ddd;border-radius:6px;padding:5px 10px">
           <input type="checkbox" ${_hsGapShowPending?'checked':''} onchange="_hsGapShowPending=this.checked;renderHasilSampling()"> Tampilkan yang masih diproses lab (${s.pending})
         </label>
@@ -24504,7 +24474,7 @@ function _hsRenderCore(){
     if(sc==='DWW')return'DWW';
     if(sc==='DRAIN')return'Drainase';
     if(sc==='INLET')return'Inlet';
-    return _hsMonStreamCatByTitik(titik);
+    return _imStreamCat(rows)||'Lainnya';/*Y581: tanpa RFA tidak otomatis PW.*/
   };
   const _hsMonStreamCat=_hsMonStreamCatByTitik; // kept for any other caller expecting the titik-only signature
   const periodCat=new Map(periods.map(k=>[k,_hsMonStreamCatForRows(byPeriod.get(k).rows)]));
@@ -24667,7 +24637,7 @@ function _hsParamChartSvg(rows){
   const bmNums=rows.filter(r=>!_hsBulanVsHari(r.satuan,r.satuanBakuMutu)/*Y551c*/).map(r=>r.bakuMutu).filter(v=>typeof v==='number');
   const bmConst=bmNums.length&&bmNums.every(v=>v===bmNums[0])?bmNums[0]:null;
   const maxV=Math.max(...vals,bmConst||0)*1.15||1;
-  const W=Math.max(380,rows.length*58),H=200,padL=34,padR=14,padT=14,padB=34;
+  const W=Math.max(420,rows.length*82),H=260,padL=62,padR=18,padT=20,padB=48;/*Y581*/
   const plotW=W-padL-padR,plotH=H-padT-padB;
   const bw=plotW/rows.length;
   // Horizontal gridlines + Y-axis value labels (4 bands) so the reader has
@@ -24677,7 +24647,7 @@ function _hsParamChartSvg(rows){
     const gy=padT+plotH-(i/gridN)*plotH;
     const gv=(i/gridN)*maxV;
     const _gk=_thDark();return `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W-padR}" y2="${gy.toFixed(1)}" stroke="${_gk?'#232426':'#eef1f4'}" stroke-width="1"/>
-      <text x="${(padL-6).toFixed(1)}" y="${(gy+3).toFixed(1)}" font-size="7.5" text-anchor="end" fill="${_gk?'#7d8087':'#9aa2ab'}">${gv>=100?Math.round(gv):gv.toFixed(gv<1?3:1)}</text>`;
+      <text x="${(padL-6).toFixed(1)}" y="${(gy+3).toFixed(1)}" font-size="12" text-anchor="end" fill="${_gk?'#7d8087':'#9aa2ab'}">${gv>=100?Math.round(gv):gv.toFixed(gv<1?3:1)}</text>`;
   }).join('');
   const bars=rows.map((r,i)=>{
     const v=typeof r.nilaiNum==='number'?r.nilaiNum:0;
@@ -24692,13 +24662,13 @@ function _hsParamChartSvg(rows){
         <stop offset="100%" stop-color="${col}" stop-opacity=".72"/>
       </linearGradient></defs>
       <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="url(#${gid})" rx="3"><title>${lbl}: ${_ep(r.nilai)} ${_ep(r.satuan||'')}${r.status==='exceed'?' — melebihi baku mutu':''}</title></rect>
-      <text x="${(x+w/2).toFixed(1)}" y="${(padT+plotH+14).toFixed(1)}" font-size="8" text-anchor="middle" fill="${_dk?'#9A9DA3':'#777'}">${lbl.slice(0,7)}</text>`;
+      <text x="${(x+w/2).toFixed(1)}" y="${(padT+plotH+14).toFixed(1)}" font-size="12" text-anchor="middle" fill="${_dk?'#9A9DA3':'#777'}">${lbl}</text>`;
   }).join('');
   const bmY=bmConst!=null?padT+plotH-(bmConst/maxV)*plotH:null;
   const _bmc=_thDark()?'#ffb689':'#e65100';
   const bmLine=bmY!=null?`<line x1="${padL}" y1="${bmY.toFixed(1)}" x2="${W-padR}" y2="${bmY.toFixed(1)}" stroke="${_bmc}" stroke-width="1.3" stroke-dasharray="5,3"/>
-    <text x="${W-padR}" y="${(bmY-4).toFixed(1)}" font-size="8.5" text-anchor="end" fill="${_bmc}" font-weight="700">BM ${_ep(bmConst)}</text>`:'';
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:${H}px;display:block">
+    <text x="${W-padR}" y="${(bmY-4).toFixed(1)}" font-size="12" text-anchor="end" fill="${_bmc}" font-weight="700">BM ${_ep(bmConst)}</text>`:'';
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="width:${W}px;min-width:${W}px;height:${H}px;display:block">
     ${gridLines}
     <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="${_thDark()?'#2a2c30':'#c9d0d7'}"/>
     ${bars}${bmLine}
@@ -37666,7 +37636,7 @@ async function _gtBatchHandlePhotos(files){
     try{
       const img=await new Promise(function(res,rej){const im=new Image();im.onload=function(){res(im);};im.onerror=rej;im.src=url;});
       window._gtBatch.photos[_gtNorm(f.name)]={name:f.name,img:img};
-    }catch(e){}
+    }catch(e){}finally{URL.revokeObjectURL(url);}/*Y581*/
   }
   _gtBatchStatus(''+Object.keys(window._gtBatch.photos).length+' foto siap. '+(window._gtBatch.rows.length?window._gtBatch.rows.length+' baris Excel dimuat.':'Unggah Excel untuk mencocokkan.'));
 }
@@ -37681,7 +37651,7 @@ async function _gtBatchHandleExcel(file){
     const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
     window._gtBatch.rows=raw.map(function(r){
       const o={};Object.keys(r).forEach(function(k){o[String(k).toLowerCase().replace(/[\s_]+/g,'')]=r[k];});
-      return {nama_file:o.namafile||o.nama||o.filename||o.file||'',latitude:o.latitude||o.lat||'',longitude:o.longitude||o.lng||o.long||'',judul:o.judul||o.title||'',alamat:o.alamat||o.address||'',tanggal_jam:o.tanggaljam||o.tanggal||o.datetime||o.waktu||'',watermark:(o.watermark||o.wm||''),tampilkan_peta:o.tampilkanpeta||o.peta||o.map||'',tampilkan_judul:o.tampilkanjudul||'',tampilkan_alamat:o.tampilkanalamat||'',tampilkan_koordinat:o.tampilkankoordinat||'',tampilkan_waktu:o.tampilkanwaktu||'',tampilkan_watermark:o.tampilkanwatermark||'',tampilkan_bendera:o.tampilkanbendera||'',tampilkan_cone:o.tampilkancone||'',arah_cone:(o.arahcone!==undefined&&o.arahcone!==''?o.arahcone:(o.arah||'')),label_google:(o.labelgoogle!==undefined?o.labelgoogle:'')};
+      return {nama_file:o.namafile||o.nama||o.filename||o.file||'',lokasi:o.lokasi||'',kecamatan:o.kecamatan||'',kabupaten:o.kabupaten||'',provinsi:o.provinsi||'',/*Y581*/latitude:_imFirst(o.latitude,o.lat),longitude:_imFirst(o.longitude,o.lng,o.long)/*Y581*/,judul:o.judul||o.title||'',alamat:o.alamat||o.address||'',tanggal_jam:o.tanggaljam||o.tanggal||o.datetime||o.waktu||'',watermark:(o.watermark||o.wm||''),tampilkan_peta:o.tampilkanpeta||o.peta||o.map||'',tampilkan_judul:o.tampilkanjudul||'',tampilkan_alamat:o.tampilkanalamat||'',tampilkan_koordinat:o.tampilkankoordinat||'',tampilkan_waktu:o.tampilkanwaktu||'',tampilkan_watermark:o.tampilkanwatermark||'',tampilkan_bendera:o.tampilkanbendera||'',tampilkan_cone:o.tampilkancone||'',arah_cone:(o.arahcone!==undefined&&o.arahcone!==''?o.arahcone:(o.arah||'')),label_google:(o.labelgoogle!==undefined?o.labelgoogle:'')};
     }).filter(function(r){return r.nama_file||r.latitude||r.judul;});
     _gtBatchStatus(''+window._gtBatch.rows.length+' baris Excel dimuat. '+(Object.keys(window._gtBatch.photos).length?Object.keys(window._gtBatch.photos).length+' foto siap.':'Unggah foto untuk mencocokkan.'));
   }catch(e){_gtBatchStatus('⚠ Gagal membaca Excel: '+String(e).slice(0,120));}
@@ -37700,15 +37670,22 @@ async function _gtBatchProcess(){
   for(const row of B.rows){
     const key=_gtMatchPhoto(row.nama_file,used);
     if(!key){unmatchedRows.push(row.nama_file||'(kosong)');continue;}
+    if(!_imCoords(row.latitude,row.longitude)){unmatchedRows.push(String(row.nama_file||'(kosong)')+' (koordinat wajib/di luar rentang)');continue;}/*Y581*/
     used.push(key);
     const photo=B.photos[key];
     const bl=function(v,d){return (v===''||v==null)?d:_gtBool(v,d);};
     const showMap=bl(row.tampilkan_peta,_rmx.showMap);
-    /*Y560*/const st=Object.assign({},_rmx,{lat:String(row.latitude||''),lng:String(row.longitude||''),
+    /*Y560*/const st=Object.assign({},_rmx,{lat:String(row.latitude??''),lng:String(row.longitude??''),
+      loc:row.lokasi||_rmx.loc,kec:row.kecamatan||_rmx.kec,kab:row.kabupaten||_rmx.kab,prov:row.provinsi||_rmx.prov,/*Y581*/
       title:(String(row.judul||'')!==''?String(row.judul):_rmx.title),addr:(String(row.alamat||'')!==''?String(row.alamat):_rmx.addr),
       dt:((row.tanggal_jam!==''&&row.tanggal_jam!=null)?(_gtExcelDate(row.tanggal_jam)||_rmx.dt):_rmx.dt),wm:(String(row.watermark||'')!==''?String(row.watermark):_rmx.wm),
       showMap:showMap,showTitle:bl(row.tampilkan_judul,_rmx.showTitle),showAddr:bl(row.tampilkan_alamat,_rmx.showAddr),showCoord:bl(row.tampilkan_koordinat,_rmx.showCoord),
       showDt:bl(row.tampilkan_waktu,_rmx.showDt),showWm:bl(row.tampilkan_watermark,_rmx.showWm),showFlag:bl(row.tampilkan_bendera,_rmx.showFlag),/*Y577*/showCone:bl(row.tampilkan_cone,_rmx.showCone),coneDeg:((row.arah_cone!==''&&row.arah_cone!=null&&isFinite(parseFloat(row.arah_cone)))?parseFloat(row.arah_cone):_rmx.coneDeg),showGoogle:((row.label_google!==''&&row.label_google!=null)?true:_rmx.showGoogle),googleText:((row.label_google!==''&&row.label_google!=null)?String(row.label_google):_rmx.googleText),_mapCanvas:null});
+    if(_rmx.autoAddr&&(!row.alamat||!row.judul)){/*Y581: hanya bila pemilik mengaktifkan alamat online.*/
+      const ad=await _gtReverseAddr(Number(st.lat),Number(st.lng));
+      if(ad){if(!row.judul)st.title=ad.title;if(!row.alamat)st.addr=ad.addr;Object.assign(st,{loc:ad.loc||st.loc,kec:ad.kec||st.kec,kab:ad.kab||st.kab,prov:ad.prov||st.prov});}
+      await new Promise(resolve=>setTimeout(resolve,1100));
+    }
     if(showMap){
       const ck=st.lat+','+st.lng;
       if(mapCache[ck]===undefined)mapCache[ck]=await _gtFetchMapCanvas(parseFloat(st.lat),parseFloat(st.lng),_gtState().mapStyle);
@@ -37717,7 +37694,8 @@ async function _gtBatchProcess(){
     const stf=_rmx.remix?_gtApplyRemix(st,_rmx):st;
     const item={name:photo.name,img:photo.img,st:stf};
     const base=_stdFileName(photo.name);
-    let jpgBytes=await _gtCanvasBytes(_gtStamp(item),'image/jpeg',1);
+    const stamped=_gtStamp(item);_imBatchPreview(key,stamped);/*Y581*/
+    let jpgBytes=await _gtCanvasBytes(stamped,'image/jpeg',1);
     try{
       const jla=stf.lat,jln=stf.lng;
       if(jla!==''&&jln!==''&&isFinite(Number(jla))&&isFinite(Number(jln))){
@@ -37738,14 +37716,14 @@ async function _gtBatchProcess(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Geotag_Batch.zip';document.body.appendChild(a);a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);
   let msg='✓ '+matched.length+' foto distempel & diunduh sebagai ZIP.';
-  if(unmatchedRows.length)msg+='<br>⚠ '+unmatchedRows.length+' baris Excel tanpa foto cocok: '+unmatchedRows.slice(0,6).join(', ')+(unmatchedRows.length>6?', ...':'');
-  if(unmatchedPhotos.length)msg+='<br>⚠ '+unmatchedPhotos.length+' foto tanpa baris Excel: '+unmatchedPhotos.slice(0,6).join(', ')+(unmatchedPhotos.length>6?', ...':'');
+  if(unmatchedRows.length)msg+='<br>⚠ '+unmatchedRows.length+' baris Excel tanpa foto cocok: '+unmatchedRows.slice(0,6).map(_ep).join(', ')/*Y581*/+(unmatchedRows.length>6?', ...':'');
+  if(unmatchedPhotos.length)msg+='<br>⚠ '+unmatchedPhotos.length+' foto tanpa baris Excel: '+unmatchedPhotos.slice(0,6).map(_ep).join(', ')/*Y581*/+(unmatchedPhotos.length>6?', ...':'');
   _gtBatchStatus(msg);
 }
 function _gtDownloadTemplate(){
   const XL=window.XLSXS||window.XLSX;
   if(!XL){if(typeof toast==='function')toast('⚠ Library Excel belum siap.');return;}
-  const header=['nama_file','latitude','longitude','judul','alamat','tanggal_jam','watermark','tampilkan_peta','tampilkan_cone','arah_cone','label_google'];
+  const header=_imGtColumns();/*Y581: tiga kolom wajib dan pilihan sesuai template aktif.*/
   const ex1=['IMG_TITIK-05.jpg',-1.239277,116.846077,'CPU, Kalimantan Timur, Indonesia','SW-05, CPU, Wilayah Kerja Mahakam, Kalimantan Timur, Indonesia','2026-07-15 09:30','GPS Map Camera','ya','ya',105,'Google'];
   const ex2=['IMG_TITIK-06.jpg',-1.241000,116.848000,'CPU, Kalimantan Timur, Indonesia','SW-06, CPU, Wilayah Kerja Mahakam, Kalimantan Timur, Indonesia','2026-07-15 10:05','GPS Map Camera','ya','ya',120,'Google'];
   // Y454: kalau fotonya sudah di-drop, kolom nama_file diisi otomatis dari
@@ -37755,7 +37733,7 @@ function _gtDownloadTemplate(){
     ? Object.keys(window._gtBatch.photos).map(function(k){return window._gtBatch.photos[k];}) : [];
   const _isi=_fotoDrop.length
     ? _fotoDrop.map(function(p){const r=new Array(header.length).fill('');r[0]=p.name;return r;})
-    : [ex1,ex2];
+    : [ex1,ex2].map(_imGtExample);/*Y581*/
   const ws=XL.utils.aoa_to_sheet([header].concat(_isi));
   ws['!cols']=[{wch:22},{wch:12},{wch:12},{wch:34},{wch:48},{wch:18},{wch:16},{wch:14}];
   for(let c=0;c<header.length;c++){const ad=XL.utils.encode_cell({r:0,c:c});if(ws[ad])ws[ad].s={font:{bold:true},fill:{fgColor:{rgb:'E8F5E9'}},alignment:{horizontal:'center'}};}
@@ -37933,7 +37911,7 @@ async function _gtReverseAddr(lat,lng){
     const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+lat+'&lon='+lng+'&accept-language=id&zoom=18&addressdetails=1');
     const j=await r.json();const a=j.address||{};
     const kota=a.city||a.town||a.county||a.village||a.municipality||'';const prov=a.state||'';
-    return {title:[kota,prov,'Indonesia'].filter(Boolean).join(', '),addr:j.display_name||''};
+    return {title:[kota,prov,'Indonesia'].filter(Boolean).join(', '),addr:j.display_name||'',loc:a.village||a.hamlet||a.suburb||a.neighbourhood||a.town||a.city||'',kec:a.city_district||a.municipality||a.subdistrict||a.district||'',kab:a.county||a.city||a.regency||'',prov:prov};/*Y581*/
   }catch(e){return null;}
 }
 function _gtPtsStatus(m){const el=document.getElementById('gt-pts-status');if(el)el.innerHTML=m;}
@@ -40294,32 +40272,12 @@ function _drainDoExport(mode,site,startYm,endYm,fillMode){
 // parameter/satuan/hasil/limit/metode table, and a "QC" sheet (ignored
 // here — not needed for a results review).
 function _reviewKnownTitik(){
-  const set=new Set();
-  try{
-    const src=(typeof HASIL_ANALISA!=='undefined'&&HASIL_ANALISA)?HASIL_ANALISA:(typeof HASIL_ANALISA_SEED!=='undefined'?HASIL_ANALISA_SEED:null);
-    if(src&&src.groups){
-      Object.values(src.groups).forEach(arr=>(arr||[]).forEach(r=>{if(r.titik)set.add(r.titik);}));
-    }
-  }catch(e){}
-  return [...set];
+  var known=new Set();try{_hsAllRows().forEach(function(r){if(r.titik)known.add(r.titik);});}catch(e){}
+  try{['monthly','semesterly','yearly'].forEach(function(k){(SAMPLING_POINTS[k]||[]).forEach(function(r){var n=r.penulisan||r.sampleName||r.position;if(n)known.add(n);});});}catch(e){}
+  return Array.from(known);
 }
-function _reviewNormalize(s){
-  return String(s||'').toLowerCase().replace(/\(set\s*\d+\)/gi,'').replace(/[^a-z0-9]+/g,' ').trim();
-}
-function _reviewBestMatch(sampleName,known){
-  const norm=_reviewNormalize(sampleName);
-  const normTokens=norm.split(' ').filter(Boolean);
-  let best=null,bestScore=0;
-  known.forEach(k=>{
-    const kNorm=_reviewNormalize(k);
-    if(kNorm===norm){best=k;bestScore=1;return;}
-    const kTokens=kNorm.split(' ').filter(Boolean);
-    const overlap=normTokens.filter(t=>kTokens.includes(t)).length;
-    const score=overlap/Math.max(normTokens.length,kTokens.length,1);
-    if(score>bestScore){bestScore=score;best=k;}
-  });
-  return bestScore>=0.5?{titik:best,score:bestScore}:{titik:null,score:bestScore};
-}
+function _reviewNormalize(s){return _imReviewBase(s);}
+function _reviewBestMatch(sampleName,known){return _imReviewMatch(sampleName,known);}/*Y581*/
 function _reviewFindLabel(rows,label){
   for(let r=0;r<rows.length;r++){
     const cell=String(rows[r][0]||'').trim().toUpperCase();
@@ -44616,9 +44574,11 @@ function _emfTitikFromCaption(cap){
 function _emfIsDateish(s){
   s=String(s||'').trim();
   if(!s)return false;
+  if(s.indexOf(' / ')>=0)return s.split(' / ').every(_emfIsDateish);/*Y581*/
   return /^\d{1,2}\s*[-\/]\s*[A-Za-z]{3,4}\s*[-\/]\s*\d{2,4}$/.test(s);
 }
 function _emfFmtHdrDate(iso){
+  if(String(iso||'').indexOf(';')>=0)return String(iso).split(';').map(_emfFmtHdrDate).join(' / ');/*Y581*/
   var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||''));
   if(!m)return '';
   return parseInt(m[3],10)+'-'+EMF_MON_ABBR[parseInt(m[2],10)-1]+'-'+m[1].slice(2);
@@ -44771,7 +44731,7 @@ function _emfPatchTitikTable(tbl,idx,year,months,cap){
   var sheet=_emfSheetForCaption(cap);
   var mm=months.slice(0,L.ncol);
   var cur=_emfTitikFromCaption(cap)||'';
-  var filled=0,empty=0,log=[],hdrDates=[],curParam='',campur=[],warna=0;
+  var filled=0,empty=0,log=[],hdrDates=[],curParam='',campur=[],warna=0,actualDates={};/*Y581*/
   // Baris mana saja yang berisi data, dan dengan titik/parameter apa. Dikumpul
   // dulu karena tanggal kolom harus ditentukan dari SELURUH tabel sebelum satu
   // sel pun diisi.
@@ -44824,6 +44784,7 @@ function _emfPatchTitikTable(tbl,idx,year,months,cap){
       var v=ser[i]?_emfFmt(ser[i].nilai,d.param):null;
       if(v==null)empty++; else filled++;
       if(ser[i]&&ser[i].tgl&&!hdrDates[i])hdrDates[i]=ser[i].tgl;
+      if(ser[i]&&ser[i].tgl)(actualDates[mm[i]]=actualDates[mm[i]]||new Set()).add(String(ser[i].tgl).slice(0,10));/*Y581*/
       vals.push(v);
     }
     log.push({titik:d.titik,param:d.param,vals:vals});
@@ -44832,6 +44793,7 @@ function _emfPatchTitikTable(tbl,idx,year,months,cap){
     // Sel kosong tidak bisa dibedakan dari sel yang belum sempat diisi.
     for(var k=0;k<vals.length;k++){
       var isi=vals[k]==null?EMF_KOSONG:vals[k];
+      if(window._emfSiteAktif==='BPN'&&_emfLebihBM(vals[k],d.bm)===true&&!/\(\*\)/.test(isi))isi+='(*)';/*Y581*/
       _emfSetCell(cells[L.col0+k],isi);
       // Y504b: warnanya ditulis ulang SETIAP kali, termasuk saat memenuhi
       // baku mutu. Kalau hanya yang melebihi yang diwarnai, merah periode
@@ -44847,6 +44809,7 @@ function _emfPatchTitikTable(tbl,idx,year,months,cap){
   // tanggal kolom diambil dari pilihan di atas, bukan dari parameter pertama
   // yang kebetulan punya bacaan
   for(var k2=0;k2<mm.length;k2++)if(pilihTgl[mm[k2]])hdrDates[k2]=pilihTgl[mm[k2]];
+  if(window._emfSiteAktif==='BPN')mm.forEach(function(m,i){if(actualDates[m])hdrDates[i]=Array.from(actualDates[m]).sort().join(';');});/*Y581: tanggal asal minimum tetap tampak.*/
   _emfPatchMonthHeader(rows,L,mm,year,hdrDates);
   return {filled:filled,empty:empty,log:log,campur:campur,warna:warna,
           titik:_emfTitikFromCaption(cap)||'',cap:cap};
@@ -52637,7 +52600,7 @@ window._rsBacaDatar=function(wbx,sn,rep,ctx){
   if (typeof window === 'undefined') return;
   var UKURAN = 100;
   var S = window._sumurS = window._sumurS || { field: '', status: '', sort: 'well', dir: 1, page: 0 };
-  var _cache = null, _cacheDari = null;
+  var _cache = null, _cacheDari = null, _cacheActs = null;
 
   function esc(v) { return (typeof _ep === 'function') ? _ep(v) : String(v == null ? '' : v).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function tgl(ms) {
@@ -52658,7 +52621,15 @@ window._rsBacaDatar=function(wbx,sn,rep,ctx){
   function baris() {
     var L = lapisan();
     if (!L) return null;
-    if (_cacheDari === L && _cache) return _cache;
+    /*Y581: SRA dan kegiatan berasal dari ACTS, bukan ditebak dari prefix sumur.*/
+    var activities = (typeof ACTS !== 'undefined' && Array.isArray(ACTS)) ? ACTS : [];
+    var stamp = JSON.stringify(activities.map(function(a){return [a.id,a.well,a.site,a.sra,a.type,a.act];}));
+    if (_cacheDari === L && _cacheActs === stamp && _cache) return _cache;
+    var activityMap = {};
+    activities.forEach(function(a){
+      var names = typeof _wellParseNames === 'function' ? _wellParseNames(a.well || '') : [a.well || ''];
+      names.forEach(function(n){var k=String(n).toUpperCase().replace(/[^A-Z0-9]/g,'');if(k)(activityMap[k]=activityMap[k]||[]).push(a);});
+    });
     var R = window.PemulihanY578, gis = null;
     try { if (R && L.well_cluster && (L.well_cluster.features || []).length) gis = R.buatGis(L); } catch (e) { gis = null; }
     var out = L.well.features.map(function (f, i) {
@@ -52670,7 +52641,10 @@ window._rsBacaDatar=function(wbx,sn,rep,ctx){
           if (!site) site = gis(teks(p.CLUSTERNAME) || teks(p.GTS)) || '';
         }
       } catch (e) { site = ''; }
+      var related=activityMap[well.toUpperCase().replace(/[^A-Z0-9]/g,'')]||[];
+      var unique=function(v){return Array.from(new Set(v.filter(Boolean))).join(' · ');};
       return {
+        sra:unique(related.map(function(a){return teks(a.sra);})), kegiatan:unique(related.map(function(a){return teks(a.act)||teks(a.type);})),
         i: i, p: p,
         well: well, nama: teks(p.WELLNAME), lapangan: teks(p.FIELDNAME).toUpperCase(), kluster: teks(p.CLUSTERNAME) || teks(p.GTS),
         site: site, status: teks(p.STATUS), kondisi: teks(p.GRPSTATUS) || teks(p.CRSTATUS), kelas: teks(p.CLASS),
@@ -52678,7 +52652,7 @@ window._rsBacaDatar=function(wbx,sn,rep,ctx){
         spud: tgl(p.SPUD_DATE)
       };
     });
-    _cache = out; _cacheDari = L;
+    _cache = out; _cacheDari = L; _cacheActs = stamp;
     return out;
   }
 
@@ -52686,7 +52660,7 @@ window._rsBacaDatar=function(wbx,sn,rep,ctx){
 
   var KOLOM = [
     ['well', 'Well'], ['nama', 'Nama Sumur'], ['lapangan', 'Lapangan'], ['kluster', 'Kluster / GTS'], ['site', 'Site'],
-    ['status', 'Status'], ['kondisi', 'Kondisi'], ['kelas', 'Kelas'], ['lat', 'Lintang'], ['lng', 'Bujur'], ['spud', 'Spud']
+    ['sra', 'SRA'], ['kegiatan', 'Kegiatan'], ['status', 'Status'], ['kondisi', 'Kondisi'], ['kelas', 'Kelas'], ['lat', 'Lintang'], ['lng', 'Bujur'], ['spud', 'Spud']
   ];
   var TH = 'padding:6px 9px;text-align:left;font-size:13px;font-weight:700;white-space:nowrap;border:1px solid #d0d0d0;background:#f2f2f2;color:#333;cursor:pointer;';
   var TD = 'padding:5px 8px;vertical-align:top;border:1px solid #e8e8e8;font-size:13px;';
@@ -54681,7 +54655,9 @@ window._emfChartXml=function(spec){
 /* emf_tabel_y570.js — Y570b: tabel, teks dan tata letak dokumen EMF
  * (permintaan pemilik 2026-10-06, "Improvement Bagian EMF").
  *
- *  A. BPN: sampel bisa diambil beberapa kali dalam sebulan sampai memenuhi
+ *  A. HISTORIS Y570 (diganti Y581 atas Improvement.docx): pemilihan satu set.
+ *     Y581 memilih minimum per parameter/bulan lintas set, menjaga tanggal asal dan satuan.
+ *     BPN: sampel bisa diambil beberapa kali dalam sebulan sampai memenuhi
  *     baku mutu. Raw (Water Monitoring Recap) memakai SATU set per bulan —
  *     set yang ditandai hijau, mis. Januari 2026 STP-1 = 020126-06A. Aturannya:
  *     set dengan pelanggaran baku mutu PALING SEDIKIT; kalau seri, yang paling
@@ -54710,7 +54686,7 @@ window._emfChartXml=function(spec){
 if(window.__emfTabelY570)return; window.__emfTabelY570=true;
 var W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
-/* ---------- A. indeks membawa nomor RFA + status; pemilihan set BPN ---------- */
+/* ---------- A. indeks membawa nomor RFA + status; Y581 memilih minimum per parameter ---------- */
 var _idxAsli=window._emfIndex;
 if(typeof _idxAsli==='function'){
   window._emfIndex=function(){
@@ -54741,7 +54717,7 @@ function _pilihSet(idx,titik,year,mon){
     var q=k.split('\u0000'); if(q.length!==3||q[2]!==String(year))continue;
     if(_emfSq(_emfCanonTitik(q[0])).toLowerCase()!==cp)continue;
     (idx[k][mon]||[]).forEach(function(x){
-      if(!x.rfa)return; var s=set[x.rfa]=set[x.rfa]||{rfa:x.rfa,tgl:String(x.tgl||'').slice(0,10),n:0,lebih:0};
+      if(!x.rfa)return; var sk=x.rfa+'|'+String(x.tgl||'').slice(0,10);var s=set[sk]=set[sk]||{rfa:x.rfa,tgl:String(x.tgl||'').slice(0,10),n:0,lebih:0};/*Y581: RFA sama bisa memiliki dua set nyata*/
       s.n++; if(x.status==='exceed')s.lebih++;
     });
   }
@@ -54765,24 +54741,9 @@ var _serAsli=window._emfSeries;
 if(typeof _serAsli==='function'&&!_serAsli.__y570){
   window._emfSeries=function(idx,titik,param,year,months,sheet,satuan,opsi){
     if((window._emfSiteAktif||'')!=='BPN')return _serAsli.apply(this,arguments);
-    var kump={}, o2={}; for(var p in (opsi||{}))o2[p]=opsi[p]; o2.kumpul=kump;
-    // tanggal kolom mengikuti set terpilih
-    if(o2.tanggal){var t2={};for(var mt in o2.tanggal)t2[mt]=o2.tanggal[mt];
-      months.forEach(function(m){var s=_pilihSet(idx,titik,year,m);if(s)t2[m]=s.tgl;});o2.tanggal=t2;}
-    var res=_serAsli.call(this,idx,titik,param,year,months,sheet,satuan,o2);
-    var keluar=res.map(function(v,i){
-      var m=months[i],c=kump[m],s=_pilihSet(idx,titik,year,m);
-      if(!s||!c||!c.length)return v;
-      var hit=c.filter(function(x){return x.rfa===s.rfa;});
-      if(!hit.length)return v;
-      // dua bacaan dalam satu set: yang memenuhi baku mutu lebih dulu
-      hit.sort(function(a,b){return (a.status==='exceed')-(b.status==='exceed');});
-      return hit[0];
-    });
-    if(opsi&&opsi.kumpul){
-      for(var mm in kump){var s2=_pilihSet(idx,titik,year,mm);var f=s2?kump[mm].filter(function(x){return x.rfa===s2.rfa;}):[];opsi.kumpul[mm]=f.length?f:kump[mm];}
-    }
-    return keluar;
+    /*Y581: debit STP berasal dari recording harian, bukan nilai lab Februari saja.*/
+    if(_emfPKey(param)==='debit'&&typeof _imBpnDebitSeries==='function'){var debit=_imBpnDebitSeries(titik,year,months,satuan);if(debit)return debit;}
+    return _imBpnMinimum(_serAsli,this,idx,titik,param,year,months,sheet,satuan,opsi);/*Y581*/
   };
   window._emfSeries.__y570=true;
 }
@@ -55841,9 +55802,10 @@ window._y572Lihat=function(k,q){
     },250);
     return;
   }
-  if(k==='hasil'){switchTab('hasil',document.getElementById('tb-hasil'));setTimeout(function(){isiCari('#hs-q',q);},250);}
+  if(k==='hasil'){_imOpenHasil(ev,q);}
 };
 window._y572LihatMenu=function(anchor){
+  if(window._y572CloseLihat)window._y572CloseLihat();
   document.querySelectorAll('.ev-tag-picker,.y572-lihat').forEach(function(p){p.remove();});
   var ev=evs().find(function(e){return e.id===activeEvId;}); if(!ev)return;
   var m=document.createElement('div');m.className='ev-tag-picker y572-lihat';m.setAttribute('role','menu');m.setAttribute('aria-label','Lihat di');
@@ -55852,7 +55814,10 @@ window._y572LihatMenu=function(anchor){
     var b=document.createElement('button');b.type='button';b.setAttribute('role','menuitem');b.textContent=o.t;b.dataset.tujuan=o.k;
     b.style.cssText='text-align:left;padding:7px 10px;border:none;border-radius:6px;font-size:13px;font-family:inherit;background:transparent;cursor:'+(o.ok?'pointer':'not-allowed')+';color:'+(o.ok?'var(--g5)':'var(--g3)');
     if(!o.ok){b.disabled=true;b.title='Tidak tersedia: '+o.alasan;b.textContent=o.t+' - '+o.alasan;}
-    b.onclick=function(){m.remove();window._y572Lihat(o.k,o.q);};
+    var paths={kal:'M3 5h18v16H3z M7 3v4 M17 3v4 M3 10h18',act:'M8 6h13 M8 12h13 M8 18h13 M3 6h1 M3 12h1 M3 18h1',rfa:'M5 3h10l4 4v14H5z M15 3v5h4 M8 12h8 M8 16h8',hasil:'M7 3h10 M9 3v7l-5 9q-1 2 2 2h12q3 0 2-2l-5-9V3 M7 15h10'};
+    var ico=document.createElementNS('http://www.w3.org/2000/svg','svg');ico.setAttribute('viewBox','0 0 24 24');ico.setAttribute('width','16');ico.setAttribute('height','16');ico.setAttribute('aria-hidden','true');ico.style.cssText='vertical-align:middle;margin-right:7px';
+    var path=document.createElementNS(ico.namespaceURI,'path');path.setAttribute('d',paths[o.k]);path.setAttribute('stroke','currentColor');path.setAttribute('stroke-width','1.8');path.setAttribute('fill','none');ico.appendChild(path);b.prepend(ico);
+    b.onclick=function(){tutupMenu();window._y572Lihat(o.k,o.q);};
     m.appendChild(b);
   });
   document.body.appendChild(m);
@@ -55860,8 +55825,10 @@ window._y572LihatMenu=function(anchor){
   m.style.left=Math.max(8,Math.min(r.left,innerWidth-w-8))+'px';
   m.style.top=(r.top-h-6>8?r.top-h-6:r.bottom+6)+'px';
   var b0=m.querySelector('button:not([disabled])');if(b0)b0.focus();
-  var tutup=function(e){if(e.type==='keydown'&&e.key!=='Escape')return;if(e.type==='mousedown'&&m.contains(e.target))return;m.remove();document.removeEventListener('mousedown',tutup,true);document.removeEventListener('keydown',tutup,true);if(e.type==='keydown')try{anchor.focus();}catch(_){}};
-  setTimeout(function(){document.addEventListener('mousedown',tutup,true);document.addEventListener('keydown',tutup,true);},0);
+  function tutupMenu(){m.remove();document.removeEventListener('mousedown',tutup,true);document.removeEventListener('keydown',tutup,true);if(window._y572CloseLihat===tutupMenu)window._y572CloseLihat=null;}
+  var tutup=function(e){if(e.type==='keydown'&&e.key!=='Escape')return;if(e.type==='mousedown'&&m.contains(e.target))return;tutupMenu();if(e.type==='keydown')try{anchor.focus();}catch(_){}};
+  window._y572CloseLihat=tutupMenu;
+  document.addEventListener('mousedown',tutup,true);document.addEventListener('keydown',tutup,true);
 };
 var _oceAsli=window.openCalEv;
 if(typeof _oceAsli==='function'){
@@ -56302,12 +56269,8 @@ window._emfDwiHanyaDredging=function(doc,siteKe){
     if(L[k].localName!=='p')continue;
     var tt=teks(L[k]); var m=/^Tabel\s+(\d+)\b/i.exec(tt); if(!m)continue;
     no++; if(+m[1]===no)continue;
-    var ts=L[k].getElementsByTagNameNS(W,'t');
-    for(var j=0;j<ts.length;j++){var s=ts[j].textContent;if(/\d+/.test(s)&&/Tabel/i.test(tt)){
-        var r=s.replace(/^(\s*Tabel\s+)\d+/i,'$1'+no); if(r!==s){ts[j].textContent=r;break;}
-        // nomor di run tersendiri
-        if(/^\s*\d+\s*$/.test(s)&&j>0&&/Tabel\s*$/i.test(ts[j-1].textContent)){ts[j].textContent=String(no);break;}
-      }}
+    /*Y581: Tabel, spasi dan nomor dapat terpecah di beberapa run Word.*/
+    if(typeof _emfParaEdit==='function')_emfParaEdit(L[k],function(text){var hit=/^(\s*Tabel\s+)\d+/i.exec(text);return hit?[[0,hit[0].length,hit[1]+no]]:[];});
   }
   info.tabel=no;
   /* nama situs dokumen dasar (mis. SPU) diganti DWI di sisa teks; pada mode bagian-air
@@ -56543,6 +56506,10 @@ window._emfDwiJaga=function(doc){
       + (st.showMap ? ('<label style="' + L + ';grid-column:1/-1">Gaya peta mini<select onchange="_gtSetMapStyle(this.value)" style="' + F + '">'
         + [['street', 'Peta jalan (OpenStreetMap)'], ['satellite', 'Satelit (Esri)'], ['terrain', 'Topografi / kontur'], ['hybrid', 'Satelit + label']].map(function (p) { return '<option value="' + p[0] + '"' + (st.mapStyle === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('')
         + '</select></label>') : '')
+      + '<label style="' + L + '">Judul<input value="' + esc(st.title) + '" onchange="_gtSet(\'title\',this.value)" style="' + F + '"></label>'
+      + '<label style="' + L + '">Alamat<input value="' + esc(st.addr) + '" onchange="_gtSet(\'addr\',this.value)" style="' + F + '"></label>'
+      + '<label style="' + L + '">Tanggal / Jam<input type="datetime-local" value="' + esc(st.dt) + '" onchange="_gtSet(\'dt\',this.value)" style="' + F + '"></label>'
+      + '<label style="' + L + ';display:flex;align-items:center;gap:6px"><input type="checkbox" ' + (st.autoAddr ? 'checked' : '') + ' onchange="_gtSet(\'autoAddr\',this.checked)"> Isi alamat otomatis dari OpenStreetMap (online, ±1 detik/foto; sel Excel terisi tetap dipakai)</label>'
       + '<label style="' + L + ';display:block">Watermark' + _gtRichFieldHtml('gtbt-rich-wm', 'wm', st.wm, '', 'margin-top:2px;' + F, '_gtSet') + '</label>';
     if (st.template === 'classic') {
       h += '<label style="' + L + '">Offset GMT<input value="' + esc(st.gmt) + '" onchange="_gtSet(\'gmt\',this.value)" placeholder="+08:00" style="' + F + '"></label>'
@@ -58271,6 +58238,282 @@ var _emfGenerateSavedY127=window._emfGenerateSaved;
 if(typeof _emfGenerateSavedY127==='function')window._emfGenerateSaved=async function(){
   await _emfDwiFixStored();return _emfGenerateSavedY127.apply(this,arguments);
 };
+</script><style id="improvements-y581-css">
+/* State aktif eksplisit tetap jelas pada seluruh tema. */
+html[data-theme] button.im-filter[aria-pressed="true"]{background:#087e8b!important;color:#fff!important;border-color:#72efff!important;box-shadow:inset 0 0 0 1px #72efff!important;font-weight:700!important}
+html[data-theme] button.im-filter[aria-pressed="false"]{background:var(--card,#fff)!important;color:var(--text,#555)!important;border-color:var(--g2,#bbb)!important;box-shadow:none!important}
+html[data-theme="envmon"] .chip.Monthly{background:#173a42!important;color:#82e7ed!important;border-color:#458e96!important}
+html[data-theme="envmon"] .chip.After{background:#43321b!important;color:#ffd196!important;border-color:#b88c4d!important}
+html[data-theme] th [class*="sort"],html[data-theme] th [class*="filter"]{opacity:1!important;min-width:14px;font-size:13px!important}
+html[data-theme] .sort-arrow,html[data-theme] .th-filter-btn{opacity:1!important;font-size:13px!important;color:var(--g4,#495464)!important}
+html[data-theme] .sort-arrow.active,html[data-theme] .th-filter-btn.active{color:#087e8b!important;font-weight:800!important}
+/* Glif dapat mengecil mengikuti font sistem; hitbox tetap >=44px tanpa meninggikan baris. */
+.ket-info-btn::after{left:-18px;right:-18px}
+
+</style><script id="improvements-y581">
+/* Y581 — Improvement.docx. Data hanya dari Data Pack; tidak ada data operasional di modul ini. */
+function _imSite(s){
+  var u=String(s||'').trim().toUpperCase().replace(/^SITE\s+/,'');
+  return typeof _emfSiteCanon==='function'?_emfSiteCanon(u):(u==='CPA'?'HCA':u);
+}
+function _imService(s){return /^(normal|rush(?:\s*(?:50|100)\s*%?)?|(?:50|100)\s*%)$/i.test(String(s||'').trim());}
+function _imPackage(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');}
+function _imFirst(){for(var v of arguments)if(v!==undefined&&v!==null&&v!=='')return v;return '';}
+function _imCoords(lat,lng){return lat!=null&&lng!=null&&String(lat).trim()!==''&&String(lng).trim()!==''&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lng))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lng))<=180;}
+function _imProduction(r){return /^(?:total\s+)?(?:produksi|production)(?:\s+(?:bulanan|harian|fix|total))?$/i.test(String(r.parameter||'').trim());}
+function _imStreamCat(rows){
+  var name=String(rows&&rows[0]&&rows[0].titik||'').toLowerCase();
+  if(/\binlet\b/.test(name))return 'Inlet';
+  if(/\bdww|\bstp\b|\bdomestic\b/.test(name))return 'DWW';
+  var sheet=String(rows&&rows[0]&&rows[0].extra&&rows[0].extra.sumberSheet||'').trim();
+  if(/^drain/i.test(sheet)||/\bdrain|\bdisposal\s*tube\b/.test(name))return 'Drainase';
+  if(/^dww/i.test(sheet))return 'DWW';
+  if(/^pw$/i.test(sheet)||/\b(?:owtu|sowtu|wemco|flotator)\b/.test(name))return 'PW';
+  return '';
+}
+function _imOpenHasil(ev,q){
+  var groups=typeof HASIL_GROUPS!=='undefined'?HASIL_GROUPS:[],matches=[];
+  groups.forEach(function(g){var rows=_hsRowsFor(g.k);if(rows.some(function(r){return (r.noRfa||[]).indexOf(q)>=0||String(r.titik||'').toLowerCase()===String(q||'').toLowerCase();}))matches.push(g.k);});
+  _hsGroup=matches[0]||(['Monthly','Semesterly','Yearly'].indexOf(ev.type)>=0?ev.type:_hsGroup);
+  _hsSite='';_hsSheet='';_hsIzin='';_hsTitik='';_hsRfaSel='';_hsOnlyExceed=false;_hsCardYear='';_hsWmrYear='';_hsView='titik';_hsQ=q||'';
+  switchTab('hasil',document.getElementById('tb-hasil'));renderHasilSampling();
+}
+(function(){
+'use strict';
+if(window.__imY581)return;window.__imY581=true;
+var chart=window._hsParamChartSvg;
+if(typeof chart==='function')window._hsParamChartSvg=function(rows){
+  var yearOf=function(r){var d=String((r.tanggal||[])[0]||'');return /^\d{4}-/.test(d)?d.slice(0,4):(/^\d{4}$/.test(String(r.tahun||''))?String(r.tahun):'');};
+  var numeric=rows.filter(function(r){return typeof r.nilaiNum==='number'&&Number.isFinite(r.nilaiNum);});
+  var years=Array.from(new Set(numeric.map(yearOf).filter(Boolean))).sort();
+  var selected=window._imChartYear;
+  if(selected===undefined||(selected&&years.indexOf(selected)<0))selected=years[years.length-1]||'';
+  var shown=selected?numeric.filter(function(r){return yearOf(r)===selected;}):numeric;
+  return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><label>Tahun grafik <select aria-label="Tahun grafik" onchange="window._imChartYear=this.value;renderHasilSampling()"><option value=""'+(!selected?' selected':'')+'>Semua tahun</option>'+years.map(function(y){return '<option'+(selected===y?' selected':'')+'>'+y+'</option>';}).join('')+'</select></label><span>'+shown.length+' hasil numerik</span></div><div role="region" tabindex="0" aria-label="Grafik hasil sampling, geser horizontal untuk melihat seluruh periode" style="overflow-x:auto;max-width:100%">'+chart(shown)+'</div>';
+};
+// Preview memakai canvas kecil: tidak menyimpan ulang gambar penuh sebagai base64.
+window._imBatchPreview=function(key,src){
+  var host=document.getElementById('im-batch-preview');if(!host)return;
+  var cv=Array.from(host.querySelectorAll('canvas')).find(function(c){return c.dataset.key===key;});if(!cv)return;
+  var g=cv.getContext('2d'),scale=Math.min(cv.width/src.width,cv.height/src.height);
+  g.clearRect(0,0,cv.width,cv.height);g.drawImage(src,(cv.width-src.width*scale)/2,(cv.height-src.height*scale)/2,src.width*scale,src.height*scale);
+};
+window._imBatchPreviewList=function(){
+  var host=document.getElementById('im-batch-preview');if(!host)return;host.replaceChildren();
+  var photos=window._gtBatch&&window._gtBatch.photos||{};
+  Object.keys(photos).forEach(function(key){
+    var fig=document.createElement('figure');fig.style.cssText='margin:0;width:180px';
+    var cv=document.createElement('canvas');cv.width=360;cv.height=240;cv.dataset.key=key;cv.style.cssText='width:180px;height:120px;object-fit:contain;background:#252a32;border-radius:6px';
+    var label=document.createElement('figcaption');label.textContent=photos[key].name;label.style.cssText='font-size:13px;overflow-wrap:anywhere';fig.append(cv,label);host.append(fig);_imBatchPreview(key,photos[key].img);
+  });
+};
+var section=window._gtBatchSectionHtml;
+if(typeof section==='function')window._gtBatchSectionHtml=function(){return _imGtColumnsHtml()+section.apply(this,arguments)+'<div id="im-batch-preview" role="group" style="display:flex;gap:12px;flex-wrap:wrap;max-height:380px;overflow:auto;margin:12px 0" aria-label="Pratinjau foto batch"></div>';};
+var handle=window._gtBatchHandlePhotos;
+if(typeof handle==='function')window._gtBatchHandlePhotos=async function(){var out=await handle.apply(this,arguments);_imBatchPreviewList();return out;};
+// Tag Emergency tidak mengubah jenis kegiatan atau matriks pengujian.
+window._imEmergency=function(id,on){
+  var ev=(typeof CAL_EVENTS!=='undefined'?CAL_EVENTS:[]).find(function(e){return e.id===id;});if(!ev)return;
+  if(on)ev.emergency=true;else delete ev.emergency;
+  var act=ev.actId&&(typeof ACTS!=='undefined'?ACTS:[]).find(function(a){return a.id===ev.actId;});if(act){if(on)act.emergency=true;else delete act.emergency;}
+  if(typeof saveStorage==='function')saveStorage('Tag Emergency');openCalEv(id);renderCalendar();
+};
+var open=window.openCalEv;
+if(typeof open==='function')window.openCalEv=function(id){
+  var out=open.apply(this,arguments),ev=(typeof CAL_EVENTS!=='undefined'?CAL_EVENTS:[]).find(function(e){return e.id===id;});
+  if(ev&&/\bSW\b/i.test(ev.text||'')){var host=document.getElementById('mo-ev-body');if(host){var tag=document.createElement('div');tag.className='mo-row';tag.innerHTML='<label>Sampel</label><span>Stream Water</span>';host.prepend(tag);}}
+  if(ev&&['Monthly','Semesterly','Yearly','Resampling'].indexOf(ev.type)<0){
+    var body=document.getElementById('mo-ev-body');if(body){
+      var old=document.getElementById('im-emergency');if(old)old.remove();
+      var row=document.createElement('label');row.id='im-emergency';row.className='mo-row';row.style.cssText='display:flex;gap:8px;align-items:center;font-size:13px';
+      var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!ev.emergency;cb.onchange=function(){_imEmergency(ev.id,cb.checked);};row.append(cb,document.createTextNode('Emergency'));body.prepend(row);
+    }
+  }return out;
+};
+})();
+function _imRoutineCategories(type,site){
+  var out={},SP=typeof SAMPLING_POINTS!=='undefined'?SAMPLING_POINTS:{};
+  if(type==='Semesterly'){
+    var cats=typeof SEMESTERLY_CATS!=='undefined'?SEMESTERLY_CATS[site]:null;
+    if(cats)Object.keys(cats).forEach(function(k){out[k]=cats[k].slice();});
+  }
+  if(!Object.keys(out).length){
+    var pool=SP[type==='Monthly'?'monthly':type==='Semesterly'?'semesterly':'yearly']||[];
+    pool.filter(function(p){return _imSite(p.site)===_imSite(site)&&! /do not take/i.test(String(p.position||'')+' '+String(p.sampleName||''));}).forEach(function(p){
+      var name=p.penulisan||p.sampleName||p.position||'';if(!name)return;
+      var cat=type==='Monthly'?String(p.sampel||'Sampling'):name;
+      if(!out[cat])out[cat]=[];if(out[cat].indexOf(name)<0)out[cat].push(name);
+    });
+    if(!Object.keys(out).length&&type==='Yearly'&&typeof YEARLY_POINTS!=='undefined')(YEARLY_POINTS[site]||[]).forEach(function(n){out[n]=[n];});
+  }
+  return out;
+}
+function _imRoutineChoiceHtml(cats,covered,loc){
+  var esc=function(v){return _ep(String(v));},entries=Object.entries(cats);
+  if(!entries.length)return '';
+  var h='<div id="im-rs-choices" style="max-height:260px;overflow:auto;border:1px solid var(--g2);border-radius:6px;padding:8px;margin-bottom:10px"><b>Titik Sampling</b><div style="display:flex;gap:6px;margin:6px 0"><button type="button" onclick="_imRoutineAll(true)">Pilih Semua</button><button type="button" onclick="_imRoutineAll(false)">Hapus Pilihan</button></div>';
+  entries.forEach(function(pair,i){
+    var cat=pair[0],pts=pair[1],on=pts.filter(function(p){return loc?p===loc:!(covered.has(cat)||covered.has(p));});
+    h+='<fieldset style="border:0;border-top:1px solid var(--g2);margin:0;padding:6px 0"><legend><label><input type="checkbox" id="rs-pt-'+i+'" value="'+esc(cat)+'" '+(on.length?'checked':'')+' onchange="_imRoutineCat(this)"> '+esc(cat)+'</label></legend>';
+    pts.forEach(function(p){h+='<label style="display:flex;gap:6px;align-items:center;padding:3px 0 3px 18px;font-size:13px"><input class="im-rs-point" type="checkbox" data-cat="'+esc(cat)+'" value="'+esc(p)+'" '+(on.indexOf(p)>=0?'checked':'')+' onchange="_imRoutinePoint(this)"> '+esc(p)+'</label>';});h+='</fieldset>';
+  });return h+'</div>';
+}
+function _imRoutineAll(on){document.querySelectorAll('#im-rs-choices input[type=checkbox]').forEach(function(c){c.checked=on;c.indeterminate=false;});}
+function _imRoutineCat(c){document.querySelectorAll('#im-rs-choices .im-rs-point').forEach(function(p){if(p.dataset.cat===c.value)p.checked=c.checked;});c.indeterminate=false;}
+function _imRoutinePoint(p){
+  var checks=Array.from(document.querySelectorAll('#im-rs-choices .im-rs-point')).filter(function(c){return c.dataset.cat===p.dataset.cat;});
+  var cat=Array.from(document.querySelectorAll('#im-rs-choices [id^=rs-pt-]')).find(function(c){return c.value===p.dataset.cat;});
+  if(cat){var n=checks.filter(function(c){return c.checked;}).length;cat.checked=n>0;cat.indeterminate=n>0&&n<checks.length;}
+}
+function _imRoutineSelected(cat,fallback){var host=document.getElementById('im-rs-choices');return host?Array.from(host.querySelectorAll('.im-rs-point:checked')).filter(function(c){return c.dataset.cat===cat;}).map(function(c){return c.value;}):fallback;}
+function _imMasterPoints(ev){
+  if(!ev)return [];
+  var type=ev.type,site=ev.site||(typeof getSiteFromEvent==='function'?getSiteFromEvent(ev):'');
+  if(type==='Resampling'){
+    var rec=typeof RFA_DATA!=='undefined'?RFA_DATA.find(function(r){return r.calEventId===ev.id;}):null;
+    var orig=ev.actId&&(typeof ACTS!=='undefined'?ACTS:[]).find(function(a){return a.id===ev.actId;});
+    var names=rec&&rec.titik&&typeof _wellParseNames==='function'?_wellParseNames(rec.titik):[];
+    if(orig&&orig.well)names=names.concat(typeof _wellParseNames==='function'?_wellParseNames(orig.well):[orig.well]);
+    return Array.from(new Set(names.concat(ev.points||[]).filter(Boolean)));
+  }
+  if(['Monthly','Semesterly','Yearly'].indexOf(type)<0||!site)return [];
+  var cats=_imRoutineCategories(type,site);if(ev.point&&cats[ev.point])return cats[ev.point].slice();
+  try{return Array.from(new Set(_calxExpand({kind:'routine',keg:type,site:site,date:ev.date}).map(function(p){return p.titik;}).filter(Boolean)));}catch(e){return [];}
+}
+// Mean of available daily measurements (m3/day -> L/person/day). Missing days stay missing.
+function _imBpnDebitSeries(titik,year,months,satuan){
+  var t=_emfCanonTitik(titik);if(typeof _bpnTitikStp!=='function'||!_bpnTitikStp(t))return null;
+  var unit=String(satuan||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(unit&&['loranghari','lorghari','lpersonday'].indexOf(unit)<0)return null;
+  var daily=typeof HASIL_DEBIT_DAILY!=='undefined'?HASIL_DEBIT_DAILY[t]:null,pob=_bpnPob(t);
+  if(!daily||!(pob>0))return null;
+  return months.map(function(m){
+    var pre=String(year)+'-'+String(m).padStart(2,'0')+'-',ks=Object.keys(daily).filter(function(k){var v=daily[k];return k.indexOf(pre)===0&&v!=null&&v!==''&&Number.isFinite(Number(v))&&Number(v)>=0;});
+    if(!ks.length)return null;var sum=ks.reduce(function(a,k){return a+Number(daily[k]);},0);
+    return {nilai:sum/ks.length*1000/pob,tgl:'',sheet:'BPN',satuan:'L/org/hari',sumber:'Recording debit harian',hari:ks.length};
+  });
+}
+function _imGtColumns(){
+  var required=['nama_file','latitude','longitude'],tpl=_gtState().template||'classic';
+  var optional=['judul','alamat','tanggal_jam','watermark','tampilkan_peta','tampilkan_cone','arah_cone','label_google'];
+  if(['simple_bl','network_top'].indexOf(tpl)>=0)optional=optional.concat(['lokasi','kecamatan','kabupaten','provinsi']);
+  window._imGtColumnPrefs=window._imGtColumnPrefs||{};
+  var off=window._imGtColumnPrefs[tpl]||[];
+  return required.concat(optional.filter(function(n){return off.indexOf(n)<0;}));
+}
+function _imGtColumnsHtml(){
+  var tpl=_gtState().template||'classic',names=['judul','alamat','tanggal_jam','watermark','tampilkan_peta','tampilkan_cone','arah_cone','label_google'];
+  if(['simple_bl','network_top'].indexOf(tpl)>=0)names=names.concat(['lokasi','kecamatan','kabupaten','provinsi']);
+  var selected=_imGtColumns();
+  return '<details style="margin:8px 0"><summary>Atur Kolom Template Excel</summary><p style="font-size:13px">Wajib: nama_file, latitude, longitude. Sel opsional kosong mengikuti pengaturan stempel bersama.</p><div style="display:flex;flex-wrap:wrap;gap:10px">'+names.map(function(n){return '<label style="font-size:13px"><input type="checkbox" data-col="'+n+'" '+(selected.indexOf(n)>=0?'checked':'')+' onchange="_imGtColumn(this.dataset.col,this.checked)"> '+n+'</label>';}).join('')+'</div></details>';
+}
+function _imGtColumn(name,on){var t=_gtState().template||'classic',o=window._imGtColumnPrefs[t]||[];window._imGtColumnPrefs[t]=on?o.filter(function(n){return n!==name;}):Array.from(new Set(o.concat([name])));}
+function _imGtExample(row){var original=['nama_file','latitude','longitude','judul','alamat','tanggal_jam','watermark','tampilkan_peta','tampilkan_cone','arah_cone','label_google'];return _imGtColumns().map(function(n){var i=original.indexOf(n);return i>=0?row[i]:'';});}
+// Coalesce typing only. Filter buttons and data changes keep their immediate render.
+function _imQueueRender(tab){
+  window._imRenderTimers=window._imRenderTimers||{};clearTimeout(window._imRenderTimers[tab]);
+  window._imRenderTimers[tab]=setTimeout(function(){if(tab==='hasil')renderHasilSampling();else renderEnvProgram();},180);
+}
+function _imReviewSet(s){var m=/\bset\s*[-_]?\s*(\d+)\b/i.exec(String(s||''));return m?+m[1]:null;}
+function _imReviewBase(s){return String(s||'').toLowerCase().replace(/\bset\s*[-_]?\s*\d+\b/g,' ').replace(/\b(?:duplicate|duplikat|dupl)\b/g,' ').replace(/[^a-z0-9]+/g,' ').trim().replace(/^(?:cpa|hca) (?:flotator owtu outlet|outlet owtu)$/,'hca outlet owtu');}
+function _imReviewMatch(name,known){
+  var raw=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,''),base=_imReviewBase(name),set=_imReviewSet(name);
+  var exact=known.filter(function(k){return String(k).toLowerCase().replace(/[^a-z0-9]/g,'')===raw;});
+  if(exact.length===1)return {titik:exact[0],score:1};
+  var matches=known.filter(function(k){return _imReviewBase(k)===base&&(set==null||_imReviewSet(k)==null||_imReviewSet(k)===set);});
+  if(set!=null){var specific=matches.filter(function(k){return _imReviewSet(k)===set;});if(specific.length)matches=specific;}
+  if(matches.length===1)return {titik:matches[0],score:1};
+  if(matches.length>1)return {titik:null,score:1,ambiguous:true};
+  var tokens=base.split(' ').filter(Boolean),best=[],score=0;
+  known.forEach(function(k){if(set!=null&&_imReviewSet(k)!=null&&set!==_imReviewSet(k))return;var t=_imReviewBase(k).split(' ').filter(Boolean),n=tokens.filter(function(v){return t.indexOf(v)>=0;}).length/Math.max(tokens.length,t.length,1);if(n>score){score=n;best=[k];}else if(n===score)best.push(k);});
+  return {titik:score>=.5&&best.length===1?best[0]:null,score:score,ambiguous:best.length>1};
+}
+var _imGapMemo={};
+function _imGapPoints(ev){
+  if(!ev||['Monthly','Semesterly','Yearly'].indexOf(ev.type)<0)return [];
+  var today=new Date().toISOString().slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(String(ev.date||''))||ev.date>today)return [];
+  var key=ev.type,memo=_imGapMemo[key];
+  if(!memo||Date.now()-memo.time>300){
+    var map=new Map();_hsRowsFor(key).forEach(function(r){
+      if(_imProduction(r)||r.nilai==null||['','-'].indexOf(String(r.nilai).trim())>=0)return;
+      var pk=_emfTKey(_emfCanonTitik(r.titik)),site=_imSite(r.site),mk=site+'|'+pk;
+      var dates=map.get(mk)||[];(r.tanggal||[]).forEach(function(d){if(/^\d{4}-\d{2}-\d{2}$/.test(String(d))&&d<=today)dates.push(String(d));});map.set(mk,dates);
+    });memo=_imGapMemo[key]={map:map,time:Date.now()};
+  }
+  var y=ev.date.slice(0,4),m=+ev.date.slice(5,7),from,to;
+  if(ev.type==='Monthly'){from=ev.date.slice(0,7)+'-01';to=ev.date.slice(0,7)+'-31';}
+  else if(ev.type==='Semesterly'){from=y+(m<=6?'-01-01':'-07-01');to=y+(m<=6?'-06-30':'-12-31');}
+  else{from=y+'-01-01';to=y+'-12-31';}
+  var points=Array.isArray(ev.points)?ev.points:_imMasterPoints(ev),site=_imSite(ev.site||getSiteFromEvent(ev));
+  return points.filter(function(p){return !(memo.map.get(site+'|'+_emfTKey(_emfCanonTitik(p)))||[]).some(function(d){return d>=from&&d<=to;});});
+}
+function _imGapBadge(ev){var missing=_imGapPoints(ev);return missing.length?' · '+missing.length+' titik belum ada hasil':'';}
+function _imGapNote(ev){var missing=_imGapPoints(ev);return missing.length?'<div class="mo-row"><label>Cakupan Hasil</label><p style="font-size:13px">Belum ada hasil sampling tercatat pada periode ini: '+missing.map(_ep).join(' · ')+'. Periksa jadwal dan RFA; catatan ini tidak menyatakan bahwa pengambilan di lapangan belum dilakukan.</p></div>':'';}
+function _imBpnMinimum(original,context,idx,titik,param,year,months,sheet,unit,options){
+  var pool={},opts=Object.assign({},options,{kumpul:pool});delete opts.tanggal;
+  var result=original.call(context,idx,titik,param,year,months,sheet,unit,opts);
+  var selected=result.map(function(old,i){
+    var candidates=(pool[months[i]]||[]).slice();if(!candidates.length)return old;
+    if(unit){var same=candidates.filter(function(c){return _emfSatEq(c.satuan,unit);});if(same.length)candidates=same;}
+    var units=new Set(candidates.map(function(c){return String(c.satuan||'').toLowerCase().replace(/[^a-z0-9]/g,'');}));
+    if(units.size>1){_emfAmbigu('satuan',String(titik)+' '+param,['minimum tidak dihitung antar-satuan berbeda']);return old;}
+    var numeric=candidates.filter(function(c){return _hsParseNum(c.nilai)!=null;});if(!numeric.length)return old;
+    numeric.sort(function(a,b){return _hsParseNum(a.nilai)-_hsParseNum(b.nilai)||String(a.tgl||'').localeCompare(String(b.tgl||''))||String(a.rfa||'').localeCompare(String(b.rfa||''));});
+    var chosen=numeric[0];
+    if(options&&options.campur&&options.tanggal&&options.tanggal[months[i]]!==String(chosen.tgl||'').slice(0,10))options.campur.push({bulan:months[i],tanggal:String(chosen.tgl||'').slice(0,10),header:options.tanggal[months[i]],aturan:'Minimum per parameter lintas set'});
+    return chosen;
+  });
+  if(options&&options.kumpul)months.forEach(function(m,i){options.kumpul[m]=selected[i]?[selected[i]]:[];});
+  return selected;
+}
+var _imBpnFacts=new WeakMap();
+(function(){
+// Data-based BPN narrative and provenance. A paragraph is generated from the filled cells, never from last year's prose.
+var original=window._emfPatchTitikTable;window._imEmfTitikCore=original;
+if(typeof original==='function')window._emfPatchTitikTable=function(tbl,idx,year,months,cap){
+  var report=original.apply(this,arguments);if(window._emfSiteAktif!=='BPN'||report.skipped||!report.log||!report.log.length)return report;
+  var W='http://schemas.openxmlformats.org/wordprocessingml/2006/main',rows=_emfRowCells(tbl),L=_emfDetectLayout(rows),count=0,missing=0,bad=0,parameters=[];
+  report.log.forEach(function(r){
+    var match=rows.find(function(cells){return _emfCellText(cells[L.pcol])===r.param;});
+    var bm=match&&match[L.col0+L.ncol]?_emfCellText(match[L.col0+L.ncol]):'';
+    r.vals.forEach(function(v){if(v==null){missing++;return;}count++;if(_emfLebihBM(v,bm)===true){bad++;if(parameters.indexOf(r.param)<0)parameters.push(r.param);}});
+  });
+  var facts=_imBpnFacts.get(tbl.ownerDocument)||[];facts.push({caption:cap,message:count+' sel memiliki hasil bersumber; '+missing+' sel tidak memiliki hasil. '+(bad?bad+' sel melebihi baku mutu ('+parameters.join(', ')+').':'Tidak ada hasil numerik tercatat yang melebihi baku mutu tabel; data kosong atau tanpa baku mutu belum dapat dinyatakan memenuhi.')});_imBpnFacts.set(tbl.ownerDocument,facts);
+  var message='Ringkasan data tabel: '+count+' sel hasil memiliki sumber; '+missing+' sel tidak memiliki hasil untuk periode ini. '+(bad?bad+' sel melebihi baku mutu ('+parameters.join(', ')+'); ditandai (*) dan merah.':'Tidak ada hasil numerik tercatat yang melebihi baku mutu tabel; hasil kosong atau tanpa baku mutu tidak dinyatakan memenuhi.')+' Hasil lab memakai nilai/batas deteksi terkecil per parameter dan bulan dari set yang tersedia, dengan satuan sama. Bila hasil berasal dari beberapa tanggal, semua tanggal tersebut dicantumkan pada kepala kolom. Debit STP dihitung dari rata-rata recording harian dan POB, bukan minimum hasil lab.';
+  var next=tbl.nextSibling;if(next&&next.nodeType===1&&next.localName==='p'&&String(next.textContent||'').indexOf('Ringkasan data tabel:')===0)next.remove();
+  var doc=tbl.ownerDocument,p=doc.createElementNS(W,'w:p'),r=doc.createElementNS(W,'w:r'),t=doc.createElementNS(W,'w:t');t.textContent=message;r.appendChild(t);p.appendChild(r);tbl.parentNode.insertBefore(p,tbl.nextSibling);return report;
+};
+})();
+(function(){
+var save=window.saveStorage;if(typeof save==='function')window.saveStorage=function(){_imGapMemo={};return save.apply(this,arguments);};
+// Give the filter a funnel, leaving its title/accessible name and handler intact.
+function icons(){document.querySelectorAll('.th-filter-btn').forEach(function(b){if(b.querySelector('svg'))return;var title=b.title||'Filter daftar';b.setAttribute('aria-label',title);b.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:middle"><path d="M3 4h18l-7 8v7l-4 2v-9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';});document.querySelectorAll('.sort-arrow').forEach(function(s){if(s.textContent==='▲▼')s.textContent='↕';s.title='Klik kepala kolom untuk urut naik / turun';});}
+['renderActList','renderRoutineCalList'].forEach(function(n){var f=window[n];if(typeof f==='function')window[n]=function(){var out=f.apply(this,arguments);icons();return out;};});
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',icons);else icons();
+var renderGt=window._etRenderGeotag;if(typeof renderGt==='function')window._etRenderGeotag=function(){var out=renderGt.apply(this,arguments);_imBatchPreviewList();return out;};
+var openActOriginal=window.openAct;
+if(typeof openActOriginal==='function')window.openAct=function(id){
+  var out=openActOriginal.apply(this,arguments),a=ACTS.find(function(x){return x.id===id;});if(!a||['Monthly','Semesterly','Yearly'].indexOf(a.type)>=0)return out;
+  var host=document.getElementById('mo-body');if(!host)return out;var row=document.createElement('label');row.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:13px';var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!a.emergency;
+  cb.onchange=function(){if(cb.checked)a.emergency=true;else delete a.emergency;CAL_EVENTS.filter(function(e){return e.actId===id;}).forEach(function(e){if(cb.checked)e.emergency=true;else delete e.emergency;});saveStorage('Tag Emergency');renderCalendar();openAct(id);};row.append(cb,document.createTextNode('Emergency'));host.prepend(row);return out;
+};
+})();
+
+(function(){
+// Replace inherited compliance claims from the template with the table actually exported.
+var patch=window._emfPatchTemuan;
+if(typeof patch==='function')window._emfPatchTemuan=function(doc,temuan,year){
+  var out=patch.apply(this,arguments),facts=_imBpnFacts.get(doc);if(window._emfSiteAktif!=='BPN'||!facts||!facts.length)return out;
+  Array.from(doc.getElementsByTagNameNS(EMF_W,'p')).forEach(function(p){
+    var ancestor=p.parentNode;while(ancestor){if(ancestor.localName==='tbl')return;ancestor=ancestor.parentNode;}
+    var text=String(p.textContent||'');if(!/air limbah.*(?:domestik|klinik)|(?:domestik|klinik).*air limbah/i.test(text)||!/memenuhi baku mutu/i.test(text)||!/^(?:Air limbah|Kualitas air limbah)/i.test(text.trim()))return;
+    var clinic=/klinik/i.test(text),subset=facts.filter(function(f){return clinic?/klinik|clinic|cww|new dww/i.test(f.caption||''):/domestik|stp/i.test(f.caption||'')&&!/klinik|clinic|cww|new dww/i.test(f.caption||'');});
+    if(!subset.length)return;var message='Evaluasi kualitas air limbah '+(clinic?'klinik':'domestik')+' BPN tahun '+year+' berdasarkan tabel hasil periode yang dipilih: '+subset.map(function(f){return String(f.caption||'Tabel hasil')+': '+f.message;}).join(' ');
+    _emfParaEdit(p,function(s){return [[0,s.length,message]];});
+  });return out;
+};
+})();
+
 </script></body>
 <!-- ENVMON-CHANGELOG-Y571
 ENV Monitoring Dashboard 2026 — changelog (ditulis ke kepala artefak tiap build)
