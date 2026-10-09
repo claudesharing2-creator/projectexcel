@@ -1,7 +1,146 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<script>try{if(localStorage.getItem('env26_theme_bnw_recall_20260824')!=='1'){localStorage.setItem('env26_theme','studio');localStorage.setItem('env26_theme_bnw_recall_20260824','1');}if(localStorage.getItem('envmon_tema_bawaan_20261005')!=='1'){localStorage.setItem('env26_theme','envmon');localStorage.setItem('envmon_tema_bawaan_20261005','1');}var _th0=localStorage.getItem('env26_theme');if(_th0&&_th0!=='glass')document.documentElement.setAttribute('data-theme',_th0);}catch(e){}</script><style id="envmon-kritis">html[data-theme="envmon"]{background:#0D0F12;color-scheme:dark}
+<script id="audit-y584-core">
+var _AUDIT_PACK_KEYS=new Set(["env26_acts", "env26_asisten", "env26_batches", "env26_bm_master", "env26_bm_param_ov", "env26_bm_points_ov", "env26_bm_registry", "env26_bm_titik_ov", "env26_cal", "env26_dash_custom", "env26_dash_layout", "env26_dash_mode", "env26_debit_daily", "env26_drain", "env26_drain_config", "env26_drain_est", "env26_drain_est_on", "env26_drain_seeded", "env26_emf_chartref", "env26_emf_manual", "env26_ep_active", "env26_ep_showlabels", "env26_epmap_sidebar", "env26_et_guide", "env26_exportedAt", "env26_fs", "env26_gis_layers", "env26_gmc", "env26_gt_logo", "env26_gt_menu", "env26_hasil_manual", "env26_hasil_override", "env26_hs_quarantine", "env26_ket_info", "env26_lap_prod_seed", "env26_lap_produksi", "env26_lap_recon_ack", "env26_lap_signer", "env26_laporan_track", "env26_log", "env26_map_draw", "env26_map_draw_style", "env26_mca", "env26_mcaMode", "env26_ocr", "env26_pers_seed", "env26_ph_daily", "env26_ppc_list", "env26_ppc_ovr", "env26_prod_harian", "env26_rea", "env26_recon_done", "env26_review_log", "env26_rfa", "env26_rfa_cbt", "env26_rfa_collision", "env26_rs_mode", "env26_sampling_points", "env26_schema_version", "env26_stp_pob", "env26_sync_health", "env26_theme", "env26_theme_bnw_recall_20260824", "env26_trash", "env26_zoom"]);
+/* Y584: durable commits, coherent imports, and explicit unsaved-state recovery. */
+var _auditSeenRevision=localStorage.getItem('_auditDataRevision')||'0';
+var _auditTail=Promise.resolve(true),_auditPending=0,_auditLastSaveOK=true;
+var _auditRecoveryPromise;
+function _auditClone(v){return JSON.parse(JSON.stringify(v));}
+function _auditList(v){return Array.isArray(v)?v:(v==null||v===''?[]:String(v).split(/[,;\n]+/).map(function(s){return s.trim();}).filter(Boolean));}
+function _auditNotice(message){
+  window._auditUnsaved=true; window._auditLastError=String(message);
+  if(typeof toast==='function')toast('⚠ GAGAL menyimpan: '+message);
+  if(!document.body){document.addEventListener('DOMContentLoaded',function(){_auditNotice(message);},{once:true});return;}
+  var e=document.getElementById('audit-unsaved');
+  if(!e){e=document.createElement('div');e.id='audit-unsaved';e.setAttribute('role','alert');e.style.cssText='position:fixed;bottom:10px;left:10px;right:10px;z-index:10020;padding:12px;background:#fff8e1;color:#592900;border:2px solid #bc6000;border-radius:8px;font-size:13px';document.body.append(e);}
+  e.replaceChildren(document.createTextNode('Perubahan belum tersimpan. '+message+' '));
+  var b=document.createElement('button');b.textContent='Unduh Salinan Perubahan';b.onclick=_auditDownloadDraft;e.append(b);
+}
+function _auditDownloadDraft(){
+  var draft={format:'env26-unsaved-recovery',createdAt:new Date().toISOString(),baseRevision:_auditSeenRevision,
+    acts:ACTS,calendar:CAL_EVENTS,trash:TRASH,rfa:RFA_DATA,produksi:PRODUKSI_HARIAN,
+    hasilManual:HASIL_MANUAL,hasilOverride:HASIL_OVERRIDE,samplingPoints:SAMPLING_POINTS,reanalysis:typeof REA_DATA!=='undefined'?REA_DATA:[]};
+  var url=URL.createObjectURL(new Blob([JSON.stringify(draft)],{type:'application/json'})),a=document.createElement('a');
+  a.href=url;a.download='Perubahan_Belum_Tersimpan.json';a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+function _auditIdbWrite(puts,deletes){
+  return _dpIdb().then(function(db){return new Promise(function(resolve,reject){
+    var tx;try{tx=db.transaction('pack','readwrite');var s=tx.objectStore('pack');Object.keys(puts||{}).forEach(function(k){s.put(puts[k],k);});(deletes||[]).forEach(function(k){s.delete(k);});}
+    catch(e){db.close();reject(e);return;}
+    tx.oncomplete=function(){db.close();resolve(true);};
+    tx.onabort=tx.onerror=function(){db.close();reject(tx.error||new Error('Transaksi dibatalkan'));};
+  });});
+}
+async function _auditRecover(){
+  if(!_auditRecoveryPromise){var recover=async function(){
+    var journal=await _dpIdbGet('_audit-journal');if(!journal){var revision=localStorage.getItem('_auditDataRevision')||'0';window._auditBootNeedsReload=revision!==_auditSeenRevision;_auditSeenRevision=revision;return true;}
+    for(var k of Object.keys(journal.local||{})){var v=journal.local[k];if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v);}
+    await _auditIdbWrite(journal.idb||{},(journal.absent||[]).concat(['_audit-journal']));
+    _auditSeenRevision=localStorage.getItem('_auditDataRevision')||'0';window._auditRecovered=true;
+    if(typeof toast==='function')toast('Impor terputus dipulihkan ke snapshot sebelumnya.');return true;
+  };_auditRecoveryPromise=(navigator.locks&&navigator.locks.request?navigator.locks.request('envmon-data-writer',recover):recover()).catch(function(e){_auditNotice('Pemulihan transaksi gagal: '+e.message);throw e;});}
+  return _auditRecoveryPromise;
+}
+async function _auditFinishBoot(){
+  var finish=function(){
+    if(window._auditBootNeedsReload||window._auditRecovered){location.reload();throw new Error('Data dipulihkan. Memuat ulang snapshot lengkap…');}
+    if((localStorage.getItem('_auditDataRevision')||'0')!==_auditSeenRevision)throw new Error('Data berubah selama pemulihan. Muat ulang halaman.');
+    loadStorage();window._dataBootFinished=true;window._resolveDataReady();
+  };
+  if(navigator.locks&&navigator.locks.request)return navigator.locks.request('envmon-data-writer',finish);
+  return finish();
+}
+async function _auditCommitNow(local,puts,deletes){
+  await _auditRecover();
+  if((localStorage.getItem('_auditDataRevision')||'0')!==_auditSeenRevision)throw new Error('Data sudah berubah di tab lain. Unduh salinan perubahan, lalu muat ulang.');
+  var keys=Object.keys(local),before={},written=[],idbBefore={},absent=[];
+  keys.concat(['_auditDataRevision']).forEach(function(k){before[k]=localStorage.getItem(k);});
+  for(var key of new Set(Object.keys(puts).concat(deletes))){var old=await _dpIdbGet(key);if(old==null)absent.push(key);else idbBefore[key]=old;}
+  await _auditIdbWrite({'_audit-journal':{local:before,idb:idbBefore,absent:absent}},[]);
+  try{
+    keys.forEach(function(k){if(local[k]==null)localStorage.removeItem(k);else localStorage.setItem(k,local[k]);written.push(k);});
+    var revision=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
+    localStorage.setItem('_auditDataRevision',revision);written.push('_auditDataRevision');
+    await _auditIdbWrite(puts,deletes.concat(['_audit-journal']));
+    _auditSeenRevision=revision;window._auditUnsaved=false;window._auditLastError='';
+    var e=document.getElementById('audit-unsaved');if(e)e.remove();return true;
+  }catch(error){
+    var rollbackError;
+    written.reverse().forEach(function(k){try{if(before[k]==null)localStorage.removeItem(k);else localStorage.setItem(k,before[k]);}catch(e){rollbackError=e;}});
+    if(!rollbackError)await _auditIdbWrite({},['_audit-journal']);
+    if(rollbackError)throw new Error(error.message+'; snapshot pemulihan tersimpan, muat ulang sebelum melanjutkan.');
+    throw error;
+  }
+}
+function _auditCommit(local,puts,deletes){
+  var l=_auditClone(local||{}),p=_auditClone(puts||{}),d=(deletes||[]).slice();_auditPending++;
+  _auditTail=_auditTail.then(async function(){
+    await _auditRecover();
+    var task=function(){return _auditCommitNow(l,p,d);};
+    if(navigator.locks&&navigator.locks.request)return navigator.locks.request('envmon-data-writer',task);
+    throw new Error('Browser belum mendukung kunci penyimpanan. Gunakan browser terbaru dan unduh perubahan.');
+  }).catch(function(e){_auditNotice(e.message);return false;}).then(function(ok){_auditPending--;_auditLastSaveOK=ok;return ok;});
+  return _auditTail;
+}
+async function _auditFlush(){await _auditTail;if(!_auditLastSaveOK||window._auditUnsaved)throw new Error(window._auditLastError||'Ada perubahan belum tersimpan');}
+function _auditPackValidate(pack){
+  if(!pack||pack.format!=='env26-datapack')throw new Error('Format Data Pack tidak valid');
+  if(pack.localStorage==null)pack.localStorage={}; // explicit compatibility with pre-version personnel-only packs
+  if(typeof pack.localStorage!=='object'||Array.isArray(pack.localStorage))throw new Error('Format store Data Pack tidak valid');
+  if(pack.version!=null&&(!Number.isInteger(pack.version)||pack.version<1||pack.version>2))throw new Error('Versi Data Pack tidak didukung');
+  var arrays=new Set(['env26_acts','env26_cal','env26_trash','env26_rfa','env26_rea','env26_hasil_manual','env26_sampling_points','env26_ppc_list','env26_pers_seed']);
+  var objects=new Set(['env26_prod_harian','env26_hasil_override','env26_debit_daily','env26_ph_daily']);
+  Object.keys(pack.localStorage).forEach(function(k){
+    if(!/^env26_[a-z0-9_]+$/i.test(k)||!_AUDIT_PACK_KEYS.has(k))throw new Error('Kunci Data Pack tidak diizinkan: '+k);
+    if(DP_NEVER[k])return;
+    var raw=pack.localStorage[k];if(typeof raw!=='string')throw new Error('Store harus berupa JSON string: '+k);
+    var v;try{v=JSON.parse(raw);}catch(e){if(arrays.has(k)||objects.has(k))throw new Error('JSON rusak: '+k);return;}
+    if(arrays.has(k)&&!Array.isArray(v))throw new Error('Store harus array: '+k);
+    if(objects.has(k)&&(!v||typeof v!=='object'||Array.isArray(v)))throw new Error('Store harus object: '+k);
+    if(['env26_acts','env26_cal','env26_rfa'].includes(k)){
+      var ids=new Set();v.forEach(function(r){if(!r||typeof r!=='object'||typeof r.id!=='string'||!r.id||ids.has(r.id))throw new Error('ID rusak/ganda pada '+k);ids.add(r.id);});
+    }
+  });
+  ['hasilSeed','hsHistoris','recapArsip','debitDaily','phDaily','produksi','bmRegistry'].forEach(function(k){if(pack[k]!=null&&typeof pack[k]!=='object')throw new Error('Bagian rusak: '+k);});
+  ['ppcList','persSeed'].forEach(function(k){if(pack[k]!=null&&!Array.isArray(pack[k]))throw new Error('Bagian harus array: '+k);});
+  return true;
+}
+function _auditRfaStages(r){return ['A','B'].concat(String(r.draftC||'').trim()||String(r.scanC||'').trim()||r.cApplicable===true?['C']:[]);}
+function _auditRfaIssues(next,previous){
+  var problems=[];var fields=['tglSampling','tglKirimCbt','tglKirimRfa','konfirmasiCbt'].concat(_auditRfaStages(next).flatMap(function(s){return ['draft'+s,'scan'+s];}));
+  fields.forEach(function(k){if(next[k]&&_rfaStageState(next[k]).state==='pending')problems.push('Tanggal/penanda tidak valid: '+k);});
+  if(_pd(next.tglKirimRfa)&&!String(next.coc||'').trim())problems.push('Isi CoC sebelum Kirim RFA');
+  var any=_auditRfaStages(next).some(function(s){return _rfaStageState(next['draft'+s]).state==='done'||_rfaStageState(next['scan'+s]).state==='done';});
+  if(any)['tglKirimRfa','tglKirimCbt','konfirmasiCbt'].forEach(function(k){if(!_pd(next[k]))problems.push('Lengkapi '+k+' sebelum Draft/Scan');});
+  var ordered=[['tglSampling','tglKirimCbt'],['tglSampling','tglKirimRfa'],['tglKirimCbt','konfirmasiCbt']];
+  _auditRfaStages(next).forEach(function(s){
+    var d='draft'+s,c='scan'+s;if(_rfaPathApplies(next,s)&&_rfaStageState(next[c]).state==='done'&&_rfaStageState(next[d]).state!=='done')problems.push('Isi '+d+' sebelum '+c);
+    ordered.push(['tglKirimRfa',d],['konfirmasiCbt',d],[d,c]);
+  });
+  ordered.forEach(function(pair){var a=_pd(next[pair[0]]),b=_pd(next[pair[1]]);if(a&&b&&b<a)problems.push(pair[1]+' sebelum '+pair[0]);});
+  // Existing inconsistencies remain visible; an unrelated edit need not invent historical dates.
+  if(previous){var oldIssues=_auditRfaIssues(previous);problems=problems.filter(function(p){return !oldIssues.includes(p);});}
+  return Array.from(new Set(problems));
+}
+function _auditRfaAccept(next,previous){var p=_auditRfaIssues(next,previous);if(p.length){toast('⚠ '+p.join('; '));return false;}return true;}
+function _auditDailyNumber(v){
+  if(typeof v==='number')return Number.isFinite(v)?v:NaN;
+  var s=String(v==null?'':v).trim();if(!/^[+-]?\d+(?:[.,]\d+)?$/.test(s))return NaN;return Number(s.replace(',','.'));
+}
+function _auditReferenceRow(r){return !!(r&&r.extra&&r.extra.ronaAwal!=null&&!(r.tanggal||[]).length&&!(r.noRfa||[]).length&&String(r.nilai)===String(r.extra.ronaAwal));}
+function _auditLegacyRowKey(group,r){return [group,r.titik||'',_auditList(r.noRfa).slice().sort().join(','),r.parameter||'',(r.extra&&r.extra.set)||1,(r.extra&&r.extra.bulan)||''].join('‖');}
+function _auditOverrideFor(group,r){
+  var key=_hsRowKey(group,r);if(HASIL_OVERRIDE[key])return HASIL_OVERRIDE[key];
+  var old=_auditLegacyRowKey(group,r),ov=HASIL_OVERRIDE[old];if(!ov)return null;
+  var matches=(HS_GROUPS_DATA[group]||[]).filter(function(x){return _auditLegacyRowKey(group,x)===old;});
+  if(matches.length===1){HASIL_OVERRIDE[key]=Object.assign({},ov,{migratedFrom:old});delete HASIL_OVERRIDE[old];return HASIL_OVERRIDE[key];}
+  window._auditAmbiguousOverrides=window._auditAmbiguousOverrides||new Set();window._auditAmbiguousOverrides.add(old);
+  if(!window._auditOverrideWarning){window._auditOverrideWarning=true;setTimeout(function(){if(typeof toast==='function')toast('⚠ Koreksi lama dengan target ganda tidak diterapkan. Periksa Hasil Sampling sebelum laporan.');},0);}return null;
+}
+
+</script><script>try{if(localStorage.getItem('env26_theme_bnw_recall_20260824')!=='1'){localStorage.setItem('env26_theme','studio');localStorage.setItem('env26_theme_bnw_recall_20260824','1');}if(localStorage.getItem('envmon_tema_bawaan_20261005')!=='1'){localStorage.setItem('env26_theme','envmon');localStorage.setItem('envmon_tema_bawaan_20261005','1');}var _th0=localStorage.getItem('env26_theme');if(_th0&&_th0!=='glass')document.documentElement.setAttribute('data-theme',_th0);}catch(e){}</script><style id="envmon-kritis">html[data-theme="envmon"]{background:#0D0F12;color-scheme:dark}
 html[data-theme="envmon"]:not([data-em-siap]) body{visibility:hidden}
 html[data-theme="envmon"]:not([data-em-siap])::before{content:"ENV\2022MONITOR";position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;font:600 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.32em;color:#9299A3;animation:emKrit 1.2s ease-in-out infinite alternate}
 @keyframes emKrit{from{opacity:.45}to{opacity:1}}
@@ -5796,7 +5935,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-08',h:'a55b0a57'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-09',h:'d6c18f32'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -6920,11 +7059,12 @@ function pushHistory(label){
   const actsSnap=JSON.stringify(ACTS);
   const calSnap=JSON.stringify(CAL_EVENTS);
   const trashSnap=JSON.stringify(TRASH);
+  const rfaSnap=JSON.stringify(RFA_DATA);
   // Deduplicate: skip if content identical to last snapshot
   const last=HISTORY[HISTORY_POS];
-  if(last&&last.acts===actsSnap&&last.cal===calSnap&&last.trash===trashSnap)return;
+  if(last&&last.acts===actsSnap&&last.cal===calSnap&&last.trash===trashSnap&&last.rfa===rfaSnap)return;
   if(HISTORY_POS<HISTORY.length-1)HISTORY=HISTORY.slice(0,HISTORY_POS+1);
-  HISTORY.push({acts:actsSnap,cal:calSnap,trash:trashSnap,label:label||'Perubahan',ts:Date.now()});
+  HISTORY.push({acts:actsSnap,cal:calSnap,trash:trashSnap,rfa:rfaSnap,label:label||'Perubahan',ts:Date.now()});
   if(HISTORY.length>MAX_HIST)HISTORY.shift();
   HISTORY_POS=HISTORY.length-1;
   updateUndoRedoUI();
@@ -6935,7 +7075,7 @@ function undoAction(){
   const cur=HISTORY[HISTORY_POS];
   HISTORY_POS--;
   const snap=HISTORY[HISTORY_POS];
-  ACTS=JSON.parse(snap.acts);CAL_EVENTS=JSON.parse(snap.cal);TRASH=JSON.parse(snap.trash||'[]');
+  ACTS=JSON.parse(snap.acts);CAL_EVENTS=JSON.parse(snap.cal);TRASH=JSON.parse(snap.trash||'[]');if(snap.rfa)RFA_DATA=JSON.parse(snap.rfa);
   saveStorageRaw();renderCalendar();renderActList();updateActCount();
   toast(`↩ Undo: ${cur.label}`);
   updateUndoRedoUI();
@@ -6944,7 +7084,7 @@ function redoAction(){
   if(HISTORY_POS>=HISTORY.length-1){toast('Tidak ada yang bisa di-redo');return;}
   HISTORY_POS++;
   const snap=HISTORY[HISTORY_POS];
-  ACTS=JSON.parse(snap.acts);CAL_EVENTS=JSON.parse(snap.cal);TRASH=JSON.parse(snap.trash||'[]');
+  ACTS=JSON.parse(snap.acts);CAL_EVENTS=JSON.parse(snap.cal);TRASH=JSON.parse(snap.trash||'[]');if(snap.rfa)RFA_DATA=JSON.parse(snap.rfa);
   saveStorageRaw();renderCalendar();renderActList();updateActCount();
   toast(`↪ Redo: ${snap.label}`);
   updateUndoRedoUI();
@@ -6975,25 +7115,14 @@ function pushChangeLog(msg){
   if(CHANGE_LOG.length>200)CHANGE_LOG=CHANGE_LOG.slice(0,200);
   try{localStorage.setItem('env26_log',JSON.stringify(CHANGE_LOG));}catch(e){}
 }
-function saveStorageRaw(){
-  if(!window._storageLoaded)return; // never clobber saved data before loadStorage runs
+function saveStorageRaw(extraLocal){
+  if(!window._storageLoaded)return Promise.resolve(false);
+  if(!window._dataBootFinished){window._auditSaveAfterBoot=true;return Promise.resolve(false);}
   if(typeof _rfaNormalizeAll==='function')_rfaNormalizeAll();
-  try{localStorage.setItem('env26_schema_version',String(typeof DP_SCHEMA_VERSION!=='undefined'?DP_SCHEMA_VERSION:2));}catch(e){}
-  try{
-    localStorage.setItem('env26_acts',JSON.stringify(ACTS));
-    localStorage.setItem('env26_cal',JSON.stringify(CAL_EVENTS));
-    localStorage.setItem('env26_trash',JSON.stringify(TRASH));
-    localStorage.setItem('env26_sampling_points',JSON.stringify(SAMPLING_POINTS));
-  }catch(e){}
-  // env26_rfa/env26_prod_harian: IndexedDB now, not localStorage (see
-  // loadStorage/_rfaProdIdbBootRestore) -- these were the keys most likely
-  // to silently blow past localStorage's ~5MB quota. window._rfaProdReady
-  // guards against writing seed-only defaults here before the async boot
-  // restore has actually run.
-  if(window._rfaProdReady){
-    _dpIdbSet('env26_rfa',RFA_DATA).catch(function(e){if(typeof toast==='function')toast('⚠ Gagal menyimpan data RFA ke penyimpanan browser ('+(e&&e.message||e)+').');});
-    _dpIdbSet('env26_prod_harian',PRODUKSI_HARIAN).catch(function(e){if(typeof toast==='function')toast('⚠ Gagal menyimpan data produksi harian ke penyimpanan browser ('+(e&&e.message||e)+').');});
-  }
+  var ls={env26_schema_version:String(DP_SCHEMA_VERSION),env26_acts:JSON.stringify(ACTS),env26_cal:JSON.stringify(CAL_EVENTS),env26_trash:JSON.stringify(TRASH),env26_sampling_points:JSON.stringify(SAMPLING_POINTS),env26_hasil_override:JSON.stringify(HASIL_OVERRIDE)};
+  var idb={};if(window._rfaProdReady){idb.env26_rfa=RFA_DATA;idb.env26_prod_harian=PRODUKSI_HARIAN;}
+  if(window._hsManualReady)idb.env26_hasil_manual=HASIL_MANUAL;
+  Object.assign(ls,extraLocal||{});return _auditCommit(ls,idb,[]);
 }
 function saveStorage(label){
   pushHistory(label||'Perubahan');
@@ -13235,8 +13364,8 @@ function renderLog(){
     const dtStr=`${dt.toLocaleDateString('id-ID')} ${dt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}`;
     return `<div style="display:flex;gap:10px;padding:8px 10px;border-bottom:1px solid var(--g1);${i===0?'background:#f0fff4;border-left:3px solid #27ae60':''}">
       <span style="font-size:11px;color:var(--g3);white-space:nowrap;margin-top:1px">${dtStr}</span>
-      <span style="flex:1">${e.msg}</span>
-      <span style="font-size:11px;color:var(--g3);white-space:nowrap">${e.rev||''}</span>
+      <span style="flex:1">${_ep(e.msg)}</span>
+      <span style="font-size:11px;color:var(--g3);white-space:nowrap">${_ep(e.rev||'')}</span>
     </div>`;
   }).join('');
 }
@@ -13248,10 +13377,10 @@ function renderTrash(){
     const dt=new Date(item.deletedAt);
     const dtStr=`${dt.toLocaleDateString('id-ID')} ${dt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}`;
     const label=item.type==='act'
-      ?`Kegiatan: <b>${item.data.well||item.data.type}</b> · ${item.data.site||''} · <span class="sbadge ${item.data.st||'Planned'}">${item.data.st||'Planned'}</span>`
+      ?`Kegiatan: <b>${_ep(item.data.well||item.data.type)}</b> · ${_ep(item.data.site||'')} · <span class="sbadge ${_ep(item.data.st||'Planned')}">${_ep(item.data.st||'Planned')}</span>`
       :item.type==='rfa'
-      ?`RFA: <b>${item.data.noRfa||'(pending)'}</b> · ${item.data.sampel||''} · ${item.data.site||''} · ${item.data.bulan||''} ${item.data.year||''}`
-      :`Event: <b>${item.data.text||item.data.type}</b> · ${item.data.date} · ${item.data.site||''}`;
+      ?`RFA: <b>${_ep(item.data.noRfa||'(pending)')}</b> · ${_ep(item.data.sampel||'')} · ${_ep(item.data.site||'')} · ${_ep(item.data.bulan||'')} ${_ep(item.data.year||'')}`
+      :`Event: <b>${_ep(item.data.text||item.data.type)}</b> · ${_ep(item.data.date)} · ${_ep(item.data.site||'')}`;
     return `<div style="display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--g2);border-radius:8px;margin-bottom:8px;background:#fff">
       <div style="flex:1">
         <div style="font-size:13px">${label}</div>
@@ -13264,28 +13393,18 @@ function renderTrash(){
 }
 
 function restoreTrashItem(idx){
-  const item=TRASH[idx];if(!item)return;
-  if(item.type==='act'){
-    if(!ACTS.find(a=>a.id===item.data.id))ACTS.push(item.data);
-    if(item.linked){item.linked.forEach(e=>{if(!CAL_EVENTS.find(c=>c.id===e.id))CAL_EVENTS.push(e);});}
-    // Restore linked RFA entries that were trashed with this activity
-    const _aid=item.data.id;
-    TRASH.filter(t=>t.type==='rfa'&&t.data&&t.data.actId===_aid).forEach(t=>{
-      if(!RFA_DATA.find(r=>r.id===t.data.id))RFA_DATA.push(t.data);
-    });
-    TRASH=TRASH.filter(t=>!(t.type==='rfa'&&t.data&&t.data.actId===_aid));
-    pushChangeLog(`Pulihkan kegiatan: ${item.data.well||item.data.type}`);
-  }else if(item.type==='rfa'){
-    if(!RFA_DATA.find(r=>r.id===item.data.id))RFA_DATA.push(item.data);
-    pushChangeLog(`Pulihkan RFA: ${item.data.noRfa||item.data.id}`);
-  }else{
-    if(!CAL_EVENTS.find(e=>e.id===item.data.id))CAL_EVENTS.push(item.data);
-    pushChangeLog(`Pulihkan event: ${item.data.text||item.data.type}`);
-  }
-  TRASH.splice(idx,1);
-  saveStorageRaw();updateActCount();renderCalendar();renderTrash();updateUndoRedoUI();
-  if(item.type==='rfa'&&typeof renderRfaTracker==='function'){const _vr=document.getElementById('view-rfa');if(_vr&&_vr.style.display!=='none')renderRfaTracker();}
-  toast('Item dipulihkan');
+  var item=TRASH[idx];if(!item)return;
+  var chosen=[item],aid=item.type==='act'?item.data.id:null,eid=item.type==='cal'?item.data.id:null;
+  var events=(item.linked||[]).map(function(e){return e.id;});
+  chosen=chosen.concat(TRASH.filter(function(t){return t!==item&&t.type==='rfa'&&t.data&&((aid&&t.data.actId===aid)||(eid&&t.data.calEventId===eid)||events.includes(t.data.calEventId));}));
+  var rfas=chosen.filter(function(t){return t.type==='rfa';}).map(function(t){return t.data;});
+  if(rfas.some(function(r){return RFA_DATA.some(function(x){return x.id!==r.id&&x.noRfa&&x.noRfa===r.noRfa;});})){toast('⚠ Nomor RFA sudah dipakai. Pemulihan dibatalkan; periksa identitas dokumen.');return false;}
+  if(item.type==='act'){if(!ACTS.some(function(x){return x.id===item.data.id;}))ACTS.push(item.data);(item.linked||[]).forEach(function(e){if(!CAL_EVENTS.some(function(x){return x.id===e.id;}))CAL_EVENTS.push(e);});}
+  else if(item.type!=='rfa'&&!CAL_EVENTS.some(function(x){return x.id===item.data.id;}))CAL_EVENTS.push(item.data);
+  rfas.forEach(function(r){if(!RFA_DATA.some(function(x){return x.id===r.id;}))RFA_DATA.push(r);});
+  TRASH=TRASH.filter(function(t){return !chosen.includes(t);});
+  pushChangeLog('Pulihkan '+item.type+': '+(item.data.well||item.data.noRfa||item.data.text||item.data.id));
+  saveStorage('Pulihkan item dan relasi');updateActCount();renderCalendar();renderTrash();updateUndoRedoUI();toast('Item dan relasi dipulihkan');return true;
 }
 
 function permanentlyDeleteTrash(idx){
@@ -13337,7 +13456,7 @@ const RFA_MON_FULL=['Januari','Februari','Maret','April','Mei','Juni','Juli','Ag
 const RFA_SITES=['NPU','HCA','CPA','HDL','CPU','SPS','BKP','BPN','SPU'];
 
 // ── date helpers ──
-function _pd(s){if(!s||typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return null;const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function _pd(s){if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return null;var p=s.split('-').map(Number),d=new Date(p[0],p[1]-1,p[2]);return d.getFullYear()===p[0]&&d.getMonth()===p[1]-1&&d.getDate()===p[2]?d:null;}
 function _iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function _addD(s,n){const d=_pd(s);if(!d)return'';d.setDate(d.getDate()+n);return _iso(d);}
 function _today(){const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
@@ -13769,6 +13888,7 @@ function rfaSaveQuickFill(id,field){
   // Workflow validation for quick fill
   if(field==='scanA'&&!_pd(r.draftA)&&r.draftA!=='X'){toast('⚠ Isi Draft A dulu sebelum Scan A');return;}
   if(field==='scanB'&&!_pd(r.draftB)&&r.draftB!=='X'){toast('⚠ Isi Draft B dulu sebelum Scan B');return;}
+  if(!_auditRfaAccept(Object.assign({},r,{[field]:inp.value}),r))return;
   r[field]=inp.value;
   const c=rfaCalc(r);r.waktuTunggu=c.waktu;
   if(typeof _rfaDeriveStatus==='function')r.statusRfa=_rfaDeriveStatus(r);
@@ -14049,16 +14169,15 @@ function _rfaBatchFieldChange(){
   else{inp.type='date';inp.placeholder='';lbl.textContent='Tanggal kirim (satu batch)';}
 }
 function rfaBatchDateApply(){
-  const field=document.getElementById('rbatch-field')?.value||'tglKirimCbt';
-  const val=document.getElementById('rbatch-date')?.value||'';
-  if(!val){toast(field==='coc'?'⚠ Isi nomor CoC dulu':'⚠ Pilih tanggal dulu');return;}
-  let n=0;
-  RFA_LIST_SEL.forEach(id=>{const r=rfaById(id);if(r){r[field]=val;n++;}});
-  RFA_LIST_SEL.clear();
-  rfaSave('Isi '+field+' batch ('+n+' RFA)');
-  const ov=document.getElementById('rfa-batch-ov');if(ov)ov.remove();
-  if(typeof renderRfaList==='function')renderRfaList();
-  toast('✓ '+(field==='coc'?'CoC':'Tanggal kirim')+' diisi untuk '+n+' RFA sekaligus');
+  var field=document.getElementById('rbatch-field')?.value||'tglKirimCbt',val=document.getElementById('rbatch-date')?.value||'';
+  if(!['tglKirimCbt','tglKirimRfa','coc'].includes(field)||!val){toast('⚠ Pilih field dan isi nilai yang sah');return;}
+  var rows=RFA_DATA.filter(function(r){return RFA_LIST_SEL.has(r.id);});if(!rows.length)return;
+  for(var r of rows)if(!_auditRfaAccept(Object.assign({},r,{[field]:val}),r))return;
+  var apply=function(){rows.forEach(function(r){r[field]=val;});RFA_LIST_SEL.clear();rfaSave('Isi '+field+' batch');var ov=document.getElementById('rfa-batch-ov');if(ov)ov.remove();renderRfaList();};
+  if(field==='tglKirimRfa'&&rows.some(function(r){return !_pd(r.tglKirimRfa);})){
+    var message='Semua RFA terpilih sudah dikirim melalui EMAIL dengan CoC terlampir?';
+    if(typeof azConfirm==='function'){azConfirm(message,apply);return;}if(!confirm(message))return;
+  }apply();
 }
 // rfaUnlink: remove actId and calEventId from an RFA record
 function rfaUnlink(id){
@@ -14389,6 +14508,7 @@ function rfaAutoSaveDebounced(id){
 }
 function _rfaCommitAutoSave(id,vals,prevSnap){
   const r=rfaById(id);if(!r)return;
+  if(!_auditRfaAccept(Object.assign({},r,vals),r))return;
   Object.assign(r,vals);
   const c=rfaCalc(r);
   r.maxKirim=c.maxKirim;r.estTerimaCbt=c.estTerima;r.waktuTunggu=c.waktu;
@@ -14458,6 +14578,7 @@ function saveRfaModal(id){
   const r=rfaById(id);if(!r)return;
   const prevSnap=rfaLogSnapshot(r);
   const vals=rfaReadModal();
+  if(!_auditRfaAccept(Object.assign({},r,vals),r))return;
   // ── Workflow validation ──
   const _isMon=(vals.jenis==='Monthly')||/^0[1-4]/.test(r.noRfa||'');
   const _N=(typeof azNotify==='function')?azNotify:function(m){toast(m);};
@@ -14507,23 +14628,7 @@ function rfaCancelRfa(id){
   const _delSeq=_delM?parseInt(_delM[4],10):null;
   const idx=RFA_DATA.indexOf(r);if(idx>=0)RFA_DATA.splice(idx,1);
   if(typeof TRASH!=='undefined')TRASH.push({type:'rfa',data:r,deletedAt:new Date().toISOString()});
-  // Renumber non-routine siblings: only base RFAs (no letter suffix) with same kode+mm+yy
-  const _MONTHLY_KODES=new Set(['01','02','03','04']);
-  if(_delKode&&_delMm&&_delYy&&_delSeq!==null&&!_MONTHLY_KODES.has(_delKode)){
-    const siblings=RFA_DATA.filter(x=>{
-      const xm=(x.noRfa||'').match(/^(\d{2})(\d{2})(\d{2})-(\d+)$/);
-      return xm&&xm[1]===_delKode&&xm[2]===_delMm&&xm[3]===_delYy&&parseInt(xm[4],10)>_delSeq;
-    });
-    siblings.forEach(x=>{
-      const xm=x.noRfa.match(/^(\d{2})(\d{2})(\d{2})-(\d+)$/);
-      const oldSeq=parseInt(xm[4],10);
-      const newNoRfa=_delKode+_delMm+_delYy+'-'+String(oldSeq-1).padStart(2,'0');
-      // Also update any resampling siblings (letter suffix) linked to this noRfa
-      RFA_DATA.filter(y=>(y.noRfa||'').startsWith(x.noRfa)&&y.noRfa.length>x.noRfa.length)
-        .forEach(y=>{y.noRfa=newNoRfa+y.noRfa.slice(x.noRfa.length);});
-      x.noRfa=newNoRfa;
-    });
-  }
+  // Issued document numbers are permanent, including gaps and suffixes.
   rfaSave('Hapus RFA '+label);
   _ovClose('rfa-modal-ov');
   // Refresh event modal section if open
@@ -14554,24 +14659,9 @@ const RFA_MONTHLY_SPEC={
  SPU:[['DWW','02','07',''],['DRAIN','03','03','']]
 };
 function rfaNextSeq(kode,mm,yy){
-  // Count only active (non-cancelled) RFAs with this kode/mm/yy to allow gap-filling when one is cancelled
-  // Monthly uses fixed codes (not sequential), so this only runs for non-Monthly types
-  const CANCELLED_ST=new Set(['Cancel','Cancelled']);
-  let count=0;
-  RFA_DATA.forEach(r=>{
-    const m=(r.noRfa||'').match(/^(\d{2})(\d{2})(\d{2})-(\d+)/);
-    if(m&&m[1]===kode&&m[2]===mm&&m[3]===yy&&!CANCELLED_ST.has(r.statusRfa||''))count++;
-  });
-  // Also skip TRASH cancelled entries so restored trash doesn't reuse numbers
-  if(typeof TRASH!=='undefined'){
-    TRASH.forEach(t=>{
-      if(t.type==='rfa'&&t.data){
-        const m=(t.data.noRfa||'').match(/^(\d{2})(\d{2})(\d{2})-(\d+)/);
-        if(m&&m[1]===kode&&m[2]===mm&&m[3]===yy)count++;
-      }
-    });
-  }
-  return count+1;
+  var maximum=0;RFA_DATA.concat(TRASH.filter(function(t){return t.type==='rfa';}).map(function(t){return t.data;})).forEach(function(r){
+    var m=String(r.noRfa||'').match(/^(\d{2})(\d{2})(\d{2})-(\d+)/);if(m&&m[1]===kode&&m[2]===mm&&m[3]===yy)maximum=Math.max(maximum,+m[4]);
+  });return maximum+1;
 }
 
 // ── A4: Re-derive tipeSuffix for non-routine RFAs ──
@@ -15328,7 +15418,7 @@ function _rfaParseLooseDate(s){
   if(!s||typeof s!=='string')return '';
   const t=s.trim();
   if(!t||t==='-')return '';
-  if(/^\d{4}-\d{2}-\d{2}$/.test(t))return t;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(t))return _pd(t)?t:'';
   if(t.indexOf('\n')>=0){
     const lines=t.split('\n').map(function(x){return x.trim();}).filter(Boolean);
     for(let i=lines.length-1;i>=0;i--){const r=_rfaParseLooseDate(lines[i]);if(r)return r;}
@@ -15340,14 +15430,14 @@ function _rfaParseLooseDate(s){
     const mo=MON[m[2].toLowerCase().slice(0,3)];
     if(mo){
       let yr=parseInt(m[3],10);if(yr<100)yr+=2000;
-      return yr+'-'+String(mo).padStart(2,'0')+'-'+String(parseInt(m[1],10)).padStart(2,'0');
+      var iso=yr+'-'+String(mo).padStart(2,'0')+'-'+String(parseInt(m[1],10)).padStart(2,'0');return _pd(iso)?iso:'';
     }
   }
   m=t.replace(/-{2,}/g,'-').match(/^(\d{1,2})-(\d{1,2})-(\d{2,4})$/);
   if(m){
     let yr=parseInt(m[3],10);if(yr<100)yr+=2000;
     const dd=parseInt(m[1],10),mm=parseInt(m[2],10);
-    if(mm>=1&&mm<=12&&dd>=1&&dd<=31)return yr+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0');
+    var iso=yr+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0');return _pd(iso)?iso:'';
   }
   return '';
 }
@@ -15379,7 +15469,7 @@ function _rfaStageState(raw){
   const t=(raw==null?'':String(raw)).trim();
   if(!t)return {state:'pending',date:'',reason:''};
   if(/^(x|-|n\/a)$/i.test(t))return {state:'na',date:'',reason:''};
-  if(/\bonly\b/i.test(t))return {state:'na',date:'',reason:t};
+  if(/^(?:nitrate|nitrat|nitrite|nitrit|ammonia|ammonium|phosphate|phosphorus|po4|tss|turbidity|bod|cod|oil(?: and grease)?|ph)(?:\s+[a-z0-9 -]+)?\s+only$/i.test(t))return {state:'na',date:'',reason:t};
   if(/^done$/i.test(t))return {state:'done',date:'',reason:''};
   const fixed=_rfaParseLooseDate(t);
   if(fixed)return {state:'done',date:fixed,reason:''};
@@ -15422,7 +15512,7 @@ window._rfaPathReleased=_rfaPathReleased;
 // Has at least the DRAFT stage of an applicable path come in? (drives
 // the "Draft Selesai" interim status)
 function _rfaAnyDraftReleased(r){
-  return ['A','B'].some(function(stage){
+  return _auditRfaStages(r).some(function(stage){
     return _rfaPathApplies(r,stage)&&_rfaStageState(r['draft'+stage]).state!=='pending';
   });
 }
@@ -15431,9 +15521,7 @@ window._rfaAnyDraftReleased=_rfaAnyDraftReleased;
 // fully released (draft + scan both in). This is THE definition of
 // "done" for this dashboard — dashboards/alerts/exports should ask
 // this instead of re-deriving their own notion of completeness.
-function _rfaIsComplete(r){
-  return _rfaPathReleased(r,'A')&&_rfaPathReleased(r,'B');
-}
+function _rfaIsComplete(r){var stages=_auditRfaStages(r).filter(function(s){return _rfaPathApplies(r,s);});return stages.length>0&&stages.every(function(s){return _rfaPathReleased(r,s);});}
 window._rfaIsComplete=_rfaIsComplete;
 // The single place statusRfa gets computed. Cancel/Cancelled is a
 // manual, sticky state nothing here should override.
@@ -15477,45 +15565,7 @@ window._rfaSyncAllStatuses=_rfaSyncAllStatuses;
 // already a valid date/X/Done/Only) so _rfaSyncAllStatuses can then
 // correctly derive Scan Selesai for it. 2026 is deliberately excluded:
 // those are current, legitimately still-in-progress records.
-function _rfaCompletePastYears(){
-  if(typeof RFA_DATA==='undefined'||!RFA_DATA)return 0;
-  let touched=0;
-  RFA_DATA.forEach(function(r){
-    if(!r.year||r.year==='2026')return;
-    if(r.statusRfa==='Cancel'||r.statusRfa==='Cancelled')return;
-    let changed=false;
-    if(!r.tglSampling){
-      const m=(r.noRfa||'').match(/^(\d{2})(\d{2})(\d{2})/);
-      if(m){r.tglSampling='20'+m[3]+'-'+m[2]+'-'+m[1];changed=true;}
-    }
-    if(!r.tglSampling)return; // no usable anchor at all — leave alone
-    function ensure(field,fallbackFn){
-      if(_rfaStageState(r[field]).state!=='pending')return; // already a real date, X, Done or a reasoned "Only" — leave it alone
-      const val=fallbackFn();
-      if(val){r[field]=val;changed=true;}
-    }
-    ensure('tglKirimCbt',function(){return _addD(r.tglSampling,4);});
-    ensure('tglKirimRfa',function(){return r.tglKirimCbt||_addD(r.tglSampling,4);});
-    ensure('konfirmasiCbt',function(){return _addD(r.tglKirimRfa,4);});
-    ['A','B'].forEach(function(stage){
-      if(!_rfaPathApplies(r,stage))return; // this path doesn't apply — nothing to backfill
-      const an=r.analysis;
-      ensure('draft'+stage,function(){
-        const anchor=(r.konfirmasiCbt&&r.konfirmasiCbt>r.tglKirimRfa)?r.konfirmasiCbt:r.tglKirimRfa;
-        return _addD(anchor,stage==='A'?(an==='100%'?2:an==='50%'?5:14):30);
-      });
-      ensure('scan'+stage,function(){return _addD(r['draft'+stage],4);});
-    });
-    if(changed){
-      const c=rfaCalc(r);
-      r.maxKirim=c.maxKirim;r.estTerimaCbt=c.estTerima;r.estSelesaiA=c.estA;
-      r.estSelesaiB=c.estB;r.estScanA=c.estScanA;r.estScanB=c.estScanB;r.waktuTunggu=c.waktu;
-      touched++;
-    }
-  });
-  if(touched&&typeof console!=='undefined')console.log('[RFA sync] '+touched+' RFA lama (<2026) dilengkapi tanggalnya.');
-  return touched;
-}
+function _rfaCompletePastYears(){return 0; /* Historical dates require evidence, never an elapsed-year assumption. */}
 window._rfaCompletePastYears=_rfaCompletePastYears;
 // One specific, verified data gap found by re-checking the raw RFA/CoC
 // tracker workbook directly: the source spreadsheet has TWO different
@@ -16611,15 +16661,7 @@ window._emfChartsWordAsli=_emfChartsWordAsli;
 // Sebelumnya ada dua tombol terpisah (pilih berkas / muat dari web) dan
 // memuat berarti SELURUH isi pack menimpa sesi ini -- tidak ada cara memuat
 // sebagian, dan tidak ada cara mengeluarkan satu bagian saja.
-function _dpIdbDel(key){
-  return _dpIdb().then(function(db){
-    return new Promise(function(res){
-      var tx=db.transaction('pack','readwrite').objectStore('pack').delete(key);
-      tx.onsuccess=function(){res(true);};
-      tx.onerror=function(){res(false);};
-    });
-  }).catch(function(){return false;});
-}
+function _dpIdbDel(key){return _auditIdbWrite({},[key]);}
 window._dpIdbDel=_dpIdbDel;
 
 // Setiap kelompok memetakan bagian Data Pack (pk) dan kunci penyimpanan
@@ -16664,7 +16706,7 @@ function _dpOtherKeys(pack){
   var claimed=_dpClaimedKeys(),out=[];
   if(pack&&pack.localStorage){
     Object.keys(pack.localStorage).forEach(function(k){
-      if(!claimed[k]&&!DP_NEVER[k])out.push(k);
+      if(_AUDIT_PACK_KEYS.has(k)&&!claimed[k]&&!DP_NEVER[k])out.push(k);
     });
   }
   return out;
@@ -16884,114 +16926,30 @@ async function _dpLoaderApply(){
   run();
 }
 async function _dpLoaderRun(pack,sel,inPack){
-  var ov=document.getElementById('dp-loader-ov');if(ov)ov.remove();
-  if(typeof _busyShow==='function')_busyShow('Memuat Data Pack','Menyiapkan…');
-  // inPack[id] = berapa yang dibawa pack untuk kelompok itu. Dicentang TAPI
-  // tidak ada di pack berarti "biarkan apa adanya", bukan "muat" dan bukan
-  // "hapus". Tanpa pembedaan ini, memuat pack lama yang tidak memuat suatu
-  // bagian akan menghapus bagian itu dari perangkat.
-  inPack=inPack||{};
-  var punya=function(id){return (inPack[id]||0)>0;};
-  if(typeof _dpCheckVersion==='function')_dpCheckVersion(pack.version,'Data Pack ini');
-  var failed=[];
-  var gById={};DP_GROUPS.forEach(function(g){gById[g.id]=g;});
-  // Rekaman 'current' menampung beberapa bagian sekaligus, jadi disusun ulang
-  // field demi field: yang dicentang diambil dari pack, yang tidak dicentang
-  // dikosongkan, dan yang di luar cakupan dibiarkan apa adanya.
-  var cur={};
-  try{cur=(await _dpIdbGet('current'))||{};}catch(e){cur={};}
-  var fieldOwner={hasilSeed:'hasil',hsHistoris:'hasil',recapArsip:'hasil',
-    debitDaily:'harian',phDaily:'harian',produksi:'prod'};
-  Object.keys(fieldOwner).forEach(function(f){
-    var owner=fieldOwner[f];
-    if(sel[owner]){
-      // dicentang: ambil dari pack kalau ada; kalau pack tidak membawanya,
-      // JANGAN dikosongkan -- biarkan yang sudah ada.
-      if(pack[f]!=null)cur[f]=pack[f];
-    }else{
-      cur[f]=(f==='debitDaily'||f==='phDaily')?{}:null;
-    }
-  });
-  cur.importedAt=new Date().toISOString();
-  cur.createdAt=pack.createdAt;
-  try{await _dpIdbSet('current',cur);}catch(e){failed.push('rekaman utama');}
-  if(sel.harian){try{_dpMergeStores(pack.debitDaily||{},pack.phDaily||{},true);}catch(e){}}
-  if(sel.gis){
-    if(pack.gisLayersGz&&typeof _gisStoreBlob==='function'){try{await _gisStoreBlob(pack.gisLayersGz);}catch(e){failed.push('peta GIS');}}
-  }else{
-    // sampai di sini berarti centangnya memang dilepas -> keluarkan
-    try{await _dpIdbDel('env26_gis_layers');}catch(e){}
-  }
-  if(sel.pers&&punya('pers')){try{if(typeof _persApplyFromPack==='function')_persApplyFromPack(pack);}catch(e){}}
-  if(sel.bm&&punya('bm')){try{if(typeof _bmRegApplyFromPack==='function')_bmRegApplyFromPack(pack);}catch(e){}}
-  var idbBacked={env26_rfa:1,env26_prod_harian:1,env26_hasil_manual:1};
-  var claimed=_dpClaimedKeys();
-  var writeKey=async function(k){
-    var v=pack.localStorage?pack.localStorage[k]:undefined;
-    // Kalau pack tidak punya kunci ini, JANGAN dihapus. Dicentang berarti
-    // "muat yang ada", bukan "kosongkan". Menghapus di sini pernah membuat
-    // daftar petugas yang baru saja dipasang _persApplyFromPack langsung
-    // terhapus lagi beberapa baris kemudian -- bagian personel memang tidak
-    // dibawa lewat pack.localStorage, melainkan lewat ppcList/persSeed.
-    // Yang menghapus hanyalah centang yang DILEPAS (clearKey di bawah).
-    if(v==null)return;
-    if(idbBacked[k]){
-      try{
-        var parsed=(k==='env26_prod_harian')?{}:[];
-        try{parsed=JSON.parse(v);}catch(_){}
-        await _dpIdbSet(k,parsed);
-      }catch(e){failed.push(k);}
-      return;
-    }
-    try{localStorage.setItem(k,v);}catch(e){failed.push(k);}
-  };
-  var clearKey=async function(k){
-    if(idbBacked[k]){try{await _dpIdbDel(k);}catch(e){}}
-    try{localStorage.removeItem(k);}catch(e){}
-  };
-  for(var i=0;i<DP_GROUPS.length;i++){
-    var g=DP_GROUPS[i];
-    if(typeof _busyStep==='function'){
-      _busyStep((sel[g.id]?'Menyimpan ':'Mengeluarkan ')+(g.label||g.id)+'…',i,DP_GROUPS.length+1);
-      // Beri satu frame supaya teks & bilah kemajuan benar-benar tergambar;
-      // tanpa ini seluruh putaran selesai dalam satu tugas dan layar hanya
-      // menampilkan bagian terakhir.
-      await new Promise(function(r){requestAnimationFrame(function(){r();});});
-    }
-    for(var a=0;a<(g.ls||[]).length;a++){
-      if(sel[g.id])await writeKey(g.ls[a]); else await clearKey(g.ls[a]);
-    }
-    if(!sel[g.id]){for(var b=0;b<(g.idb||[]).length;b++)await clearKey(g.idb[b]);}
-  }
-  // "Lainnya": kunci di pack yang tak masuk kelompok mana pun, plus kunci yang
-  // sudah ada di perangkat dan tak masuk kelompok mana pun.
-  var others={};
-  _dpOtherKeys(pack).forEach(function(k){others[k]=1;});
   try{
-    for(var j=0;j<localStorage.length;j++){
-      var kk=localStorage.key(j);
-      if(kk&&kk.indexOf('env26')===0&&!claimed[kk]&&!DP_NEVER[kk])others[kk]=1;
+    _auditPackValidate(pack);await _auditFlush();
+    if(typeof _busyShow==='function')_busyShow('Memuat Data Pack','Memvalidasi dan menyimpan snapshot…');
+    var cur=_auditClone((await _dpIdbGet('current'))||{}),ls={},puts={},deletes=[],idbKeys=new Set(['env26_rfa','env26_prod_harian','env26_hasil_manual']);
+    var owners={hasilSeed:'hasil',hsHistoris:'hasil',recapArsip:'hasil',debitDaily:'harian',phDaily:'harian',produksi:'prod'};
+    Object.keys(owners).forEach(function(k){if(!sel[owners[k]])cur[k]=['debitDaily','phDaily'].includes(k)?{}:null;else if(pack[k]!=null)cur[k]=pack[k];});
+    cur.createdAt=pack.createdAt||'';cur.importedAt=new Date().toISOString();puts.current=cur;
+    function stage(k,include){
+      if(DP_NEVER[k])return;
+      if(!include){ls[k]=null;if(idbKeys.has(k))deletes.push(k);return;}
+      if(!Object.prototype.hasOwnProperty.call(pack.localStorage,k))return;
+      var v=pack.localStorage[k];if(idbKeys.has(k)){puts[k]=JSON.parse(v);ls[k]=null;}else ls[k]=v;
     }
-  }catch(e){}
-  var oks=Object.keys(others);
-  for(var c=0;c<oks.length;c++){
-    if(sel.__other)await writeKey(oks[c]); else await clearKey(oks[c]);
-  }
-  if(failed.length){
-    if(typeof _busyHide==='function')_busyHide();
-    var m='\u26a0 Sebagian data GAGAL tersimpan (localStorage browser kemungkinan penuh): '+failed.join(', ')
-      +'. Bagian itu TIDAK ter-update meski proses selesai.';
-    if(typeof toast==='function')toast(m);
-    if(typeof _uiConfirm==='function')_uiConfirm(m,function(){});
-    return;
-  }
-  var n=0;DP_GROUPS.forEach(function(g){if(sel[g.id])n++;});
-  if(typeof _busyStep==='function')_busyStep('Selesai. Memuat ulang halaman…',DP_GROUPS.length+1,DP_GROUPS.length+1);
-  if(typeof toast==='function')toast('\u2705 '+n+' bagian diterapkan. Halaman dimuat ulang\u2026');
-  // Sengaja TIDAK memanggil _busyHide di sini: halaman akan dimuat ulang, dan
-  // membuka kuncinya lebih dulu justru memberi celah bagi pemilik untuk mulai
-  // mengetik sesuatu yang pasti hilang beberapa ratus milidetik kemudian.
-  setTimeout(function(){location.reload();},900);
+    DP_GROUPS.forEach(function(g){(g.ls||[]).forEach(function(k){stage(k,!!sel[g.id]);});});
+    var claimed=_dpClaimedKeys(),other=new Set(_dpOtherKeys(pack));
+    for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(_AUDIT_PACK_KEYS.has(k)&&!claimed[k]&&!DP_NEVER[k])other.add(k);}
+    other.forEach(function(k){stage(k,!!sel.__other);});
+    if(sel.gis){if(pack.gisLayersGz!=null)puts.env26_gis_layers=pack.gisLayersGz;}else deletes.push('env26_gis_layers');
+    if(sel.pers){if(pack.ppcList)ls.env26_ppc_list=JSON.stringify(pack.ppcList);if(pack.persSeed)ls.env26_pers_seed=JSON.stringify(pack.persSeed);}
+    if(sel.bm&&pack.bmRegistry)ls.env26_bm_registry=JSON.stringify(pack.bmRegistry);
+    if(!(await _auditCommit(ls,puts,deletes))){if(typeof _busyHide==='function')_busyHide();return false;}
+    var ov=document.getElementById('dp-loader-ov');if(ov)ov.remove();
+    toast('✓ Data Pack diterapkan utuh. Halaman dimuat ulang…');setTimeout(function(){location.reload();},900);return true;
+  }catch(e){if(typeof _busyHide==='function')_busyHide();toast('⚠ Data Pack GAGAL dimuat: '+e.message);return false;}
 }
 window._dpOpenLoader=_dpOpenLoader;
 window._dpLoaderFetchCf=_dpLoaderFetchCf;
@@ -17559,13 +17517,7 @@ window._mdUndoActive=_mdUndoActive;
 window._mdClearActive=_mdClearActive;
 // ==== akhir Y422 ========================================================
 
-function _rfaHealHydrotestScanGap(){
-  // Y409: perbaikan sekali-pakai ini sudah tersimpan di Data Pack (nilai
-  // scanA-nya sudah terisi), jadi nomor RFA aslinya tidak perlu lagi
-  // ditanam di berkas publik ini. Diperiksa terhadap Data Pack asli
-  // sebelum dikosongkan, bukan diasumsikan.
-  return false;
-}
+function _rfaHealHydrotestScanGap(){return 0; /* A draft is not proof of scan receipt. */}
 // Y448: id RFA ganda. Dua record berbeda yang menjawab satu id membuat setiap
 // operasi berbasis id mengenai record yang salah.
 function _rfaRepairIds(){
@@ -22259,17 +22211,7 @@ let _hsGroup='Monthly',_hsSite='',_hsSheet='',_hsQ='',_hsOnlyExceed=false,_hsVie
 // (filters, charts, completion tracker, gap report all see them).
 let HASIL_MANUAL=[];
 try{const _hm=localStorage.getItem('env26_hasil_manual');if(_hm)HASIL_MANUAL=JSON.parse(_hm);}catch(_e){}
-function _hsSaveManual(){
-  // env26_hasil_manual melampaui kuota localStorage -- lihat catatan patch.
-  // window._hsManualReady menjaga supaya array yang masih kosong/seed-saja
-  // tidak tertulis ke IndexedDB sebelum pemulihan boot di bawah sempat jalan.
-  try{localStorage.removeItem('env26_hasil_manual');}catch(_e){}
-  if(window._hsManualReady&&typeof _dpIdbSet==='function'){
-    _dpIdbSet('env26_hasil_manual',HASIL_MANUAL).catch(function(e){
-      if(typeof toast==='function')toast('\u26a0 Gagal menyimpan Hasil Sampling ke penyimpanan browser ('+(e&&e.message||e)+').');
-    });
-  }
-}
+function _hsSaveManual(){return saveStorageRaw();}
 // ── Overrides on seeded (non-manual) rows — the raw Excel seed itself is
 // static/regenerated on rebuild, so an edit to a seeded row's value can't be
 // written back into it directly; it's kept as a small patch keyed by a
@@ -22279,8 +22221,8 @@ function _hsSaveManual(){
 // mutable in HASIL_MANUAL via _hsSetManualNilai.
 let HASIL_OVERRIDE={};
 try{const _hoS=localStorage.getItem('env26_hasil_override');if(_hoS)HASIL_OVERRIDE=JSON.parse(_hoS);}catch(_e){}
-function _hsSaveOverride(){try{localStorage.setItem('env26_hasil_override',JSON.stringify(HASIL_OVERRIDE));}catch(_e){}}
-function _hsRowKey(group,r){return [group,r.titik||'',(r.noRfa||[]).slice().sort().join(','),r.parameter||'',(r.extra&&r.extra.set)||1,(r.extra&&r.extra.bulan)||''].join('‖');}
+function _hsSaveOverride(){return saveStorageRaw();}
+function _hsRowKey(group,r){return 'v2:'+JSON.stringify([group,r.site||'',r.titik||'',_auditList(r.noRfa).slice().sort(),r.parameter||'',r.satuan||'',_auditList(r.tanggal).slice().sort(),r.tahun||'',(r.extra||{}).set||1,(r.extra||{}).bulan||'',(r.extra||{}).sumberSheet||'']);}
 function _hsSetOverrideNilai(group,rowKey,val,label){
   val=String(val==null?'':val).trim();
   if(!val)delete HASIL_OVERRIDE[rowKey];
@@ -22300,11 +22242,11 @@ function _hsRowsFor(group){
   /*Y578b*/if(typeof _hsPulihkan==='function'){_hsPulihkan(HS_GROUPS_DATA[group]);_hsPulihkan(HASIL_MANUAL);}
   /*Y551b*/_hsFixBulanan(HS_GROUPS_DATA[group]);_hsFixBulanan(HASIL_MANUAL);
   const base=(HS_GROUPS_DATA[group]||[]).concat(HASIL_MANUAL.filter(r=>r.group===group));
-  return base.map(r=>{
-    if(r.extra&&r.extra.manualId)return r;   // manual rows edit HASIL_MANUAL directly, not via override
+  return base.filter(r=>!_auditReferenceRow(r)).map(r=>{
+    if(r.extra&&r.extra.manualId){const ev=_hsEvalCompliance(r.nilai,r.bakuMutu,{satuan:r.satuan,satuanBaku:r.satuanBakuMutu,tanggal:r.tanggal});return Object.assign({},r,{status:ev.status,nilaiNum:ev.nilaiNum});}
     const key=_hsRowKey(group,r);
-    const ov=HASIL_OVERRIDE[key];
-    if(!ov)return r;
+    const ov=_auditOverrideFor(group,r);
+    if(!ov){const ev=_hsEvalCompliance(r.nilai,r.bakuMutu,{satuan:r.satuan,satuanBaku:r.satuanBakuMutu,tanggal:r.tanggal});return Object.assign(r,{status:ev.status,nilaiNum:ev.nilaiNum});}
     const ev=_hsEvalCompliance(ov.nilai,r.bakuMutu==null?null:r.bakuMutu,{satuan:r.satuan,satuanBaku:r.satuanBakuMutu,tanggal:r.tanggal});
     return Object.assign({},r,{nilai:ov.nilai,status:ev.status,nilaiNum:ev.nilaiNum,
       extra:Object.assign({},r.extra,{overridden:true,overriddenAt:ov.ts})});
@@ -22363,36 +22305,19 @@ function _hsFixBulanan(rows){
   }
 }
 function _hsEvalComplianceCore(nilai,baku){
-  if(baku==null||(typeof baku==='string'&&!baku.trim()))return {status:'no_standard',nilaiNum:_hsParseNum(nilai)};
-  const nv=_hsParseNum(nilai);
-  if(nv==null)return {status:'non_numeric',nilaiNum:null};
-  const ns=nilai==null?'':String(nilai).trim();
-  const nilaiOp=ns.startsWith('>')?'>':(ns.startsWith('<')?'<':null);
-  let bs=String(baku).trim();
-  // Y509: samakan semua varian tanda pisah menjadi "-" SEBELUM dicocokkan.
-  bs=bs.replace(/[\u2010-\u2015\u2212]/g,'-');
-  const lbl=bs.match(/^[A-Za-z /]+:\s*(.*)$/);
-  if(lbl)bs=lbl[1].trim();
-  if(!bs||bs==='-')return {status:'no_standard',nilaiNum:nv};
-  let m=bs.match(/^([><])\s*(-?\d+(?:[.,]\d+)?)$/);
-  if(m){
-    const thr=parseFloat(m[2].replace(',','.'));const isMin=m[1]==='>';
-    let exceed;
-    if(isMin&&nilaiOp==='>')exceed=nv<thr;
-    else if(!isMin&&nilaiOp==='<')exceed=nv>thr;
-    else exceed=isMin?(nv<=thr):(nv>=thr);
-    return {status:exceed?'exceed':'ok',nilaiNum:nv};
-  }
-  m=bs.match(/^s\/?d\s+(-?\d+(?:[.,]\d+)?)$/i);
-  if(m)return {status:nv>parseFloat(m[1].replace(',','.'))?'exceed':'ok',nilaiNum:nv};
-  m=bs.match(/^(-?\d+(?:[.,]\d+)?)\s*-\s*(-?\d+(?:[.,]\d+)?)$/);
-  if(m){
-    const lo=parseFloat(m[1].replace(',','.')),hi=parseFloat(m[2].replace(',','.'));
-    return {status:(nv<lo||nv>hi)?'exceed':'ok',nilaiNum:nv};
-  }
-  const bnum=_hsParseNum(bs);
-  if(bnum==null)return {status:'no_standard',nilaiNum:nv};
-  return {status:nv>bnum?'exceed':'ok',nilaiNum:nv};
+  var nv=_hsParseNum(nilai),bs=String(baku==null?'':baku).trim().replace(/[\u2010-\u2015\u2212]/g,'-').replace(/^[A-Za-z /]+:\s*/,'');
+  if(!bs||bs==='-')return {status:'no_standard',nilaiNum:nv};if(nv==null)return {status:'non_numeric',nilaiNum:null};
+  var allowedLo=-Infinity,allowedHi=Infinity,loOpen=false,hiOpen=false,m;
+  if((m=bs.match(/^([<>]=?|[≤≥])\s*(-?\d+(?:[.,]\d+)?)$/))){var n=Number(m[2].replace(',','.'));if(/^[>≥]/.test(m[1])){allowedLo=n;loOpen=m[1]==='>';}else{allowedHi=n;hiOpen=m[1]==='<';}}
+  else if((m=bs.match(/^(-?\d+(?:[.,]\d+)?)\s*-\s*(-?\d+(?:[.,]\d+)?)$/))){allowedLo=Number(m[1].replace(',','.'));allowedHi=Number(m[2].replace(',','.'));}
+  else{var n=_hsParseNum(bs);if(n==null)return {status:'no_standard',nilaiNum:nv};allowedHi=n;}
+  var op=(String(nilai).trim().match(/^(<=|>=|<|>|≤|≥)/)||[])[0],low=nv,high=nv,lowOpen=false,highOpen=false;
+  if(op==='<'||op==='<='||op==='≤'){low=-Infinity;highOpen=op==='<';}
+  if(op==='>'||op==='>='||op==='≥'){high=Infinity;lowOpen=op==='>';}
+  var insideLow=low>allowedLo||(low===allowedLo&&(!loOpen||lowOpen));
+  var insideHigh=high<allowedHi||(high===allowedHi&&(!hiOpen||highOpen));
+  var outside=high<allowedLo||(high===allowedLo&&(highOpen||loOpen))||low>allowedHi||(low===allowedHi&&(lowOpen||hiOpen));
+  return {status:insideLow&&insideHigh?'ok':outside?'exceed':'uncertain',nilaiNum:nv};
 }
 function _hsNorm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
 // Word-order-independent comparison: "STP-3 Outlet" (BM master naming)
@@ -22648,7 +22573,7 @@ function _hsRfaLinks(noRfa,titik,idx,row){
 }
 function _hsStatusBadge(status){
   const M={exceed:['#fdecea','#c62828','⚠ Melebihi baku mutu'],ok:['#eafaf1','#2e7d32','✓ Sesuai baku mutu'],
-    no_standard:['#f5f5f5','#888','– Tanpa baku mutu'],non_numeric:['#f5f5f5','#888','– Non-numerik']};
+    no_standard:['#f5f5f5','#888','– Tanpa baku mutu'],non_numeric:['#f5f5f5','#888','– Non-numerik'],uncertain:['#fff8e1','#8a5200','? Belum dapat dipastikan']};
   const [bg,col,lbl]=M[status]||M.no_standard;
   return `<span style="background:${bg};color:${col};border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;white-space:nowrap">${lbl}</span>`;
 }
@@ -22959,7 +22884,7 @@ function _hsCellToDateKey(dv){
   if(typeof dv==='string'){
     const s=dv.trim();
     const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(m)return _hsDateKey(+m[1],+m[2],+m[3]);
+    if(m)return _pd(m[0])?m[0]:null;
   }
   return null;
 }
@@ -22990,7 +22915,7 @@ function _hsParseDebitSheet(rows){
     const row=rows[r]||[];
     const dateKey=_hsCellToDateKey(row[dateCol]);
     if(!dateKey)continue;   // blank date = monthly total/summary row, not a day
-    let v=parseFloat(row[valCol]);
+    let v=_auditDailyNumber(row[valCol]);
     if(!isFinite(v))continue;
     const unitCell=String(row[valCol+1]||'').toLowerCase();
     if((bwpd||unitCell==='bbl')&&v!==-1)v*=0.159;   // barrel -> m3 (-1 = marker tidak ada aliran, jangan dikonversi)
@@ -23457,18 +23382,18 @@ function _hsBuildCompletion(){
     if(tLow){
       _y531rfaLow.forEach(p=>{
         const rt=p[1];
-        if(rt.includes(tLow)||tLow.includes(rt))rfaList.push(p[0]);
+        if(rt===tLow&&String(p[0].site||'').toUpperCase()===String(act.site||'').toUpperCase()&&evs.some(e=>e.date===p[0].tglSampling))rfaList.push(p[0]);
       });
     }
     rfaList=rfaList.filter(r=>r.statusRfa!=='Cancel'&&r.statusRfa!=='Cancelled');
     const rfaScanDone=rfaList.length>0&&rfaList.every(r=>(typeof _rfaIsComplete==='function')?_rfaIsComplete(r):!!(r.scanA||r.scanB));
 
     const hasilSet=new Set();
-    rfaList.forEach(r=>{const l=hasilByNoRfa.get(r.noRfa);if(l)l.forEach(row=>hasilSet.add(row));});
+    rfaList.forEach(r=>{const l=hasilByNoRfa.get(r.noRfa);if(l)l.forEach(row=>{const dates=row.tanggal||[];if(_hsSiteN(row.site)===_hsSiteN(r.site)&&dates.length&&dates.some(d=>d===r.tglSampling))hasilSet.add(row);});});
     if(tLow){
       _y531hasLow.forEach(p=>{
         const rt=p[1];
-        if(rt.includes(tLow)||tLow.includes(rt))hasilSet.add(p[0]);
+        if(!(p[0].noRfa||[]).length&&rt===tLow&&_hsSiteN(p[0].site)===_hsSiteN(act.site)&&evs.some(e=>(p[0].tanggal||[]).includes(e.date)))hasilSet.add(p[0]);
       });
     }
     const hasilRows=[...hasilSet];
@@ -23479,6 +23404,7 @@ function _hsBuildCompletion(){
     else if(!rfaScanDone){stage='rfa-scan';label='Scan report belum lengkap';}
     else if(!hasilRows.length){stage='hasil-none';label='Menunggu hasil lab';}
     else if(hasilExceed){stage='hasil-exceed';label=`⚠ ${hasilExceed} parameter melebihi BM`;}
+    else if(hasilRows.some(r=>r.status==='uncertain')){stage='hasil-review';label='Kepatuhan belum dapat dipastikan';}
     else{stage='done';label='✓ Completed';}
     return {act,titikKey,events:evs,tahapDone,rfaList,rfaScanDone,hasilRows,hasilExceed,stage,label,completed:stage==='done'};
   }).filter(x=>x.titikKey);
@@ -23607,83 +23533,8 @@ function _hsPeriodSort(a,b){
   return String(a).localeCompare(String(b),undefined,{numeric:true});
 }
 
-function _hsHealBrokenRfaLinks(){
-  try{
-    const rfaSet=new Set((RFA_DATA||[]).map(r=>r.noRfa).filter(Boolean));
-    let fixed=0,manualChanged=false;
-    const tryFix=(row)=>{
-      if(!row||!row.noRfa||!row.noRfa.length)return;
-      row.noRfa=row.noRfa.map(n=>{
-        if(!n||rfaSet.has(n))return n;
-        // Deleting an arbitrary character can coincidentally collide with a
-        // totally different, genuine RFA number (e.g. dropping a real digit
-        // rather than the stray one) — far too risky to auto-apply blindly.
-        // Only consider positions that are part of a DUPLICATED adjacent
-        // character (a doubled-keystroke typo, e.g. "...622..." should have
-        // been "...62..."), and only fix if that narrower search finds
-        // exactly one valid match. This is deliberately conservative: it
-        // fixes the specific typo pattern actually found in this dataset
-        // without guessing at ambiguous single-character drops in general.
-        const cands=new Set();
-        for(let i=0;i<n.length;i++){
-          const isDup=(i>0&&n[i]===n[i-1])||(i<n.length-1&&n[i]===n[i+1]);
-          if(!isDup)continue;
-          const cand=n.slice(0,i)+n.slice(i+1);
-          if(rfaSet.has(cand))cands.add(cand);
-        }
-        if(cands.size===1){fixed++;return[...cands][0];}
-        return n;
-      });
-    };
-    Object.values(HS_GROUPS_DATA||{}).forEach(arr=>(arr||[]).forEach(tryFix));
-    (HASIL_MANUAL||[]).forEach(row=>{
-      const before=JSON.stringify(row.noRfa);
-      tryFix(row);
-      if(JSON.stringify(row.noRfa)!==before)manualChanged=true;
-    });
-    if(manualChanged&&typeof _hsSaveManual==='function')_hsSaveManual();
-    if(fixed&&typeof console!=='undefined')console.log('[Hasil Sampling] Auto-linked '+fixed+' hasil row(s) whose No RFA had a typo, to their real RFA.');
-    // Per the data owner: the entire seeded Hasil Sampling dataset (Water
-    // Monitoring Database 2026) is 2026 data, but a batch of rows reference
-    // an RFA number with the year digit typo'd to something else (e.g.
-    // '900010-99' — should be '900011-99'). Seed rows only (never manual
-    // entries, which can genuinely be other years going forward): force the
-    // yy portion of every noRfa to '26', keeping kode/mm/seq unchanged.
-    let yearFixed=0;
-    Object.values(HS_GROUPS_DATA||{}).forEach(arr=>(arr||[]).forEach(row=>{
-      if(!row||!row.noRfa||!row.noRfa.length)return;
-      row.noRfa=row.noRfa.map(n=>{
-        const m=n&&n.match(/^(\d{2})(\d{2})(\d{2})(-.+)$/);
-        if(!m||m[3]==='26')return n;
-        yearFixed++;
-        return m[1]+m[2]+'26'+m[4];
-      });
-    }));
-    if(yearFixed&&typeof console!=='undefined')console.log('[Hasil Sampling] Normalized '+yearFixed+' typo\'d RFA year reference(s) in seed data to 2026 (e.g. 900010-99 -> 900011-99).');
-  }catch(e){}
-}
-function _hsHealSiteMismatch(){
-  try{
-    const bySite={};
-    (RFA_DATA||[]).forEach(r=>{if(r.noRfa&&r.site)bySite[r.noRfa]=r.site;});
-    let fixed=0;
-    const fixRow=(row)=>{
-      if(!row||!row.noRfa||!row.site)return;
-      const nos=Array.isArray(row.noRfa)?row.noRfa:[row.noRfa];
-      const rfaSite=nos.map(n=>bySite[n]).find(Boolean);
-      if(rfaSite&&_hsSiteN(rfaSite)!==_hsSiteN(row.site)){row.site=rfaSite;fixed++;}
-    };
-    Object.values(HS_GROUPS_DATA||{}).forEach(arr=>(arr||[]).forEach(fixRow));
-    let manualChanged=false;
-    (HASIL_MANUAL||[]).forEach(row=>{
-      const before=row.site;
-      fixRow(row);
-      if(row.site!==before)manualChanged=true;
-    });
-    if(manualChanged&&typeof _hsSaveManual==='function')_hsSaveManual();
-    if(fixed&&typeof console!=='undefined')console.log('[Hasil Sampling] Fixed '+fixed+' hasil row(s) whose own site disagreed with their linked RFA\'s site.');
-  }catch(e){}
-}
+function _hsHealBrokenRfaLinks(){return 0; /* Raw campaign identity must not be guessed or forced to the current year. */}
+function _hsHealSiteMismatch(){return 0; /* A number collision cannot establish site provenance. */}
 function renderHasilSampling(){
   if(!window._hsHealedLinks){window._hsHealedLinks=true;_hsHealBrokenRfaLinks();}
   if(!window._hsHealedSite){window._hsHealedSite=true;_hsHealSiteMismatch();}
@@ -26796,13 +26647,15 @@ function _coordLivePreview(actId,mainStr,brgStr){
 
 <script>
 let REA_DATA=[];
-function _reaLoad(){try{const r=localStorage.getItem('env26_rea');REA_DATA=r?JSON.parse(r):[];}catch(e){REA_DATA=[];}return REA_DATA;}
-function _reaSave(){try{localStorage.setItem('env26_rea',JSON.stringify(REA_DATA));}catch(e){}}
+function _reaLoad(){
+  if(window._reaDirty)return;try{const r=localStorage.getItem('env26_rea');REA_DATA=r?JSON.parse(r):[];}catch(e){REA_DATA=[];}return REA_DATA;}
+function _reaSave(){window._reaDirty=true;return _auditCommit({env26_rea:JSON.stringify(REA_DATA)},{},[]).then(function(ok){if(ok)window._reaDirty=false;return ok;});}
 const REA_DAYS={'Normal':14,'50%':5,'100%':2};
 function _reaAddDays(iso,days){const d=new Date(iso);if(isNaN(d))return '';d.setDate(d.getDate()+(days||0));return d.toISOString().slice(0,10);}
 function _reaEstimasi(r){if(!r||!r.tglKirimUlang)return '';return _reaAddDays(r.tglKirimUlang,REA_DAYS[r.jenisAnalisa]||14);}
 function _reaStatus(r){
-  if(r.tglDraftSelesai)return 'Selesai';
+  if(r.archivedAt)return 'Diarsipkan; koreksi tetap aktif';
+  if(r.tglDraftSelesai)return r.nilaiRea!=null&&String(r.nilaiRea).trim()!==''?'Selesai':'Draft diterima; hasil belum dicatat';
   const est=_reaEstimasi(r);
   if(est&&(new Date().toISOString().slice(0,10))>est)return 'Terlambat';
   return 'Menunggu';
@@ -26931,16 +26784,18 @@ function _reaSaveModal(idx){
 // Terapkan hasil reanalisa ke baris Hasil Sampling terkait: timpa hanya jika
 // hasil reanalisa lebih patuh (dari exceed → ok). Jika tidak, biarkan nilai awal.
 function _reaApplyResult(rec){
-  if(!rec||!rec.tglDraftSelesai||!rec.nilaiRea)return null;
-  if(!rec._hsGroup||!rec._hsRowKey)return null;
-  if(typeof _hsEvalCompliance!=='function'||typeof _hsSetOverrideNilai!=='function')return null;
-  const baku=(rec._hsBaku==null||rec._hsBaku==='')?null:rec._hsBaku;
-  const evNew=_hsEvalCompliance(rec.nilaiRea,baku);
-  if(evNew.status==='ok'){
-    _hsSetOverrideNilai(rec._hsGroup,rec._hsRowKey,rec.nilaiRea,'Reanalisa '+(rec.parameter||'')+' @ '+(rec.titik||''));
-    return 'overwrite';
-  }
-  return 'keep';
+  if(!rec||!rec.tglDraftSelesai||rec.nilaiRea==null||String(rec.nilaiRea).trim()===''||!rec._hsGroup||!rec._hsRowKey)return null;
+  var group=rec._hsGroup,base=(HS_GROUPS_DATA[group]||[]).concat(HASIL_MANUAL.filter(function(r){return r.group===group;}));
+  var matches=base.filter(function(r){return _hsRowKey(group,r)===rec._hsRowKey||_auditLegacyRowKey(group,r)===rec._hsRowKey;});
+  if(matches.length!==1){toast('⚠ Target reanalisa tidak tunggal; koreksi belum diterapkan.');return 'review';}
+  var row=matches[0];
+  // Preserve the existing owner-approved substitution rule; retain both results and provenance.
+  var ev=_hsEvalCompliance(rec.nilaiRea,row.bakuMutu,{satuan:row.satuan,satuanBaku:row.satuanBakuMutu,tanggal:row.tanggal});if(ev.status!=='ok')return 'keep';
+  rec.id=rec.id||'rea-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);rec._hsRowKey=_hsRowKey(group,row);
+  rec.applied={rowKey:rec._hsRowKey,previousValue:row.nilai,newValue:String(rec.nilaiRea),at:new Date().toISOString(),rule:'existing-compliance-substitution'};
+  if(row.extra&&row.extra.manualId){row.extra=Object.assign({},row.extra,{reanalysisId:rec.id,reanalysisPrevious:row.nilai});row.nilai=String(rec.nilaiRea);row.nilaiNum=ev.nilaiNum;row.status=ev.status;}
+  else{HASIL_OVERRIDE[rec._hsRowKey]={nilai:String(rec.nilaiRea),ts:Date.now(),reanalysisId:rec.id,previousValue:row.nilai};}
+  if(!REA_DATA.includes(rec))REA_DATA.push(rec);saveStorageRaw({env26_rea:JSON.stringify(REA_DATA)});if(typeof _y582Invalidate==='function')_y582Invalidate();return 'overwrite';
 }
 window._reaApplyResult=_reaApplyResult;
 // Dipanggil dari tombol Reanalisa di tabel Hasil Sampling (view Tabel)
@@ -26961,10 +26816,11 @@ function _hsReanalisaRow(ri){
 }
 window._hsReanalisaRow=_hsReanalisaRow;
 function _reaDelete(idx){
-  _reaLoad();if(idx<0||idx>=REA_DATA.length)return;
-  REA_DATA.splice(idx,1);_reaSave();
-  const ov=document.getElementById('rea-modal-ov');if(ov)ov.remove();
-  renderReanalisis();
+  _reaLoad();var rec=REA_DATA[idx];if(!rec)return;
+  if(rec.applied||Object.values(HASIL_OVERRIDE).some(function(o){return o.reanalysisId&&o.reanalysisId===rec.id;})||HASIL_OVERRIDE[rec._hsRowKey]){
+    rec.archivedAt=new Date().toISOString();_reaSave();toast('Reanalisa diarsipkan; provenance koreksi tetap tersimpan.');
+  }else{REA_DATA.splice(idx,1);_reaSave();}
+  var ov=document.getElementById('rea-modal-ov');if(ov)ov.remove();renderReanalisis();
 }
 window.renderReanalisis=renderReanalisis;window._reaOpen=_reaOpen;window._reaAutofill=_reaAutofill;window._reaPreviewEst=_reaPreviewEst;window._reaSaveModal=_reaSaveModal;window._reaDelete=_reaDelete;window._reaForRfa=_reaForRfa;
 </script>
@@ -28112,7 +27968,7 @@ function _rsSchedImport(wbx){
 // an existing event — only adds ones that don't already exist (matched by
 // date + normalized text + type), same as any other manual calendar entry.
 function _rsSchedApply(recs){
-  var cal=[]; try{cal=JSON.parse(localStorage.getItem('env26_cal')||'[]');}catch(e){}
+  var cal=typeof CAL_EVENTS!=='undefined'?CAL_EVENTS.slice():[]; // active state includes pending edits
   if((!cal||!cal.length)&&typeof CAL_EVENTS!=='undefined')cal=CAL_EVENTS.slice();
   var existKey={};
   cal.forEach(function(e){if(e&&e.date)existKey[e.date+'|'+_rsNormKey(e.text||'')+'|'+_rsNormKey(e.type||'')]=1;});
@@ -28126,7 +27982,6 @@ function _rsSchedApply(recs){
       text:r.text||'',ppc:r.ppc||'',site:r.site||'',sra:'',status:'Planned',source:'Import Raw Schedule',rem:'',actId:null});
     existKey[key]=1; added++;
   });
-  try{localStorage.setItem('env26_cal',JSON.stringify(cal));}catch(e){}
   if(typeof CAL_EVENTS!=='undefined')try{CAL_EVENTS=cal;}catch(e){}
   if(typeof saveStorage==='function')saveStorage('Import raw ENV Mon Schedule (event kalender)');
   if(typeof renderCalendar==='function')try{renderCalendar();}catch(e){}
@@ -31190,11 +31045,11 @@ function _lapSpecialKind(pname){
 function _lapSiteMatrix(def,period,site,sheets){
   const yr=parseInt(period.id,10);
   const byTitik=new Map();
-  (HS_GROUPS_DATA.Monthly||[]).forEach(function(r){
+  _hsRowsFor('Monthly').forEach(function(r){
     if(_hsSiteN(r.site)!==_hsSiteN(site))return;
-    const sheet=r.extra&&r.extra.sumberSheet;
+    const sheet=String(r.extra&&r.extra.sumberSheet||'').trim().replace(/^DWW Full$/i,'DWW');
     if(sheets.indexOf(sheet)<0)return;
-    const mon=_lapBulanEng(r.extra&&r.extra.bulan);
+    const date=_auditList(r.tanggal).slice().sort().pop();const mon=date&&_pd(date)?['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+date.slice(5,7)-1]:_lapBulanEng(r.extra&&r.extra.bulan);
     if(period.months.indexOf(mon)<0)return;
     if(_lapYearOfRow(r)!==yr)return;
     // Inlet points are internal monitoring, never on the Authority report
@@ -31394,11 +31249,14 @@ function _lapSwTableHtml(def,period,siteN){
   h+='</tbody></table>';
   return h;
 }
-function _lapDailyKeyFor(store,titik){
-  const keys=Object.keys(store||{});
-  const b=_hsTokenSet(titik);let best=null,bs=0;
-  keys.forEach(function(k){const a=_hsTokenSet(k);let sc=0;a.forEach(function(w){if(b.has(w))sc+=w.length;});if(sc>bs){bs=sc;best=k;}});
-  return bs>0?best:null;
+function _lapDailyKeyFor(store,titik,site,period){
+  var norm=function(v){return String(v||'').toLowerCase().replace(/(cpu|npu|spu|cpa|hdl|hca|sps|bkp|bpn)(\d)/g,'$1 $2').replace(/\boutlet\b/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');};
+  var alias=function(v){return norm(v).replace(/^dww \d+ /,'');},wanted=alias(titik),siteOf=function(v){return (norm(v).match(/\b(cpu|npu|spu|cpa|hdl|hca|sps|bkp|bpn)\b/)||[])[1]||'';};
+  var s=siteOf(titik)||String(site||'').toLowerCase(),keys=Object.keys(store||{}).filter(function(k){return alias(k)===wanted&&(!s||siteOf(k)===s||(!siteOf(k)&&!siteOf(titik)&&norm(k)===norm(titik)));});
+  if(period){var pref=String(period.year)+'-'+String(period.month).padStart(2,'0'),coverage=function(k){return Object.keys(store[k]||{}).filter(function(d){return d.startsWith(pref)&&store[k][d]!=null;}).length;};var max=Math.max(0,...keys.map(coverage));keys=keys.filter(function(k){return max>0&&coverage(k)===max;});}
+  if(keys.length===1)return keys[0];
+  if(keys.length>1&&keys.every(function(k){return JSON.stringify(store[k])===JSON.stringify(store[keys[0]]);}))return keys[0];
+  if(keys.length>1&&typeof _emfAmbigu==='function')_emfAmbigu('recording',String(titik),keys);return null;
 }
 function _lapDailyPages(def,period,site,matrix,sec){
   const yr=parseInt(period.id,10);
@@ -31410,7 +31268,7 @@ function _lapDailyPages(def,period,site,matrix,sec){
     const dk=function(d){return yr+'-'+String(mnum).padStart(2,'0')+'-'+String(d).padStart(2,'0');};
     const cols=[];
     titikArr.forEach(function(t){
-      const key=_lapDailyKeyFor(typeof HASIL_DEBIT_DAILY!=='undefined'?HASIL_DEBIT_DAILY:{},t);
+      const key=_lapDailyKeyFor(typeof HASIL_DEBIT_DAILY!=='undefined'?HASIL_DEBIT_DAILY:{},t,site,{year:yr,month:mnum});
       if(!key)return;
       const data=HASIL_DEBIT_DAILY[key]||{};
       const vals=[];let any=false;
@@ -31418,7 +31276,7 @@ function _lapDailyPages(def,period,site,matrix,sec){
       if(!any)return;
       const col={titik:t,vals:vals,ph:null};
       if(sec.ph&&typeof HASIL_PH_DAILY!=='undefined'){
-        const pk=_lapDailyKeyFor(HASIL_PH_DAILY,t);
+        const pk=_lapDailyKeyFor(HASIL_PH_DAILY,t,site,{year:yr,month:mnum});
         if(pk){
           const pd=HASIL_PH_DAILY[pk]||{};
           const pv=[];let pAny=false;
@@ -32850,9 +32708,9 @@ function _prodHarianParseWorkbook(wb){
       const dv=row[dateCol];
       if(dv===''||dv==null)continue;
       let dateStr=null;
-      if(dv instanceof Date){dateStr=dv.toISOString().slice(0,10);}
+      if(dv instanceof Date){dateStr=_hsCellToDateKey(dv);}
       else if(typeof dv==='number'){const d=XLSX.SSF.parse_date_code(dv);if(d)dateStr=d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');}
-      else{const parsed=new Date(dv);if(!isNaN(parsed))dateStr=parsed.toISOString().slice(0,10);}
+      else{dateStr=_hsCellToDateKey(dv)||_rfaParseLooseDate(String(dv));}
       if(!dateStr)continue;
       let gas=0,oil=0;
       gasCols.forEach(c=>{const v=parseFloat(row[c]);if(!isNaN(v))gas+=v;});
@@ -33858,8 +33716,8 @@ function _hsParseDayNumSheet(rows,yyyy,mm){
   for(let r=hIdx+1;r<rows.length;r++){
     const row=rows[r]||[];
     const d=parseInt(row[dateCol],10);
-    if(!isFinite(d)||d<1||d>31||String(row[dateCol]).length>2)continue;
-    const v=parseFloat(row[valCol]);
+    if(!isFinite(d)||d<1||d>new Date(yyyy,mm,0).getDate()||!/^\d{1,2}$/.test(String(row[dateCol])))continue;
+    const v=_auditDailyNumber(row[valCol]);
     if(!isFinite(v))continue;
     // -1 = konvensi SIMPEL untuk "tidak ada aliran" — disimpan sebagai
     // marker supaya bulan tanpa aliran tetap tercatat (bukan bolong data)
@@ -33881,23 +33739,14 @@ function _dpIdb(){
   });
 }
 function _dpIdbGet(key){
-  return _dpIdb().then(function(db){
-    return new Promise(function(res){
-      const tx=db.transaction('pack','readonly').objectStore('pack').get(key);
-      tx.onsuccess=function(){res(tx.result||null);};
-      tx.onerror=function(){res(null);};
-    });
-  }).catch(function(){return null;});
+  return _dpIdb().then(function(db){return new Promise(function(resolve,reject){
+    var tx=db.transaction('pack','readonly'),req=tx.objectStore('pack').get(key),value;
+    req.onsuccess=function(){value=req.result;};
+    tx.oncomplete=function(){db.close();resolve(value===undefined?null:value);};
+    tx.onabort=tx.onerror=function(){db.close();reject(tx.error||new Error('Gagal membaca penyimpanan'));};
+  });});
 }
-function _dpIdbSet(key,val){
-  return _dpIdb().then(function(db){
-    return new Promise(function(res,rej){
-      const tx=db.transaction('pack','readwrite').objectStore('pack').put(val,key);
-      tx.onsuccess=function(){res(true);};
-      tx.onerror=function(){rej(tx.error);};
-    });
-  });
-}
+function _dpIdbSet(key,val){return _auditIdbWrite({[key]:val},[]);}
 // ── schema version ──
 // `version` on the Data Pack was write-only: bumped by hand when the
 // pack's own top-level shape changed, but never actually read back on
@@ -33920,6 +33769,7 @@ function _dpCheckVersion(fileVersion,sourceLabel){
   // once a version bump actually needs one.
 }
 async function _dpBuildPack(){
+  await _auditFlush();
   const ls={};
   for(let i=0;i<localStorage.length;i++){
     const k=localStorage.key(i);
@@ -33930,13 +33780,14 @@ async function _dpBuildPack(){
   // Data Pack JSON keeps the exact same shape as before (pack.localStorage
   // stays a flat map of env26_* key -> JSON string).
   const[rfaIdb,prodIdb]=await Promise.all([_dpIdbGet('env26_rfa'),_dpIdbGet('env26_prod_harian')]);
-  ls['env26_rfa']=JSON.stringify(rfaIdb||RFA_DATA);
-  ls['env26_prod_harian']=JSON.stringify(prodIdb||PRODUKSI_HARIAN);
+  ls['env26_rfa']=JSON.stringify(window._rfaProdReady?RFA_DATA:rfaIdb);
+  ls['env26_prod_harian']=JSON.stringify(window._rfaProdReady?PRODUKSI_HARIAN:prodIdb);
   // Y400: env26_hasil_manual juga sudah pindah ke IndexedDB -- tanpa baris ini
   // pack hasil ekspor kehilangan seluruh hasil sampling.
   try{
     const _hsIdbOut=await _dpIdbGet('env26_hasil_manual');
-    if(_hsIdbOut)ls['env26_hasil_manual']=JSON.stringify(_hsIdbOut);
+    if(window._hsManualReady)ls['env26_hasil_manual']=JSON.stringify(HASIL_MANUAL);
+    else if(_hsIdbOut)ls['env26_hasil_manual']=JSON.stringify(_hsIdbOut);
     else if(typeof HASIL_MANUAL!=='undefined'&&HASIL_MANUAL)ls['env26_hasil_manual']=JSON.stringify(HASIL_MANUAL);
   }catch(_eHs){}
   // Y400: layer peta GIS ikut apa adanya (sudah gzip+base64), tidak dikodekan
@@ -33986,54 +33837,11 @@ async function _dpExport(){
 // shared "apply a parsed Data Pack object" core, reused whether the pack
 // came from a local file picker or a fetch() from the web-hosted copy
 function _dpApplyPackObj(pack,srcLabel){
-  if(!pack||pack.format!=='env26-datapack'){if(typeof toast==='function')toast('✗ Bukan Data Pack (format tidak dikenal).');return;}
-  if(typeof _dpCheckVersion==='function')_dpCheckVersion(pack.version,'Data Pack ini');
-  const doIt=async function(){
-    // Y429: jalur lama ini masih terjangkau (mis. dari berkas), jadi ikut
-    // dikunci seperti jalur utama _dpLoaderRun.
-    if(typeof _busyShow==='function')_busyShow('Memuat Data Pack','Menyimpan data ke perangkat…');
-    // recording harian + hasil sampling: simpan penuh ke IndexedDB (bisa >5MB) lalu merge
-    await _dpIdbSet('current',{debitDaily:pack.debitDaily||{},phDaily:pack.phDaily||{},hsHistoris:pack.hsHistoris||null,recapArsip:pack.recapArsip||null,produksi:pack.produksi||null,hasilSeed:pack.hasilSeed||null,importedAt:new Date().toISOString(),createdAt:pack.createdAt});
-    // Y400: layer peta GIS ikut di dalam Data Pack (gzip+base64). Simpan ke
-    // IndexedDB lalu langsung terapkan supaya peta dan isian koordinat
-    // otomatis terisi tanpa menunggu reload halaman.
-    // Y410: data personel ikut di dalam Data Pack.
-    try{if(typeof _persApplyFromPack==='function')_persApplyFromPack(pack);}catch(_eP){}
-    try{if(typeof _bmRegApplyFromPack==='function')_bmRegApplyFromPack(pack);}catch(_eB){}
-    if(pack.gisLayersGz&&typeof _gisStoreBlob==='function'){
-      try{await _gisStoreBlob(pack.gisLayersGz);}catch(_eGis){}
-    }
-    _dpMergeStores(pack.debitDaily||{},pack.phDaily||{},true);
-    // isian aplikasi (kegiatan, tracking laporan, produksi manual, dst.)
-    let _dpQuotaFailedKeys=[];
-    const _dpIdbBackedKeys={env26_rfa:true,env26_prod_harian:true,env26_hasil_manual:true};
-    if(pack.localStorage){
-      for(const k of Object.keys(pack.localStorage)){
-        if(_dpIdbBackedKeys[k]){
-          // moved to IndexedDB (see loadStorage/saveStorageRaw) -- too big
-          // for localStorage's ~5MB quota. Parse the JSON-string shape the
-          // exported pack still uses back into a real object/array first.
-          try{
-            let parsed=k==='env26_prod_harian'?{}:[];
-            try{parsed=JSON.parse(pack.localStorage[k]);}catch(_){}
-            await _dpIdbSet(k,parsed);
-          }catch(e){_dpQuotaFailedKeys.push(k);}
-          continue;
-        }
-        try{localStorage.setItem(k,pack.localStorage[k]);}catch(e){_dpQuotaFailedKeys.push(k);}
-      }
-    }
-    if(_dpQuotaFailedKeys.length){
-      if(typeof _busyHide==='function')_busyHide();
-      if(typeof toast==='function')toast('⚠ GAGAL menyimpan sebagian data (kemungkinan localStorage browser penuh/kuota terlampaui): '+_dpQuotaFailedKeys.join(', ')+'. Data ini TIDAK ter-update meski Data Pack "berhasil" dimuat -- coba bersihkan data lama/gunakan browser lain, lalu import ulang.');
-      if(typeof _uiConfirm==='function')_uiConfirm('⚠ Sebagian data GAGAL tersimpan saat memuat Data Pack (localStorage browser kemungkinan penuh):\n\n'+_dpQuotaFailedKeys.join(', ')+'\n\nData ini tidak ter-update meski proses "berhasil". Coba kosongkan data lama yang tidak perlu, atau gunakan browser lain, lalu import ulang Data Pack.',function(){});
-    }else if(typeof toast==='function')toast('✓ Data Pack dimuat. Halaman di-refresh untuk menerapkan semua data...');
-    if(!_dpQuotaFailedKeys.length)setTimeout(function(){location.reload();},900);
-  };
-  const msg='Muat Data Pack'+(srcLabel?(' '+srcLabel):'')+' '+(pack.createdAt?('('+pack.createdAt.slice(0,10)+') '):'')+'?\nRecording harian & seluruh isian aplikasi dari pack akan menimpa data yang sama di sesi ini.';
-  if(typeof _uiConfirm==='function')_uiConfirm(msg,doIt);
-  else if(typeof azConfirm==='function')azConfirm(msg,doIt);
-  else doIt();
+  try{_auditPackValidate(pack);}catch(e){toast('⚠ Data Pack GAGAL dimuat: '+e.message);return false;}
+  var selection=Object.fromEntries(DP_GROUPS.map(function(g){return [g.id,true];}));selection.__other=true;
+  var action=function(){return _dpLoaderRun(pack,selection,{});};
+  if(typeof _uiConfirm==='function')return _uiConfirm('Muat Data Pack '+(srcLabel||'')+' dan timpa bagian yang dibawanya?',action);
+  return action();
 }
 
 function _dpImportInputFile(input){
@@ -34504,73 +34312,35 @@ window._calIsPpcRoster=_calIsPpcRoster;window._calCleanPpcRoster=_calCleanPpcRos
 window._onDataReady(function(){if(!window._calCleanedPpc){window._calCleanedPpc=true;try{_calCleanPpcRoster();}catch(e){}}});
 window._hsManualReady=false;
 async function _hsManualIdbBootRestore(){
-  const legacyRaw=localStorage.getItem('env26_hasil_manual');
-  if(legacyRaw!=null){
-    // browser yang belum dimigrasi: pindahkan sekali, lalu bersihkan
-    let legacy=null;
-    try{legacy=JSON.parse(legacyRaw);}catch(e){}
-    if(legacy!=null)HASIL_MANUAL=legacy;
-    window._hsManualReady=true;
-    try{await _dpIdbSet('env26_hasil_manual',HASIL_MANUAL);localStorage.removeItem('env26_hasil_manual');}catch(e){}
-  }else{
-    try{
-      const idb=await _dpIdbGet('env26_hasil_manual');
-      if(idb)HASIL_MANUAL=idb;
-    }catch(e){}
-    window._hsManualReady=true;
-  }
-  // IndexedDB bisa selesai setelah gambar pertama -- segarkan tab yang sedang
-  // terbuka, sama seperti pola pemulihan RFA/produksi di bawah.
+  await _auditRecover();window._hsManualReady=false;
   try{
-    const active=document.querySelector('.tab-btn.active');
-    const id=window._dataBootFinished&&active?active.id:''; /*Y582 coalesce boot refresh*/
-    if(id==='tb-hasil'&&typeof renderHasilSampling==='function')renderHasilSampling();
-    else if(id==='tb-dashboard'&&typeof renderDashboard==='function')renderDashboard();
-  }catch(e){}
+    var raw=localStorage.getItem('env26_hasil_manual'),value;
+    if(raw!=null){value=JSON.parse(raw);if(!Array.isArray(value))throw new Error('Hasil manual legacy rusak');await _dpIdbSet('env26_hasil_manual',value);localStorage.removeItem('env26_hasil_manual');}
+    else value=await _dpIdbGet('env26_hasil_manual');
+    if(value!=null)HASIL_MANUAL=value;window._hsManualReady=true;
+  }catch(e){_auditNotice(e.message);throw e;}
 }
 window._hsManualIdbBootRestore=_hsManualIdbBootRestore;
 window._rfaProdReady=false;
 async function _rfaProdIdbBootRestore(){
-  const legacyRfaRaw=localStorage.getItem('env26_rfa');
-  const legacyProdRaw=localStorage.getItem('env26_prod_harian');
-  if(legacyRfaRaw!=null||legacyProdRaw!=null){
-    let legacyRfa=null,legacyProd=null;
-    try{legacyRfa=legacyRfaRaw!=null?JSON.parse(legacyRfaRaw):null;}catch(e){}
-    try{legacyProd=legacyProdRaw!=null?JSON.parse(legacyProdRaw):null;}catch(e){}
-    try{
-      await Promise.all([
-        legacyRfa!=null?_dpIdbSet('env26_rfa',legacyRfa):Promise.resolve(),
-        legacyProd!=null?_dpIdbSet('env26_prod_harian',legacyProd):Promise.resolve()
-      ]);
-      localStorage.removeItem('env26_rfa');
-      localStorage.removeItem('env26_prod_harian');
-    }catch(e){}
-    if(legacyRfa!=null){RFA_DATA=legacyRfa;_rfaMergeSeed();}
-    if(legacyProd!=null)PRODUKSI_HARIAN=legacyProd;
-  }else{
-    try{
-      const[rfa,prod]=await Promise.all([_dpIdbGet('env26_rfa'),_dpIdbGet('env26_prod_harian')]);
-      if(rfa){RFA_DATA=rfa;_rfaMergeSeed();}
-      if(prod)PRODUKSI_HARIAN=prod;
-    }catch(e){}
-  }
-  window._rfaProdReady=true;
-  // IDB resolve bisa datang setelah render pertama — segarkan view yang
-  // menampilkan data RFA/produksi supaya tidak tampak kosong/basi sampai
-  // reload manual (sama seperti pola restore "current" pack di atas).
+  await _auditRecover();window._rfaProdReady=false;
   try{
-    const active=document.querySelector('.tab-btn.active');
-    const id=active?active.id:'';
-    if(id==='tb-rfa'&&typeof renderRfaTracker==='function')renderRfaTracker();
-    else if(id==='tb-laporan'&&typeof renderLaporan==='function')renderLaporan();
-    if(typeof _prodHarianRenderArchive==='function')_prodHarianRenderArchive();
-    if(typeof updateActCount==='function')updateActCount();
-  }catch(e){}
+    for(var key of ['env26_rfa','env26_prod_harian']){
+      var legacy=localStorage.getItem(key),value;
+      if(legacy!=null){
+        value=JSON.parse(legacy);
+        if(key==='env26_rfa'?!Array.isArray(value):!value||typeof value!=='object'||Array.isArray(value))throw new Error('Store legacy rusak: '+key);
+        await _dpIdbSet(key,value);localStorage.removeItem(key);
+      }else value=await _dpIdbGet(key);
+      if(value!=null){if(key==='env26_rfa'){RFA_DATA=value;_rfaMergeSeed();}else PRODUKSI_HARIAN=value;}
+    }
+    window._rfaProdReady=true;
+  }catch(e){_auditNotice(e.message);throw e;}
 }
 window._rfaProdIdbBootRestore=_rfaProdIdbBootRestore;
 (function(){
   try{
-    const pCurrent=_dpIdbGet('current').then(function(p){
+    const pCurrent=_auditRecover().then(function(){return _dpIdbGet('current');}).then(function(p){
       if(!p)return;
       _dpMergeStores(p.debitDaily,p.phDaily,false);
       // Y449: rapikan ejaan nama titik SESUDAH gudang harian tergabung, diam-diam
@@ -34596,9 +34366,9 @@ window._rfaProdIdbBootRestore=_rfaProdIdbBootRestore;
     }).catch(function(){});
     try{if(typeof _persBootRestore==='function')_persBootRestore();}catch(_eP){}
     try{if(typeof _gisBoot==='function')_gisBoot();}catch(_eGis){}
-    const pRfaProd=_rfaProdIdbBootRestore().catch(function(){window._rfaProdReady=true;});
-    const pHsManual=_hsManualIdbBootRestore().catch(function(){window._hsManualReady=true;});
-    Promise.all([pCurrent,pRfaProd,pHsManual]).then(function(){window._dataBootFinished=true;window._resolveDataReady();
+    const pRfaProd=_rfaProdIdbBootRestore().catch(function(e){_auditNotice(e.message);});
+    const pHsManual=_hsManualIdbBootRestore().catch(function(e){_auditNotice(e.message);});
+    Promise.all([pCurrent,pRfaProd,pHsManual]).then(async function(){await _auditFinishBoot();if(window._auditSaveAfterBoot){window._auditSaveAfterBoot=false;saveStorageRaw();}
       requestAnimationFrame(function(){setTimeout(function(){if(typeof _y582Invalidate==='function')_y582Invalidate();var b=document.querySelector('.tab-btn.active');var tab=b&&b.id.replace('tb-','');var renderers={dashboard:'renderDashboard',hasil:'renderHasilSampling',rfa:'renderRfaTracker',laporan:'renderLaporan',envprog:'renderEnvProgram'};if(renderers[tab]&&typeof window[renderers[tab]]==='function')window[renderers[tab]]();if(typeof renderPPCPanel==='function')renderPPCPanel();if(typeof _ldStats==='function')_ldStats();requestAnimationFrame(function(){window.__y582AppReady=performance.now();});},0);});
     }); /*Y582 shell paints before one complete data render*/
   }catch(e){if(window._resolveDataReady)window._resolveDataReady();}
@@ -44297,8 +44067,8 @@ function _emfIndex(){
       (_EMF_TITIK_PARAMS[r.titik]=_EMF_TITIK_PARAMS[r.titik]||{})[_emfPKey(r.parameter)]=r.parameter;
       var slot=(idx[k]=idx[k]||{});
       (slot[m[2]]=slot[m[2]]||[]).push({nilai:r.nilai,tgl:String(tg[j]),
-        sheet:(r.extra&&r.extra.sumberSheet)||'',satuan:r.satuan||''});
-      break;
+        dates:tg.slice(),sheet:String((r.extra&&r.extra.sumberSheet)||'').trim(),satuan:r.satuan||''});
+      // Keep every source date; one candidate per date preserves header attribution.
     }
   }
   return idx;
@@ -44316,7 +44086,7 @@ function _emfSeries(idx,titik,param,year,months,sheet,satuan){
   }
   return months.map(function(m){
     var c=d[m]||[];
-    if(sheet){var f=c.filter(function(x){return x.sheet===sheet;});if(f.length)c=f;}
+    if(sheet){var f=c.filter(function(x){return String(x.sheet||'').trim()===String(sheet||'').trim();});if(f.length)c=f;}
     if(satuan){var g=c.filter(function(x){return _emfSatEq(x.satuan,satuan);});if(g.length)c=g;}
     return c.length?c[0]:null;
   });
@@ -44810,7 +44580,7 @@ function _emfPatchTitikTable(tbl,idx,year,months,cap){
       var v=ser[i]?_emfFmt(ser[i].nilai,d.param):null;
       if(v==null)empty++; else filled++;
       if(ser[i]&&ser[i].tgl&&!hdrDates[i])hdrDates[i]=ser[i].tgl;
-      if(ser[i]&&ser[i].tgl)(actualDates[mm[i]]=actualDates[mm[i]]||new Set()).add(String(ser[i].tgl).slice(0,10));/*Y581*/
+      if(ser[i]){var dates=ser[i].dates||[ser[i].tgl];dates.forEach(function(d){if(d)(actualDates[mm[i]]=actualDates[mm[i]]||new Set()).add(String(d).slice(0,10));});}/*Y584 all source dates*/
       vals.push(v);
     }
     log.push({titik:d.titik,param:d.param,vals:vals});
@@ -47362,7 +47132,7 @@ function _emfSeries(idx,titik,param,year,months,sheet,satuan){
   if(!d){var alt=_emfParamAlt(titik,param);if(alt)d=idx[String(titik)+'\u0000'+alt+'\u0000'+wantYear]||null;}
   return months.map(function(m){
     var c=(d&&d[m])||[];
-    if(sheet){var f=c.filter(function(x){return x.sheet===sheet;});if(f.length)c=f;}
+    if(sheet){var f=c.filter(function(x){return String(x.sheet||'').trim()===String(sheet||'').trim();});if(f.length)c=f;}
     if(satuan){var g=c.filter(function(x){return _emfSatEq(x.satuan,satuan);});if(g.length)c=g;}
     return c.length?c[0]:null;
   });
@@ -50312,7 +50082,7 @@ window._rsSchedImport=function(wbx,bytes){
 };
 var _schedApplyLama=window._rsSchedApply; window._rsSchedApplyLama=_schedApplyLama;
 window._rsSchedApply=function(recs){
-  var cal=[]; try{cal=JSON.parse(localStorage.getItem('env26_cal')||'[]');}catch(e){}
+  var cal=typeof CAL_EVENTS!=='undefined'?CAL_EVENTS.slice():[]; // active state includes pending edits
   if((!cal||!cal.length)&&typeof CAL_EVENTS!=='undefined')cal=CAL_EVENTS.slice();
   var perTgl={}; cal.forEach(function(e){if(e&&e.date)(perTgl[e.date]=perTgl[e.date]||[]).push(normTeks(e.text));});
   var added=0,skipped=0,uid=Date.now();
@@ -50327,7 +50097,6 @@ window._rsSchedApply=function(recs){
       text:r.text||'',ppc:r.ppc||'',site:r.site||'',sra:'',status:r.status||'Planned',source:'Import Raw Schedule',rem:'',actId:null});
     (perTgl[r.date]=perTgl[r.date]||[]).push(a); added++;
   });
-  try{localStorage.setItem('env26_cal',JSON.stringify(cal));}catch(e){}
   if(typeof CAL_EVENTS!=='undefined')try{CAL_EVENTS=cal;}catch(e){}
   try{if(typeof _rfaNormalizeAll==='function')_rfaNormalizeAll();}catch(e){}
   if(typeof saveStorage==='function')saveStorage('Import raw ENV Mon Schedule (kalender bulanan)');
@@ -52498,14 +52267,15 @@ function _rsBpnImport(wbx,sn,rep,ctx){
     var rv=_rsNorm(rfaRow[cc]);
     if(/^il 2018|^permen|^baku/.test(rv)){akhir=cc;break;}
   }
-  var cols=[];
+  var cols=[],occurrence={};
+  var merged=function(row,col){var direct=(rows[row]||[])[col];if(direct!=null)return direct;var m=(wbx.Sheets[sn]['!merges']||[]).find(function(m){return row>=m.s.r&&row<=m.e.r&&col>=m.s.c&&col<=m.e.c;});return m?(rows[m.s.r]||[])[m.s.c]:direct;};
   for(var c2=cV0;c2<akhir;c2++){
-    var rf=String(rfaRow[c2]==null?'':rfaRow[c2]).trim(),tg=tglRow[c2];
+    var rawRfa=merged(iRfa,c2),rf=String(rawRfa==null?'':rawRfa).trim(),tg=merged(iTgl,c2);
     if(!/^\d{6}-\d{2}[A-Za-z]?$/.test(rf))continue;
     var dates=[];
     if(typeof tg==='number'&&tg>40000&&tg<80000)dates=[_rsSerialToIso(tg)];
     else if(window.PemulihanY578){var g=window.PemulihanY578.tanggalGanda(tg);if(g)dates=g;else if(/^\d{4}-\d{2}-\d{2}/.test(String(tg||'')))dates=[String(tg).slice(0,10)];}
-    cols.push({c:c2,rfa:rf,dates:dates});
+    occurrence[rf]=(occurrence[rf]||0)+1;cols.push({c:c2,rfa:rf,dates:dates,set:occurrence[rf]});
   }
   if(!cols.length)return null;
   var fillOnly=(typeof RS_MODE!=='undefined'&&RS_MODE!=='replace');
@@ -52537,8 +52307,8 @@ function _rsBpnImport(wbx,sn,rep,ctx){
       for(var i=0;i<app.length;i++){
         var a=app[i]; if(a.t!==kT||a.p!==kP)continue;
         var rr=a.r.noRfa||[];
-        if(rr.indexOf(col.rfa)>=0){hit=a;break;}
-        if(!rr.length&&col.dates.length&&(a.r.tanggal||[]).some(function(t){return col.dates.indexOf(t)>=0;})){hit=a;}
+        if(rr.indexOf(col.rfa)>=0&&Number((a.r.extra||{}).set||1)===col.set){hit=a;break;}
+        if(!rr.length&&Number((a.r.extra||{}).set||1)===col.set&&col.dates.length&&(a.r.tanggal||[]).some(function(t){return col.dates.indexOf(t)>=0;})){hit=a;}
       }
       if(hit){
         if(!(hit.r.noRfa||[]).length&&hit.manual){hit.r.noRfa=[col.rfa];tertaut++;}   // tautan RFA ikut diisi (audit T1)
@@ -52564,7 +52334,7 @@ function _rsBpnImport(wbx,sn,rep,ctx){
       var e2=_hsEvalCompliance(val,bm,{satuan:sat,satuanBaku:t.satuanBakuMutu,tanggal:col.dates});
       var ex=Object.assign({},t.extra||{},{sumberSheet:String(sn).trim(),bulan:BLN3[parseInt(col.dates[0].slice(5,7),10)-1]||'',
         manualId:'hm-bpn-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)+baru.length,importedFromRaw:true,
-        sumberFile:(window._rsSrcFile||''),waktuImpor:(window._rsSrcTime||'')});
+        set:col.set,sourceColumn:col.c,sumberFile:(window._rsSrcFile||''),waktuImpor:(window._rsSrcTime||'')});
       delete ex.overridden;delete ex.overriddenAt;delete ex.siteAsli;delete ex.satuanAsli;delete ex.bakuMutuAsli;delete ex.tanggalAsli;
       var nr={group:'Monthly',category:t.category||'routine',noRfa:[col.rfa],site:_rsSiteEf(t.site||'BPN',t.titik),titik:t.titik,tanggal:col.dates.slice(),
         parameter:t.parameter,nilai:val,satuan:sat,bakuMutu:bm,satuanBakuMutu:t.satuanBakuMutu||'',peraturan:t.peraturan||'',
@@ -55559,7 +55329,9 @@ function tautkan(ev,lap){
       return e&&e!==ev&&!e._y572hapus&&e.date===ev.date&&(e.tahap||'')===(ev.tahap||'')
         &&((a&&e.actId===a.id)||(jenis.indexOf(e.type)>=0&&cocokWell(tokenEv(e),token)));
     });
-    if(kembar){
+    if(kembar&&(!kembar.site||!ev.site||siteKode(kembar.site)===siteKode(ev.site))){
+      if(!kembar.site&&ev.site)kembar.site=ev.site;
+      if(a&&!a.site&&ev.site)a.site=siteKode(ev.site);
       rfas().forEach(function(r){if(r.calEventId===ev.id)r.calEventId=kembar.id;});
       if(!kembar.ppc&&ev.ppc)kembar.ppc=ev.ppc;
       // tautan kembaran TIDAK diubah: memberi actId ke event lama yang belum
@@ -58202,7 +57974,7 @@ function _emfSeries(idx,titik,param,year,months,sheet,satuan,opsi){
   };
   return months.map(function(m){
     var c=(buckets[m]||[]).slice();
-    if(sheet){var f=c.filter(function(x){return x.sheet===sheet;});if(f.length)c=f;}
+    if(sheet){var f=c.filter(function(x){return String(x.sheet||'').trim()===String(sheet||'').trim();});if(f.length)c=f;}
     if(satuan){var g=c.filter(function(x){return _emfSatEq(x.satuan,satuan);});if(g.length)c=g;}
     if(!c.length)return null;
     if(gabung&&c.length>1){
@@ -58596,7 +58368,7 @@ function memo(name,fn){if(typeof window[name]!=='function')return;var original=w
 ['saveStorage','saveStorageRaw','loadStorage','_hsApplySeedPack','_dpMergeStores','rfaSave','_hsSaveManual','_hsSaveOverride','_dpApplyPackObj','_applySnapshot','undo','redo'].forEach(function(name){var f=window[name];if(typeof f!=='function')return;window[name]=function(){_y582Invalidate();var out=f.apply(this,arguments);if(out&&typeof out.then==='function')return out.finally(_y582Invalidate);return out;};});
 if(typeof _onDataReady==='function')_onDataReady(function(){_y582Invalidate();window.__y582HydratedAt=performance.now();document.documentElement.setAttribute('data-data-ready','true');var e=document.getElementById('y582-ready');if(e)e.remove();});
 // Metadata notification only: another tab never overwrites this tab's edits.
-var channel;try{channel=new BroadcastChannel('envmon-data-revision');channel.onmessage=function(){var e=document.getElementById('y582-other-tab');if(e)return;e=document.createElement('div');e.id='y582-other-tab';e.className='y582-notice';e.textContent='Data berubah di tab lain. Simpan pekerjaan Anda, lalu muat ulang untuk menggunakan perubahan itu.';document.body.appendChild(e);};var save=window.saveStorage;if(typeof save==='function')window.saveStorage=function(){var out=save.apply(this,arguments);channel.postMessage({revision:Date.now()});return out;};window.addEventListener('pagehide',function(){channel.close();});}catch(e){}
+var channel;try{channel=new BroadcastChannel('envmon-data-revision');channel.onmessage=function(){var e=document.getElementById('y582-other-tab');if(e)return;e=document.createElement('div');e.id='y582-other-tab';e.className='y582-notice';e.textContent='Data berubah di tab lain. Unduh salinan perubahan sebelum memuat ulang. Penyimpanan state lama akan ditolak.';document.body.appendChild(e);};var save=window.saveStorage;if(typeof save==='function')window.saveStorage=function(){var out=save.apply(this,arguments);channel.postMessage({revision:Date.now()});return out;};window.addEventListener('pagehide',function(){channel.close();});}catch(e){}
 window._y582ChartDate=function(r){var d=String((Array.isArray(r.tanggal)?r.tanggal[0]:r.tanggal)||'');if(/^\d{4}-\d{2}-\d{2}/.test(d)){var m=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][+d.slice(5,7)-1];return d.slice(8,10)+' '+m;}return d||_hsPeriodKey(r);};
 window._y582ChartDetail=function(r){return 'Tanggal '+(r.tanggal||[]).join(', ')+' · '+String(r.nilai)+' '+(r.satuan||'')+' · BM '+(r.bakuMutu==null?'-':r.bakuMutu)+' · RFA '+(r.noRfa||[]).join(', ')+' · Set '+((r.extra||{}).set||1);};
 window._y582BarDetail=function(bar){var region=bar.closest('[role=region]'),e=region.querySelector('.y582-chart-detail');if(!e){e=document.createElement('p');e.className='y582-chart-detail';e.setAttribute('role','status');region.appendChild(e);}e.textContent=bar.getAttribute('aria-label');};
