@@ -1,0 +1,33 @@
+name: Finish verified Y583 Batch fix
+on:
+  push:
+    branches: [codex/geotag-batch-y583]
+permissions:
+  contents: write
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply only the verified Batch change
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "99a406cdced9849d254e559bfa8f32a429eb377d"
+          python3 - <<'PY'
+          import hashlib,json,pathlib
+          patch=json.loads(r'''{"old":"if(typeof section==='function')window._gtBatchSectionHtml=function(){return _imGtColumnsHtml()+section.apply(this,arguments)+'<div id=\"im-batch-preview\" role=\"group\" style=\"display:flex;gap:12px;flex-wrap:wrap;max-height:380px;overflow:auto;margin:12px 0\" aria-label=\"Pratinjau foto batch\"></div>';};","new":"if(typeof section==='function')window._gtBatchSectionHtml=function(){\n  // Y583: all Batch controls share the card that the menu shows/hides.\n  var fragment=document.createElement('template');fragment.innerHTML=section.apply(this,arguments);\n  var card=fragment.content.querySelector('.et-sec');\n  if(!card)throw new Error('Kartu Pemrosesan Batch tidak ditemukan');\n  var desc=card.querySelector('.et-sec-desc')||card.querySelector('.et-sec-title');\n  if(desc)desc.insertAdjacentHTML('afterend',_imGtColumnsHtml());\n  else card.insertAdjacentHTML('afterbegin',_imGtColumnsHtml());\n  card.insertAdjacentHTML('beforeend','<div id=\"im-batch-preview\" role=\"group\" style=\"display:flex;gap:12px;flex-wrap:wrap;max-height:380px;overflow:auto;margin:12px 0\" aria-label=\"Pratinjau foto batch\"></div>');\n  return fragment.innerHTML;\n};"}''')
+          file=pathlib.Path('index.html')
+          text=file.read_text()
+          assert text.count(patch['old'])==1
+          text=text.replace(patch['old'],patch['new']).replace("h:'85a89cc4'","h:'a55b0a57'")
+          assert hashlib.sha256(text.encode()).hexdigest()=='593f241585bae2d36fc8abb03e55f332fb165ed3d8b4e00aae70fbba065da26b'
+          file.write_text(text)
+          PY
+          test "$(git hash-object index.html)" = "58af0f248fb77c774cfd5f27d7cd522f1e4dff33"
+          git config user.name "claudesharing2-creator"
+          git config user.email "claudesharing2@gmail.com"
+          git add index.html
+          git commit -m "Y583: contain Excel column settings and photo previews in Batch card" -m "Verified: Geotag 28/28, audit 35/35, smoke and UI mobile/tablet/desktop. Repeated builds identical."
+          git push origin HEAD:main
