@@ -5796,7 +5796,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-08',h:'85a89cc4'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-08',h:'a55b0a57'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -58339,7 +58339,17 @@ window._imBatchPreviewList=function(){
   });
 };
 var section=window._gtBatchSectionHtml;
-if(typeof section==='function')window._gtBatchSectionHtml=function(){return _imGtColumnsHtml()+section.apply(this,arguments)+'<div id="im-batch-preview" role="group" style="display:flex;gap:12px;flex-wrap:wrap;max-height:380px;overflow:auto;margin:12px 0" aria-label="Pratinjau foto batch"></div>';};
+if(typeof section==='function')window._gtBatchSectionHtml=function(){
+  // Y583: all Batch controls share the card that the menu shows/hides.
+  var fragment=document.createElement('template');fragment.innerHTML=section.apply(this,arguments);
+  var card=fragment.content.querySelector('.et-sec');
+  if(!card)throw new Error('Kartu Pemrosesan Batch tidak ditemukan');
+  var desc=card.querySelector('.et-sec-desc')||card.querySelector('.et-sec-title');
+  if(desc)desc.insertAdjacentHTML('afterend',_imGtColumnsHtml());
+  else card.insertAdjacentHTML('afterbegin',_imGtColumnsHtml());
+  card.insertAdjacentHTML('beforeend','<div id="im-batch-preview" role="group" style="display:flex;gap:12px;flex-wrap:wrap;max-height:380px;overflow:auto;margin:12px 0" aria-label="Pratinjau foto batch"></div>');
+  return fragment.innerHTML;
+};
 var handle=window._gtBatchHandlePhotos;
 if(typeof handle==='function')window._gtBatchHandlePhotos=async function(){var out=await handle.apply(this,arguments);_imBatchPreviewList();return out;};
 // Tag Emergency tidak mengubah jenis kegiatan atau matriks pengujian.
