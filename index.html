@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <script id="audit-y584-core">
-var _AUDIT_PACK_KEYS=new Set(["env26_acts", "env26_asisten", "env26_batches", "env26_bm_master", "env26_bm_param_ov", "env26_bm_points_ov", "env26_bm_registry", "env26_bm_titik_ov", "env26_cal", "env26_dash_custom", "env26_dash_layout", "env26_dash_mode", "env26_debit_daily", "env26_drain", "env26_drain_config", "env26_drain_est", "env26_drain_est_on", "env26_drain_seeded", "env26_emf_chartref", "env26_emf_manual", "env26_ep_active", "env26_ep_showlabels", "env26_epmap_sidebar", "env26_et_guide", "env26_exportedAt", "env26_fs", "env26_gis_layers", "env26_gmc", "env26_gt_logo", "env26_gt_menu", "env26_hasil_manual", "env26_hasil_override", "env26_hs_quarantine", "env26_ket_info", "env26_lap_prod_seed", "env26_lap_produksi", "env26_lap_recon_ack", "env26_lap_signer", "env26_laporan_track", "env26_log", "env26_map_draw", "env26_map_draw_style", "env26_mca", "env26_mcaMode", "env26_ocr", "env26_pers_seed", "env26_ph_daily", "env26_ppc_list", "env26_ppc_ovr", "env26_prod_harian", "env26_rea", "env26_recon_done", "env26_review_log", "env26_rfa", "env26_rfa_cbt", "env26_rfa_collision", "env26_rs_mode", "env26_sampling_points", "env26_schema_version", "env26_stp_pob", "env26_sync_health", "env26_theme", "env26_theme_bnw_recall_20260824", "env26_trash", "env26_zoom"]);
+var _AUDIT_PACK_KEYS=new Set(["env26_acts", "env26_asisten", "env26_batches", "env26_bm_master", "env26_bm_param_ov", "env26_bm_points_ov", "env26_bm_registry", "env26_bm_titik_ov", "env26_cal", "env26_dash_custom", "env26_dash_layout", "env26_dash_mode", "env26_debit_daily", "env26_drain", "env26_drain_config", "env26_drain_est", "env26_drain_est_on", "env26_drain_seeded", "env26_envi_met", "env26_hasil_reference", "env26_emf_chartref", "env26_emf_manual", "env26_ep_active", "env26_ep_showlabels", "env26_epmap_sidebar", "env26_et_guide", "env26_exportedAt", "env26_fs", "env26_gis_layers", "env26_gmc", "env26_gt_logo", "env26_gt_menu", "env26_hasil_manual", "env26_hasil_override", "env26_hs_quarantine", "env26_ket_info", "env26_lap_prod_seed", "env26_lap_produksi", "env26_lap_recon_ack", "env26_lap_signer", "env26_laporan_track", "env26_log", "env26_map_draw", "env26_map_draw_style", "env26_mca", "env26_mcaMode", "env26_ocr", "env26_pers_seed", "env26_ph_daily", "env26_ppc_list", "env26_ppc_ovr", "env26_prod_harian", "env26_rea", "env26_recon_done", "env26_review_log", "env26_rfa", "env26_rfa_cbt", "env26_rfa_collision", "env26_rs_mode", "env26_sampling_points", "env26_schema_version", "env26_stp_pob", "env26_sync_health", "env26_theme", "env26_theme_bnw_recall_20260824", "env26_trash", "env26_zoom"]);
 /* Y584: durable commits, coherent imports, and explicit unsaved-state recovery. */
 var _auditSeenRevision=localStorage.getItem('_auditDataRevision')||'0';
 var _auditTail=Promise.resolve(true),_auditPending=0,_auditLastSaveOK=true;
@@ -90,8 +90,8 @@ function _auditPackValidate(pack){
   if(pack.localStorage==null)pack.localStorage={}; // explicit compatibility with pre-version personnel-only packs
   if(typeof pack.localStorage!=='object'||Array.isArray(pack.localStorage))throw new Error('Format store Data Pack tidak valid');
   if(pack.version!=null&&(!Number.isInteger(pack.version)||pack.version<1||pack.version>2))throw new Error('Versi Data Pack tidak didukung');
-  var arrays=new Set(['env26_acts','env26_cal','env26_trash','env26_rfa','env26_rea','env26_hasil_manual','env26_sampling_points','env26_ppc_list','env26_pers_seed']);
-  var objects=new Set(['env26_prod_harian','env26_hasil_override','env26_debit_daily','env26_ph_daily']);
+  var arrays=new Set(['env26_acts','env26_cal','env26_trash','env26_rfa','env26_rea','env26_hasil_manual','env26_ppc_list','env26_pers_seed','env26_hasil_reference']);
+  var objects=new Set(['env26_prod_harian','env26_hasil_override','env26_debit_daily','env26_ph_daily','env26_sampling_points']);
   Object.keys(pack.localStorage).forEach(function(k){
     if(!/^env26_[a-z0-9_]+$/i.test(k)||!_AUDIT_PACK_KEYS.has(k))throw new Error('Kunci Data Pack tidak diizinkan: '+k);
     if(DP_NEVER[k])return;
@@ -131,11 +131,14 @@ function _auditDailyNumber(v){
 }
 function _auditReferenceRow(r){return !!(r&&r.extra&&r.extra.ronaAwal!=null&&!(r.tanggal||[]).length&&!(r.noRfa||[]).length&&String(r.nilai)===String(r.extra.ronaAwal));}
 function _auditLegacyRowKey(group,r){return [group,r.titik||'',_auditList(r.noRfa).slice().sort().join(','),r.parameter||'',(r.extra&&r.extra.set)||1,(r.extra&&r.extra.bulan)||''].join('‖');}
-function _auditOverrideFor(group,r){
+function _auditOverrideFor(group,r,lookup){
   var key=_hsRowKey(group,r);if(HASIL_OVERRIDE[key])return HASIL_OVERRIDE[key];
   var old=_auditLegacyRowKey(group,r),ov=HASIL_OVERRIDE[old];if(!ov)return null;
-  var matches=(HS_GROUPS_DATA[group]||[]).filter(function(x){return _auditLegacyRowKey(group,x)===old;});
-  if(matches.length===1){HASIL_OVERRIDE[key]=Object.assign({},ov,{migratedFrom:old});delete HASIL_OVERRIDE[old];return HASIL_OVERRIDE[key];}
+  // One index per read of a group. No cache survives a source mutation.
+  lookup=lookup||{rows:HS_GROUPS_DATA[group]||[],counts:null};
+  if(!lookup.counts){lookup.counts=new Map();lookup.rows.forEach(function(x){var k=_auditLegacyRowKey(group,x);lookup.counts.set(k,(lookup.counts.get(k)||0)+1);});}
+  var matches=lookup.counts.get(old)||0;
+  if(matches===1){HASIL_OVERRIDE[key]=Object.assign({},ov,{migratedFrom:old});delete HASIL_OVERRIDE[old];return HASIL_OVERRIDE[key];}
   window._auditAmbiguousOverrides=window._auditAmbiguousOverrides||new Set();window._auditAmbiguousOverrides.add(old);
   if(!window._auditOverrideWarning){window._auditOverrideWarning=true;setTimeout(function(){if(typeof toast==='function')toast('⚠ Koreksi lama dengan target ganda tidak diterapkan. Periksa Hasil Sampling sebelum laporan.');},0);}return null;
 }
@@ -5935,7 +5938,7 @@ function _ldGo(where){
     else if(where==='envprog')switchTab('envprog',document.getElementById('tb-envprog')||null);
   },120);
 }
-window.__BUILD__={v:'2026-10-09',h:'d6c18f32'};   /* Y516: diisi build_v12b_patch.py */
+window.__BUILD__={v:'2026-10-09',h:'46c4fcd7'};   /* Y516: diisi build_v12b_patch.py */
 function hideLanding(){var l=document.getElementById('landing');if(l)l.classList.add('hidden');}
 function showLanding(){var l=document.getElementById('landing');if(l){_ldStats();l.classList.remove('hidden');}}
 (function(){
@@ -22242,10 +22245,11 @@ function _hsRowsFor(group){
   /*Y578b*/if(typeof _hsPulihkan==='function'){_hsPulihkan(HS_GROUPS_DATA[group]);_hsPulihkan(HASIL_MANUAL);}
   /*Y551b*/_hsFixBulanan(HS_GROUPS_DATA[group]);_hsFixBulanan(HASIL_MANUAL);
   const base=(HS_GROUPS_DATA[group]||[]).concat(HASIL_MANUAL.filter(r=>r.group===group));
+  const legacyLookup={rows:HS_GROUPS_DATA[group]||[],counts:null};
   return base.filter(r=>!_auditReferenceRow(r)).map(r=>{
     if(r.extra&&r.extra.manualId){const ev=_hsEvalCompliance(r.nilai,r.bakuMutu,{satuan:r.satuan,satuanBaku:r.satuanBakuMutu,tanggal:r.tanggal});return Object.assign({},r,{status:ev.status,nilaiNum:ev.nilaiNum});}
     const key=_hsRowKey(group,r);
-    const ov=_auditOverrideFor(group,r);
+    const ov=_auditOverrideFor(group,r,legacyLookup);
     if(!ov){const ev=_hsEvalCompliance(r.nilai,r.bakuMutu,{satuan:r.satuan,satuanBaku:r.satuanBakuMutu,tanggal:r.tanggal});return Object.assign(r,{status:ev.status,nilaiNum:ev.nilaiNum});}
     const ev=_hsEvalCompliance(ov.nilai,r.bakuMutu==null?null:r.bakuMutu,{satuan:r.satuan,satuanBaku:r.satuanBakuMutu,tanggal:r.tanggal});
     return Object.assign({},r,{nilai:ov.nilai,status:ev.status,nilaiNum:ev.nilaiNum,
@@ -52251,7 +52255,8 @@ window._rsSiteReset=function(){_rsSiteSuara=null;};
  * dicocokkan lewat tanggal. */
 function _rsBpnImport(wbx,sn,rep,ctx){
   var XL=(typeof XLSXS!=='undefined'?XLSXS:XLSX);
-  var rows=XL.utils.sheet_to_json(wbx.Sheets[sn],{header:1,raw:true,defval:null});
+  var ws=wbx.Sheets[sn],extent=XL.utils.decode_range(ws['!ref']||'A1');
+  var rows=XL.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,range:{s:{r:0,c:0},e:extent.e}});
   var iRfa=-1,cLab=-1;
   for(var i=0;i<Math.min(10,rows.length)&&iRfa<0;i++){
     var r=rows[i]||[];
