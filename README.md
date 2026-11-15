@@ -9,7 +9,9 @@ Tidak ada server, tidak ada basis data, tidak ada pengiriman data ke mana pun.
 
 | Berkas | Keterangan |
 |---|---|
-| `index.html` | Aplikasinya, sudah jadi |
+| `index.html` | Halaman depan (kecil, ±0,7 MB terkompresi) |
+| `admin-source.json` | Aplikasi ENV Eng; baru diunduh saat akses ENV Eng berhasil atau alat dibuka |
+| `alat-fungsi.json` | Kode Alat Lapangan; baru diunduh saat alat dibuka |
 | `ocr-model.json` | Mesin pembaca teks dari gambar (OCR), diambil hanya saat fitur OCR dipakai |
 | `.nojekyll` | Menonaktifkan pemrosesan Jekyll di GitHub Pages |
 | `README.md` | Berkas ini |
